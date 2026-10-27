@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nooxel World</title>
+  <style>
+    body { margin: 0; min-height: 100vh; background: #0b0b0f; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: start center; padding: 2rem 1rem; }
+    main { width: 100%; max-width: 420px; }
+    input, button { font: inherit; padding: .6rem .8rem; border-radius: 8px; border: 1px solid #333; background: #16161d; color: #fff; }
+    button { cursor: pointer; background: #3b82f6; border-color: #3b82f6; }
+    button.ghost { background: transparent; border-color: #333; }
+    form { display: flex; gap: .5rem; margin: 1rem 0; flex-wrap: wrap; }
+    form input { flex: 1; min-width: 0; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid #222; }
+    .muted { color: #8a8a99; font-size: .9rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Nooxel World</h1>
+    <p id="msg" class="muted"></p>
+
+    <form id="auth">
+      <input id="email" type="email" placeholder="Email" required>
+      <input id="password" type="password" placeholder="Mot de passe (6+ car.)" required minlength="6">
+      <button type="submit" id="login">Connexion</button>
+      <button type="button" id="signup" class="ghost">Créer un compte</button>
+    </form>
+
+    <section id="app" class="hidden">
+      <p class="muted"><span id="who"></span> · <a href="#" id="logout" style="color:#8ab4ff">Déconnexion</a></p>
+      <form id="add">
+        <input id="title" placeholder="Nouvel élément" required maxlength="200">
+        <button type="submit">Ajouter</button>
+      </form>
+      <ul id="list"></ul>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script>
+    // Clé publique (anon) : conçue pour être exposée côté navigateur.
+    const sb = supabase.createClient(
+      "https://smjbgjolteovcwkoxcar.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtamJnam9sdGVvdmN3a294Y2FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMzM5MzAsImV4cCI6MjEwODcwOTkzMH0.4n1rikyRKt-rVm5FjR4RtTkV8-ip3EbcsNNPy6xCtts"
+    );
+    const $ = id => document.getElementById(id);
+    const say = t => $("msg").textContent = t || "";
+
+    async function refresh() {
+      const { data: { session } } = await sb.auth.getSession();
+      $("auth").classList.toggle("hidden", !!session);
+      $("app").classList.toggle("hidden", !session);
+      if (!session) return;
+      $("who").textContent = session.user.email;
+      const { data, error } = await sb.from("items").select("*").order("id", { ascending: false });
+      if (error) return say("Erreur : " + error.message + " (le script supabase/schema.sql a-t-il été exécuté ?)");
+      $("list").innerHTML = "";
+      for (const it of data) {
+        const li = document.createElement("li");
+        const span = document.createElement("span"); span.textContent = it.title;
+        const del = document.createElement("button"); del.className = "ghost"; del.textContent = "✕";
+        del.onclick = async () => { await sb.from("items").delete().eq("id", it.id); refresh(); };
+        li.append(span, del); $("list").append(li);
+      }
+    }
+
+    $("auth").onsubmit = async e => {
+      e.preventDefault();
+      const { error } = await sb.auth.signInWithPassword({ email: $("email").value, password: $("password").value });
+      say(error ? error.message : ""); refresh();
+    };
+    $("signup").onclick = async () => {
+      const { error } = await sb.auth.signUp({ email: $("email").value, password: $("password").value });
+      say(error ? error.message : "Compte créé. Vérifiez vos emails si la confirmation est activée, puis connectez-vous.");
+    };
+    $("logout").onclick = async e => { e.preventDefault(); await sb.auth.signOut(); refresh(); };
+    $("add").onsubmit = async e => {
+      e.preventDefault();
+      const { error } = await sb.from("items").insert({ title: $("title").value });
+      if (error) return say(error.message);
+      $("title").value = ""; say(""); refresh();
+    };
+    sb.auth.onAuthStateChange(refresh);
+    refresh();
+  </script>
+</body>
+</html>
