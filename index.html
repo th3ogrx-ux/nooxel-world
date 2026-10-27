@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nooxel World</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b0b0f; color: #fff; font-family: system-ui, sans-serif; text-align: center; }
+    small { color: #8a8a99; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Nooxel World</h1>
+    <p id="status">Connexion à Supabase…</p>
+    <small>Déployé automatiquement depuis GitHub</small>
+  </main>
+  <script>
+    // Clé publique (anon) : conçue pour être exposée côté navigateur.
+    const SUPABASE_URL = "https://smjbgjolteovcwkoxcar.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtamJnam9sdGVvdmN3a294Y2FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMzM5MzAsImV4cCI6MjEwODcwOTkzMH0.4n1rikyRKt-rVm5FjR4RtTkV8-ip3EbcsNNPy6xCtts";
+
+    fetch(SUPABASE_URL + "/auth/v1/health", { headers: { apikey: SUPABASE_ANON_KEY } })
+      .then(r => document.getElementById("status").textContent = r.ok ? "Supabase connecté ✅" : "Supabase a répondu " + r.status)
+      .catch(() => document.getElementById("status").textContent = "Supabase injoignable ❌");
+  </script>
+</body>
+</html>
