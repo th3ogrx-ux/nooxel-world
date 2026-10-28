@@ -41,7 +41,7 @@
 
     body { background: radial-gradient(ellipse at 50% 40%, #04123a 0%, #000716 60%, #00030b 100%); }
     #welcome { display: grid; justify-items: center; gap: 3.2rem; }
-    .planet-wrap { position: relative; width: min(66vw, 300px); }
+    .planet-wrap { position: relative; width: min(46vw, 200px); }
     .planet-wrap::before { content: ""; position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(20,110,255,.38) 0%, rgba(20,110,255,.12) 38%, rgba(0,0,0,0) 66%); animation: pulse 3s ease-in-out infinite; pointer-events: none; }
     .planet { position: relative; display: block; width: 100%; animation: float 4s ease-in-out infinite; }
     .intro-bottom { width: 100%; min-height: 90px; display: grid; justify-items: center; align-content: start; gap: 1rem; }
@@ -161,7 +161,7 @@
         <div id="fields" class="fields">
           <button type="button" id="chip" class="chip hidden" aria-label="Changer de compte"><span class="av" id="chip-av"></span><span id="chip-email"></span><span class="caret">▾</span></button>
         <input id="email" type="email" placeholder="Email" autocomplete="email" required>
-          <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
+          <input id="password" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
           <input id="password2" class="hidden" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password" minlength="6">
           <p id="msg" role="alert"></p>
           <div class="actions">
@@ -203,6 +203,8 @@
       $("submit-label").textContent = signup ? "Créer mon compte" : "Se connecter";
       $("toggle").textContent = "← Retour";
       $("password").autocomplete = signup ? "new-password" : "current-password";
+      $("password").placeholder = signup ? "Mot de passe (6 caractères min.)" : "Mot de passe";
+      $("password").minLength = signup ? 6 : 0;
       $("password2").classList.toggle("hidden", !signup);
       $("password2").required = signup;
       $("password2").value = "";
