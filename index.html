@@ -400,11 +400,14 @@
           ? "Localisation refusée. Activez-la dans les réglages de votre navigateur."
           : "Position introuvable pour le moment."));
         // Première position reçue : zoom fort et fixe (niveau village/rues), même si le GPS est approximatif.
-        let firstFix = true;
+        // Si une position nettement plus précise arrive ensuite (le GPS se verrouille), on se recentre dessus.
+        let bestAcc = Infinity;
         geo.on("geolocate", pos => {
-          if (!firstFix) return;
-          firstFix = false;
-          map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 2200, essential: true });
+          const acc = pos.coords.accuracy || Infinity;
+          const first = bestAcc === Infinity;
+          if (!first && acc > bestAcc / 2) return;
+          bestAcc = Math.min(bestAcc, acc);
+          map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: first ? 16 : Math.max(map.getZoom(), 16), duration: first ? 2200 : 900, essential: true });
         });
         map.on("load", askLocation);
         // Erreur affichée seulement si la carte n'a jamais réussi à démarrer (pas pour une tuile ou une icône manquante).
