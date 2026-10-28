@@ -727,9 +727,9 @@
       if (map.getSource("route")) return map.getSource("route").setData(data);
       map.addSource("route", { type: "geojson", data });
       const lay = { "line-cap": "round", "line-join": "round" };
-      map.addLayer({ id: "route-glow", type: "line", source: "route", layout: lay, paint: { "line-color": "#19b8ff", "line-width": 20, "line-blur": 12, "line-opacity": .55 } });
-      map.addLayer({ id: "route-casing", type: "line", source: "route", layout: lay, paint: { "line-color": "#ffffff", "line-width": 10, "line-opacity": .95 } });
-      map.addLayer({ id: "route-line", type: "line", source: "route", layout: lay, paint: { "line-color": "#2a7bff", "line-width": 6 } });
+      map.addLayer({ id: "route-glow", type: "line", source: "route", layout: lay, paint: { "line-color": "#19b8ff", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 10, 15, 22, 18, 36], "line-blur": 12, "line-opacity": .55 } });
+      map.addLayer({ id: "route-casing", type: "line", source: "route", layout: lay, paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 6, 15, 12, 18, 22], "line-opacity": .95 } });
+      map.addLayer({ id: "route-line", type: "line", source: "route", layout: lay, paint: { "line-color": "#2a7bff", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 3.5, 15, 7.5, 18, 14] } });
     }
     const fmtTime = s => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); };
     const fmtDist = m => m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " km";
@@ -1090,7 +1090,7 @@
         geo.on("error", err => {
           const wasRetry = retrying; retrying = false;
           if (err && err.code === 1) showHelp(wasRetry);
-          else toast("Position introuvable pour le moment.");
+          else if (!nav.active && !lastPosGlobal) toast("Position introuvable pour le moment.");
         });
         // Première position reçue : zoom fort et fixe (niveau village/rues), même si le GPS est approximatif.
         // Si une position nettement plus précise arrive ensuite (le GPS se verrouille), on se recentre dessus.
