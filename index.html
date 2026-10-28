@@ -44,7 +44,7 @@
     .planet-wrap { position: relative; width: min(66vw, 300px); }
     .planet-wrap::before { content: ""; position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(20,110,255,.38) 0%, rgba(20,110,255,.12) 38%, rgba(0,0,0,0) 66%); animation: pulse 3s ease-in-out infinite; pointer-events: none; }
     .planet { position: relative; display: block; width: 100%; animation: float 4s ease-in-out infinite; }
-    .intro-bottom { width: 100%; min-height: 64px; display: grid; place-items: center; }
+    .intro-bottom { width: 100%; min-height: 90px; display: grid; justify-items: center; align-content: start; gap: 1rem; }
     .loader { width: 100%; max-width: 280px; transition: opacity .4s ease; }
     .loader.out { opacity: 0; }
     .bar { height: 6px; border-radius: 6px; background: rgba(40,90,200,.25); overflow: hidden; }
@@ -68,6 +68,11 @@
     #welcome.leaving .intro-bottom { opacity: 0; transition: opacity .25s ease; }
     #login, #home { animation: rise .45s ease both; }
     @media (prefers-reduced-motion: reduce) { .planet, .brand { animation: none; } }
+
+    .req { margin: 0; max-width: 270px; color: #6f8fc9; font-size: .85rem; line-height: 1.4; animation: rise .6s ease .15s both; }
+    .continue { display: flex; align-items: center; justify-content: center; gap: .4rem; flex-wrap: wrap; }
+    .continue img { width: 22px; height: 18px; object-fit: contain; }
+    .continue strong { color: #cfe0ff; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -86,18 +91,19 @@
           <span>Se connecter à Nooxel</span>
           <img src="assets/logo-n.png" alt="">
         </button>
+        <p class="req hidden" id="req">Un compte Nooxel est requis pour accéder à Nooxel World</p>
       </div>
     </section>
 
     <form id="login" class="card hidden">
       <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
-      <h1>Bienvenue sur Nooxel</h1>
-      <p class="muted" id="sub">Connectez-vous pour continuer.</p>
+      <h1 id="title">Connexion</h1>
+      <p class="muted continue" id="sub">pour continuer vers <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong></p>
       <input id="email" type="email" placeholder="Email" autocomplete="email" required>
       <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
-      <button type="submit" class="btn-nooxel" id="submit"><span id="submit-label">Se connecter avec Nooxel</span></button>
+      <button type="submit" class="btn-nooxel" id="submit"><span id="submit-label">Se connecter</span></button>
       <p id="msg" role="alert"></p>
-      <button type="button" class="link" id="toggle">Pas de compte ? Créer un compte</button>
+      <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
       <button type="button" class="link" id="back">← Retour</button>
     </form>
 
@@ -124,8 +130,9 @@
 
     function setMode(signup) {
       signupMode = signup;
-      $("submit-label").textContent = signup ? "Créer mon compte Nooxel" : "Se connecter avec Nooxel";
-      $("toggle").textContent = signup ? "Déjà un compte ? Se connecter" : "Pas de compte ? Créer un compte";
+      $("title").textContent = signup ? "Créer un compte Nooxel" : "Connexion";
+      $("submit-label").textContent = signup ? "Créer mon compte" : "Se connecter";
+      $("toggle").textContent = signup ? "J'ai déjà un compte Nooxel" : "Créer un compte Nooxel";
       $("password").autocomplete = signup ? "new-password" : "current-password";
       say("");
     }
@@ -146,7 +153,7 @@
     $("bar-fill").animate([{ width: "0%" }, { width: "100%" }], { duration: LOAD_MS, easing: "ease-in-out", fill: "forwards" });
     function showButton() {
       $("loader").classList.add("out");
-      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); if (navigator.vibrate) navigator.vibrate(15); }, 400);
+      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); $("req").classList.remove("hidden"); if (navigator.vibrate) navigator.vibrate(15); }, 400);
     }
     const ready = () => setTimeout(showButton, Math.max(0, LOAD_MS - (Date.now() - t0)));
     if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
