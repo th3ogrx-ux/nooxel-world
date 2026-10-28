@@ -398,6 +398,7 @@
           style: new URL("assets/map-style.json", location.href).href,
           center: [2.35, 46.8],
           zoom: 4.6,
+          maxZoom: 19,   // au-delà, les données n'ont plus de détail : on bloque ici
           attributionControl: { compact: true }
         });
         map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
