@@ -712,7 +712,16 @@
         });
         map.addControl(geo, "bottom-right");
         const gb = document.querySelector(".maplibregl-ctrl-geolocate");
-        if (gb && gb.parentElement) gb.parentElement.classList.add("locate-ctrl");
+        if (gb && gb.parentElement) {
+          gb.parentElement.classList.add("locate-ctrl");
+          // Déjà centré sur vous : un toucher recentre au lieu de couper le suivi (qui ferait disparaître le point bleu).
+          gb.parentElement.addEventListener("click", e => {
+            if (gb.classList.contains("maplibregl-ctrl-geolocate-active") && lastPos) {
+              e.stopPropagation(); e.preventDefault();
+              map.flyTo({ center: [lastPos.longitude, lastPos.latitude], zoom: Math.max(map.getZoom(), 16), duration: 900, essential: true });
+            }
+          }, true);
+        }
         map.touchZoomRotate.disableRotation();   // pincer pour zoomer, sans faire tourner
         map.keyboard.disableRotation();
         geo.on("error", err => {
@@ -722,8 +731,9 @@
         });
         // Première position reçue : zoom fort et fixe (niveau village/rues), même si le GPS est approximatif.
         // Si une position nettement plus précise arrive ensuite (le GPS se verrouille), on se recentre dessus.
-        let bestAcc = Infinity;
+        let bestAcc = Infinity, lastPos = null;
         geo.on("geolocate", pos => {
+          lastPos = pos.coords;
           const acc = pos.coords.accuracy || Infinity;
           const first = bestAcc === Infinity;
           if (!first && acc > bestAcc / 2) return;
