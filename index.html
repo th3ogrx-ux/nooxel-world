@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nooxel World</title>
   <link rel="icon" href="assets/logo-n.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
   <style>
     html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
     body { margin: 0; height: 100dvh; box-sizing: border-box; background: #000; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: center; padding: 2rem 1rem; text-align: center; }
@@ -122,6 +123,14 @@
     .btn-outline { width: 100%; display: flex; align-items: center; justify-content: center; gap: .6rem; font: inherit; font-weight: 600; color: #1a6bff; background: #f3f7ff; border: 1.5px solid #1a6bff; border-radius: 999px; padding: .8rem 1.2rem; cursor: pointer; transition: background .15s, transform .1s; }
     .btn-outline:hover { background: #e6efff; }
     .btn-outline:active { transform: scale(.98); }
+    #home { position: fixed; inset: 0; z-index: 5; background: #06101f; }
+    #map { position: absolute; inset: 0; }
+    #me { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .8rem); right: .8rem; z-index: 6; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: inherit; font-weight: 700; font-size: 1.05rem; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+    #menu { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 3.6rem); right: .8rem; z-index: 6; min-width: 210px; max-width: calc(100vw - 1.6rem); padding: .9rem; border-radius: 18px; background: #fff; color: #1f1f1f; box-shadow: 0 12px 40px rgba(0,0,0,.4); text-align: left; animation: pop .2s ease both; }
+    #menu #who { margin: 0 0 .7rem; font-size: .92rem; color: #5f6368; word-break: break-all; }
+    #menu #logout { width: 100%; font: inherit; font-weight: 600; color: #d93025; background: #fdecea; border: 0; border-radius: 12px; padding: .65rem; cursor: pointer; }
+    #map-error { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; margin: 0; padding: 1rem 1.2rem; border-radius: 14px; background: #fff; color: #1f1f1f; max-width: 80vw; }
+    .maplibregl-ctrl-bottom-right { bottom: env(safe-area-inset-bottom, 0px); }
   </style>
 </head>
 <body>
@@ -169,15 +178,18 @@
       </form>
     </div>
 
-    <section id="home" class="card hidden">
-      <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
-      <h1>Nooxel World</h1>
-      <p class="muted">La carte arrive bientôt.</p>
-      <p class="muted" id="who"></p>
-      <button type="button" class="link" id="logout">Se déconnecter</button>
+    <section id="home" class="hidden">
+      <div id="map" aria-label="Carte"></div>
+      <button type="button" id="me" aria-label="Mon compte"></button>
+      <div id="menu" class="hidden" role="menu">
+        <p id="who"></p>
+        <button type="button" id="logout" role="menuitem">Se déconnecter</button>
+      </div>
+      <p id="map-error" class="hidden">Impossible de charger la carte. Vérifiez votre connexion.</p>
     </section>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
     // Clé publique (anon) : conçue pour être exposée côté navigateur.
@@ -269,8 +281,42 @@
       $("welcome").classList.toggle("hidden", !!session);
       $("layer").classList.toggle("hidden", !!session || !wantsLogin);
       $("home").classList.toggle("hidden", !session);
-      if (session) { wantsLogin = false; $("who").textContent = session.user.email; }
+      if (session) {
+        wantsLogin = false;
+        const email = session.user.email || "?";
+        $("who").textContent = email;
+        $("me").textContent = email[0];
+        $("me").style.background = `hsl(${hue(email)} 65% 45%)`;
+        startMap();
+      } else { $("menu").classList.add("hidden"); }
     }
+
+    // ----- Carte (MapLibre + OpenStreetMap via OpenFreeMap, sans clé API)
+    let map = null;
+    function startMap() {
+      if (map) { map.resize(); return; }
+      try {
+        map = new maplibregl.Map({
+          container: "map",
+          style: "https://tiles.openfreemap.org/styles/liberty",
+          center: [2.35, 46.8],
+          zoom: 4.6,
+          attributionControl: { compact: true }
+        });
+        map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
+        map.addControl(new maplibregl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+          showUserHeading: true
+        }), "bottom-right");
+        map.on("error", e => { if (e && e.error && !map.loaded()) $("map-error").classList.remove("hidden"); });
+        map.on("load", () => $("map-error").classList.add("hidden"));
+      } catch (e) {
+        $("map-error").classList.remove("hidden");
+      }
+    }
+    $("me").onclick = () => $("menu").classList.toggle("hidden");
+    $("map").addEventListener("pointerdown", () => $("menu").classList.add("hidden"));
 
     // Écran de chargement : la barre se remplit, puis le bouton blanc apparaît.
     const LOAD_MS = 2600;
