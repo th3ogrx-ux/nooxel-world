@@ -1,9 +1,7 @@
 // Version « un seul fichier » de supabase/functions/admin-document-url/index.ts, à coller telle quelle dans l'éditeur de fonctions de Supabase.
 // Ne pas modifier ici : régénérée à partir des sources.
-// ../../../../../../home/user/nooxel-world/supabase/functions/admin-document-url/index.ts
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// ../../../../../../home/user/nooxel-world/supabase/functions/_shared/errors.ts
 var TABLE = {
   not_authenticated: [401, "Connexion requise."],
   forbidden: [403, "Accès refusé."],
@@ -39,7 +37,6 @@ function json(body, status = 200, extra = {}) {
   });
 }
 
-// ../../../../../../home/user/nooxel-world/supabase/functions/admin-document-url/index.ts
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, code: "method" }, 405);

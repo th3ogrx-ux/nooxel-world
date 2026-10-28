@@ -1,9 +1,7 @@
 // Version « un seul fichier » de supabase/functions/purge-documents/index.ts, à coller telle quelle dans l'éditeur de fonctions de Supabase.
 // Ne pas modifier ici : régénérée à partir des sources.
-// ../../../../../../home/user/nooxel-world/supabase/functions/purge-documents/index.ts
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// ../../../../../../home/user/nooxel-world/supabase/functions/_shared/errors.ts
 var CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -16,7 +14,6 @@ function json(body, status = 200, extra = {}) {
   });
 }
 
-// ../../../../../../home/user/nooxel-world/supabase/functions/purge-documents/index.ts
 function sameSecret(a, b) {
   if (!a || a.length !== b.length) return false;
   let diff = 0;
