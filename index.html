@@ -44,52 +44,6 @@
   </main>
 
   <script>
-    // Clé publique (anon) : conçue pour être exposée côté navigateur.
-    const sb = supabase.createClient(
-      "https://smjbgjolteovcwkoxcar.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtamJnam9sdGVvdmN3a294Y2FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMzM5MzAsImV4cCI6MjEwODcwOTkzMH0.4n1rikyRKt-rVm5FjR4RtTkV8-ip3EbcsNNPy6xCtts"
-    );
-    const $ = id => document.getElementById(id);
-    const say = t => $("msg").textContent = t || "";
-
-    async function refresh() {
-      const { data: { session } } = await sb.auth.getSession();
-      $("auth").classList.toggle("hidden", !!session);
-      $("app").classList.toggle("hidden", !session);
-      if (!session) return;
-      $("who").textContent = session.user.email;
-      const { data, error } = await sb.from("items").select("*").order("id", { ascending: false });
-      if (error) return say("Erreur : " + error.message + " (le script supabase/schema.sql a-t-il été exécuté ?)");
-      $("list").innerHTML = "";
-      for (const it of data) {
-        const li = document.createElement("li");
-        const span = document.createElement("span"); span.textContent = it.title;
-        const del = document.createElement("button"); del.className = "ghost"; del.textContent = "✕";
-        del.onclick = async () => { await sb.from("items").delete().eq("id", it.id); refresh(); };
-        li.append(span, del); $("list").append(li);
-      }
-    }
-
-    $("auth").onsubmit = async e => {
-      e.preventDefault();
-      const { error } = await sb.auth.signInWithPassword({ email: $("email").value, password: $("password").value });
-      say(error ? error.message : ""); refresh();
-    };
-    $("signup").onclick = async () => {
-      const { error } = await sb.auth.signUp({ email: $("email").value, password: $("password").value });
-      say(error ? error.message : "Compte créé. Vérifiez vos emails si la confirmation est activée, puis connectez-vous.");
-    };
-    $("logout").onclick = async e => { e.preventDefault(); await sb.auth.signOut(); refresh(); };
-    $("add").onsubmit = async e => {
-      e.preventDefault();
-      const { error } = await sb.from("items").insert({ title: $("title").value });
-      if (error) return say(error.message);
-      $("title").value = ""; say(""); refresh();
-    };
-    sb.auth.onAuthStateChange(refresh);
-    refresh();
-  </script>
-  <script>
     // Écran de chargement : visible au moins 1,8 s, retiré quand la page est prête.
     (function () {
       const start = Date.now();
