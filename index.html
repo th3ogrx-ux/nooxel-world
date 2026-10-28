@@ -193,6 +193,7 @@
     #q-list .s { font-size: .85rem; color: #5f6368; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #q-list li.note { cursor: default; color: #5f6368; font-size: .92rem; }
     #q-list li.note:hover { background: transparent; }
+    #brand { position: absolute; left: .9rem; bottom: calc(env(safe-area-inset-bottom, 0px) + .9rem); z-index: 5; margin: 0; padding: .35rem .8rem; border-radius: 999px; background: rgba(4,11,28,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #e6f0ff; font-size: .85rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 0 12px rgba(30,130,255,.6); pointer-events: none; user-select: none; }
   </style>
 </head>
 <body>
@@ -245,10 +246,11 @@
 
     <section id="home" class="hidden">
       <div id="map" aria-label="Carte"></div>
+      <p id="brand" aria-hidden="true">Nooxel World</p>
       <div id="search" role="search">
         <div class="sbox">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-          <input id="q" type="search" placeholder="Rechercher un lieu ou une adresse" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Rechercher un lieu" aria-controls="q-list" aria-expanded="false">
+          <input id="q" type="search" placeholder="Rechercher un lieu" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="Rechercher un lieu" aria-controls="q-list" aria-expanded="false">
           <button type="button" id="q-clear" class="hidden" aria-label="Effacer la recherche">✕</button>
         </div>
         <ul id="q-list" class="hidden" role="listbox"></ul>
@@ -693,7 +695,6 @@
           maxZoom: 19,   // au-delà, les données n'ont plus de détail : on bloque ici
           attributionControl: { compact: true }
         });
-        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
         geo = new maplibregl.GeolocateControl({
           positionOptions: { enableHighAccuracy: true },
           fitBoundsOptions: { maxZoom: 16 },
