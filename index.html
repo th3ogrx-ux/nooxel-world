@@ -16,9 +16,28 @@
     li { display: flex; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid #222; }
     .muted { color: #8a8a99; font-size: .9rem; }
     .hidden { display: none; }
+
+    #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #04122e 0%, #000 70%); transition: opacity .6s ease, visibility .6s ease; }
+    #splash.done { opacity: 0; visibility: hidden; }
+    .splash-inner { display: grid; justify-items: center; gap: 1.6rem; }
+    .splash-logo { width: min(55vw, 260px); border-radius: 22%; animation: float 3s ease-in-out infinite, glow 2.4s ease-in-out infinite; }
+    .splash-name { font-size: 1.4rem; letter-spacing: .5em; text-transform: uppercase; color: #cfe3ff; margin: 0; padding-left: .5em; }
+    .splash-bar { width: 180px; height: 3px; border-radius: 3px; background: #0a1c3f; overflow: hidden; }
+    .splash-bar::after { content: ""; display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #0a5cff, #19d3ff); animation: load 1.2s ease-in-out infinite; }
+    @keyframes float { 50% { transform: translateY(-10px); } }
+    @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 18px rgba(25,120,255,.45)); } 50% { filter: drop-shadow(0 0 40px rgba(25,211,255,.8)); } }
+    @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+    @media (prefers-reduced-motion: reduce) { .splash-logo, .splash-bar::after { animation: none; } }
   </style>
 </head>
 <body>
+  <div id="splash" role="status" aria-label="Chargement">
+    <div class="splash-inner">
+      <img class="splash-logo" src="assets/logo.png" alt="Nooxel World">
+      <p class="splash-name">Nooxel</p>
+      <div class="splash-bar"></div>
+    </div>
+  </div>
   <main>
     <h1>Nooxel World</h1>
     <p id="msg" class="muted"></p>
@@ -86,6 +105,18 @@
     };
     sb.auth.onAuthStateChange(refresh);
     refresh();
+  </script>
+  <script>
+    // Écran de chargement : visible au moins 1,8 s, retiré quand la page est prête.
+    (function () {
+      const start = Date.now();
+      const hide = () => setTimeout(() => {
+        const el = document.getElementById("splash");
+        el.classList.add("done");
+        setTimeout(() => el.remove(), 700);
+      }, Math.max(0, 1800 - (Date.now() - start)));
+      if (document.readyState === "complete") hide(); else window.addEventListener("load", hide);
+    })();
   </script>
 </body>
 </html>
