@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nooxel World</title>
   <link rel="icon" href="assets/logo-n.png">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
   <style>
     html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
     body { margin: 0; height: 100dvh; box-sizing: border-box; background: #000; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: center; padding: 2rem 1rem; text-align: center; }
@@ -138,7 +137,7 @@
 </head>
 <body>
   <main>
-    <section id="welcome" class="hidden">
+    <section id="welcome">
       <div class="hero">
         <div class="planet-wrap"><img class="planet" src="assets/planet.png" alt="Nooxel World"></div>
         <h1 class="brand">Nooxel World</h1>
@@ -192,14 +191,13 @@
     </section>
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
     // Clé publique (anon) : conçue pour être exposée côté navigateur.
-    const sb = supabase.createClient(
+    const sb = window.supabase ? supabase.createClient(
       "https://smjbgjolteovcwkoxcar.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtamJnam9sdGVvdmN3a294Y2FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMzM5MzAsImV4cCI6MjEwODcwOTkzMH0.4n1rikyRKt-rVm5FjR4RtTkV8-ip3EbcsNNPy6xCtts"
-    );
+    ) : null;
     const $ = id => document.getElementById(id);
     let signupMode = false;
 
@@ -288,8 +286,15 @@
 
     let wantsLogin = false;
 
+    // Si la vérification de connexion traîne (ou échoue), on affiche quand même l'écran d'entrée.
+    function getSession() {
+      if (!sb) return Promise.resolve(null);
+      const wait = new Promise(r => setTimeout(() => r(null), 4000));
+      return Promise.race([sb.auth.getSession().then(r => r.data.session), wait]).catch(() => null);
+    }
+
     async function render() {
-      const { data: { session } } = await sb.auth.getSession();
+      const session = await getSession();
       $("welcome").classList.toggle("hidden", !!session);
       $("layer").classList.toggle("hidden", !!session || !wantsLogin);
       $("home").classList.toggle("hidden", !session);
@@ -304,10 +309,25 @@
     }
 
     // ----- Carte (MapLibre + OpenStreetMap via OpenFreeMap, sans clé API)
-    let map = null;
-    function startMap() {
+    let map = null, starting = false;
+    function loadMapLib() {
+      if (window.maplibregl) return Promise.resolve();
+      return new Promise((ok, fail) => {
+        const css = document.createElement("link"); css.rel = "stylesheet";
+        css.href = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css";
+        const js = document.createElement("script");
+        js.src = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js";
+        js.onload = ok; js.onerror = fail;
+        document.head.append(css, js);
+      });
+    }
+
+    async function startMap() {
       if (map) { map.resize(); return; }
+      if (starting) return;
+      starting = true;
       try {
+        await loadMapLib();
         map = new maplibregl.Map({
           container: "map",
           style: new URL("assets/map-style.json", location.href).href,
@@ -325,7 +345,7 @@
         map.on("load", () => $("map-error").classList.add("hidden"));
       } catch (e) {
         $("map-error").classList.remove("hidden");
-      }
+      } finally { starting = false; }
     }
     $("me").onclick = () => $("menu").classList.toggle("hidden");
     $("map").addEventListener("pointerdown", () => $("menu").classList.add("hidden"));
@@ -352,6 +372,7 @@
     $("toggle").onclick = () => { setMode(false, true); showChooser(); };
     $("login").onsubmit = async e => {
       e.preventDefault();
+      if (!sb) return say("Service indisponible. Rechargez la page.");
       if (signupMode && $("password").value !== $("password2").value) return say("Les mots de passe ne correspondent pas.");
       $("submit").disabled = true; say("");
       const creds = { email: $("email").value.trim(), password: $("password").value };
@@ -365,8 +386,8 @@
       }
       saveAccount(creds.email); render();
     };
-    $("logout").onclick = async () => { await sb.auth.signOut(); render(); };
-    sb.auth.onAuthStateChange(() => render());
+    $("logout").onclick = async () => { if (sb) await sb.auth.signOut(); render(); };
+    if (sb) sb.auth.onAuthStateChange(() => render());
     render();
   </script>
 </body>
