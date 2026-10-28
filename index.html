@@ -73,6 +73,27 @@
     .continue { display: flex; align-items: center; justify-content: center; gap: .4rem; flex-wrap: wrap; }
     .continue img { width: 22px; height: 18px; object-fit: contain; }
     .continue strong { color: #cfe0ff; font-weight: 600; }
+
+    #layer { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 1rem; background: rgba(0,4,16,.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); animation: fade .25s ease both; }
+    .gcard { position: relative; width: min(100%, 400px); max-height: 100%; overflow-y: auto; box-sizing: border-box; display: grid; gap: .9rem; padding: 2rem 1.6rem 1.4rem; border-radius: 28px; background: #fff; color: #1f1f1f; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.55); animation: pop .3s ease both; }
+    .gcard .logo-n { width: 56px; margin: 0 auto; }
+    .gcard h1 { margin: .2rem 0 0; font-size: 1.55rem; font-weight: 500; color: #1f1f1f; }
+    .gcard .continue { margin: 0 0 .6rem; color: #5f6368; font-size: .95rem; }
+    .gcard .continue strong { color: #1f1f1f; }
+    .gcard input { font: inherit; font-size: 16px; padding: .85rem 1rem; border-radius: 10px; border: 1px solid #c4c7c5; background: #fff; color: #1f1f1f; outline: none; }
+    .gcard input::placeholder { color: #80868b; }
+    .gcard input:focus { border-color: #1a6bff; box-shadow: 0 0 0 2px rgba(26,107,255,.25); }
+    .gcard #msg { margin: 0; min-height: 1.2em; color: #d93025; font-size: .9rem; text-align: left; }
+    .gcard #msg.ok { color: #188038; }
+    .actions { display: flex; align-items: center; justify-content: space-between; gap: .8rem; margin-top: .6rem; }
+    .gcard .link { color: #1a6bff; font-weight: 600; font-size: .92rem; padding: .5rem .2rem; text-align: left; }
+    .btn-blue { white-space: nowrap; flex-shrink: 0; font: inherit; font-weight: 600; color: #fff; background: #1a6bff; border: 0; border-radius: 999px; padding: .7rem 1.5rem; cursor: pointer; }
+    .btn-blue:hover { background: #0f5ae6; }
+    .btn-blue:disabled { opacity: .6; cursor: default; }
+    #back { position: absolute; top: .7rem; right: .7rem; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: #5f6368; font-size: 1rem; cursor: pointer; }
+    #back:hover { background: #f1f3f4; }
+    @keyframes fade { from { opacity: 0; } }
+    @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.96); } }
   </style>
 </head>
 <body>
@@ -95,17 +116,21 @@
       </div>
     </section>
 
-    <form id="login" class="card hidden">
-      <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
-      <h1 id="title">Connexion</h1>
-      <p class="muted continue" id="sub">pour continuer vers <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong></p>
-      <input id="email" type="email" placeholder="Email" autocomplete="email" required>
-      <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
-      <button type="submit" class="btn-nooxel" id="submit"><span id="submit-label">Se connecter</span></button>
-      <p id="msg" role="alert"></p>
-      <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
-      <button type="button" class="link" id="back">← Retour</button>
-    </form>
+    <div id="layer" class="hidden">
+      <form id="login" class="gcard" role="dialog" aria-modal="true" aria-labelledby="title">
+        <button type="button" id="back" aria-label="Fermer">✕</button>
+        <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
+        <h1 id="title">Connexion</h1>
+        <p class="continue" id="sub">pour continuer vers <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong></p>
+        <input id="email" type="email" placeholder="Email" autocomplete="email" required>
+        <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
+        <p id="msg" role="alert"></p>
+        <div class="actions">
+          <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
+          <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
+        </div>
+      </form>
+    </div>
 
     <section id="home" class="card hidden">
       <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
@@ -141,8 +166,8 @@
 
     async function render() {
       const { data: { session } } = await sb.auth.getSession();
-      $("welcome").classList.toggle("hidden", !!session || wantsLogin);
-      $("login").classList.toggle("hidden", !!session || !wantsLogin);
+      $("welcome").classList.toggle("hidden", !!session);
+      $("layer").classList.toggle("hidden", !!session || !wantsLogin);
       $("home").classList.toggle("hidden", !session);
       if (session) { wantsLogin = false; $("who").textContent = session.user.email; }
     }
@@ -158,11 +183,11 @@
     const ready = () => setTimeout(showButton, Math.max(0, LOAD_MS - (Date.now() - t0)));
     if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
 
-    $("go-login").onclick = () => {
-      $("welcome").classList.add("leaving");
-      setTimeout(() => { wantsLogin = true; render(); $("welcome").classList.remove("leaving"); $("email").focus(); }, 380);
-    };
-    $("back").onclick = () => { wantsLogin = false; setMode(false); render(); };
+    $("go-login").onclick = () => { wantsLogin = true; render(); $("email").focus(); };
+    const closeCard = () => { wantsLogin = false; setMode(false); render(); };
+    $("back").onclick = closeCard;
+    $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
     $("toggle").onclick = () => setMode(!signupMode);
     $("login").onsubmit = async e => {
