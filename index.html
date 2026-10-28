@@ -716,11 +716,30 @@
           gb.parentElement.classList.add("locate-ctrl");
           // Déjà centré sur vous : un toucher recentre au lieu de couper le suivi (qui ferait disparaître le point bleu).
           gb.parentElement.addEventListener("click", e => {
+            if (swallowClick) { swallowClick = false; e.stopPropagation(); e.preventDefault(); return; }   // le "relâché" d'un appui long
             if (gb.classList.contains("maplibregl-ctrl-geolocate-active") && lastPos) {
               e.stopPropagation(); e.preventDefault();
               map.flyTo({ center: [lastPos.longitude, lastPos.latitude], zoom: Math.max(map.getZoom(), 16), duration: 900, essential: true });
             }
           }, true);
+          // Appui long : éteint le suivi (le point bleu disparaît). Un toucher normal recentre toujours.
+          let holdTimer = null;
+          const stopHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+          gb.parentElement.addEventListener("pointerdown", () => {
+            stopHold();
+            holdTimer = setTimeout(() => {
+              holdTimer = null;
+              const c = gb.classList;
+              const taps = c.contains("maplibregl-ctrl-geolocate-active") ? 1 : c.contains("maplibregl-ctrl-geolocate-background") ? 2 : 0;
+              if (!taps) return;
+              for (let i = 0; i < taps; i++) geo.trigger();
+              swallowClick = true; setTimeout(() => { swallowClick = false; }, 600);
+              if (navigator.vibrate) navigator.vibrate(12);
+              toast("Position masquée. Touchez le bouton pour la réafficher.");
+            }, 550);
+          });
+          ["pointerup", "pointercancel", "pointerleave"].forEach(ev => gb.parentElement.addEventListener(ev, stopHold));
+          gb.title = "Ma position (appui long pour la masquer)";
         }
         map.touchZoomRotate.disableRotation();   // pincer pour zoomer, sans faire tourner
         map.keyboard.disableRotation();
@@ -731,7 +750,7 @@
         });
         // Première position reçue : zoom fort et fixe (niveau village/rues), même si le GPS est approximatif.
         // Si une position nettement plus précise arrive ensuite (le GPS se verrouille), on se recentre dessus.
-        let bestAcc = Infinity, lastPos = null;
+        let bestAcc = Infinity, lastPos = null, swallowClick = false;
         geo.on("geolocate", pos => {
           lastPos = pos.coords;
           const acc = pos.coords.accuracy || Infinity;
