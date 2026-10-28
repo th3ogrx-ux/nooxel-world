@@ -119,6 +119,8 @@
     .chip .av { width: 26px; height: 26px; font-size: .8rem; }
     .chip #chip-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .chip .caret { color: #5f6368; font-size: .75rem; }
+    .empty { margin: .4rem 0 .8rem; padding: 1.1rem; border-radius: 14px; background: #f6f8fc; color: #5f6368; text-align: center; font-size: .98rem; }
+    .btn-blue.wide { width: 100%; margin-top: .5rem; padding: .85rem 1.5rem; }
   </style>
 </head>
 <body>
@@ -148,8 +150,10 @@
         <h1 id="title">Connexion</h1>
         <p class="continue" id="sub"></p>
         <div id="chooser" class="hidden">
+          <p id="empty" class="empty hidden">Aucun compte sur cet appareil</p>
           <ul id="acc-list"></ul>
-          <button type="button" class="acc other" id="other"><span class="av plus">+</span><span>Utiliser un autre compte</span></button>
+          <button type="button" class="acc other" id="other"><span class="av plus">+</span><span id="other-label">Utiliser un autre compte</span></button>
+          <button type="button" class="btn-blue wide" id="create">Créer un compte</button>
         </div>
         <div id="fields" class="fields">
           <button type="button" id="chip" class="chip hidden" aria-label="Changer de compte"><span class="av" id="chip-av"></span><span id="chip-email"></span><span class="caret">▾</span></button>
@@ -221,8 +225,9 @@
 
     function showChooser() {
       const list = loadAccounts();
-      if (!list.length) return showForm();
       $("title").textContent = "Choisir un compte";
+      $("empty").classList.toggle("hidden", list.length > 0);
+      $("other-label").textContent = list.length ? "Utiliser un autre compte" : "J'ai déjà un compte";
       $("sub").innerHTML = SUB;
       $("acc-list").innerHTML = "";
       for (const email of list) {
@@ -249,6 +254,11 @@
     }
     $("chip").onclick = () => showChooser();
     $("other").onclick = () => { $("email").value = ""; showForm(); };
+    $("create").onclick = () => {
+      setMode(true, true);
+      $("chooser").classList.add("hidden"); $("fields").classList.remove("hidden");
+      $("email").classList.remove("hidden"); $("chip").classList.add("hidden"); $("email").value = "";
+    };
 
     let wantsLogin = false;
 
@@ -274,7 +284,6 @@
     // Curseur dans le champ email seulement avec une souris : sur téléphone, ça ouvrirait le clavier tout de suite.
     $("go-login").onclick = () => {
       wantsLogin = true; render(); showChooser();
-      if (!loadAccounts().length && matchMedia("(pointer: fine)").matches) $("email").focus();
     };
     const closeCard = () => { wantsLogin = false; setMode(false); $("email").value = ""; $("password").value = ""; render(); };
     $("back").onclick = closeCard;
