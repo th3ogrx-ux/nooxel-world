@@ -391,7 +391,7 @@
         map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
         geo = new maplibregl.GeolocateControl({
           positionOptions: { enableHighAccuracy: true },
-          fitBoundsOptions: { maxZoom: 17 },   // zoom "à fond" sur votre position
+          fitBoundsOptions: { maxZoom: 16 },
           trackUserLocation: true,
           showUserHeading: true
         });
@@ -399,6 +399,13 @@
         geo.on("error", err => toast(err && err.code === 1
           ? "Localisation refusée. Activez-la dans les réglages de votre navigateur."
           : "Position introuvable pour le moment."));
+        // Première position reçue : zoom fort et fixe (niveau village/rues), même si le GPS est approximatif.
+        let firstFix = true;
+        geo.on("geolocate", pos => {
+          if (!firstFix) return;
+          firstFix = false;
+          map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 2200, essential: true });
+        });
         map.on("load", askLocation);
         // Erreur affichée seulement si la carte n'a jamais réussi à démarrer (pas pour une tuile ou une icône manquante).
         let ready = false;
