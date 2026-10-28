@@ -202,6 +202,7 @@
         <p>Nooxel World utilise votre position pour vous montrer où vous êtes sur la carte. Elle n'est pas enregistrée.</p>
         <button type="button" class="btn-blue wide" id="geo-yes">Activer</button>
         <button type="button" class="btn-outline" id="geo-no">Plus tard</button>
+        <button type="button" class="link" id="geo-never">Ne plus demander</button>
       </div>
       <p id="geo-toast" class="hidden"></p>
       <p id="map-error" class="hidden">Impossible de charger la carte. Vérifiez votre connexion.</p>
@@ -357,23 +358,34 @@
       $("geo-toast").textContent = msg; $("geo-toast").classList.remove("hidden");
       setTimeout(() => $("geo-toast").classList.add("hidden"), 4500);
     }
-    // Première visite : on demande d'abord à l'utilisateur ; ensuite le navigateur demande sa propre permission.
+    // Localisation : on demande d'abord avec la carte Nooxel (le navigateur ne laisse qu'une chance à sa propre fenêtre).
+    // Si la personne a dit "Plus tard", on repose la question UNE fois par ouverture de l'appli.
+    // "Ne plus demander" arrête définitivement.
     function askLocation() {
-      let asked = false;
-      try { asked = !!localStorage.getItem("nooxel_geo"); } catch (e) {}
-      if (!asked) { $("geo-ask").classList.remove("hidden"); return; }
-      if (navigator.permissions && navigator.permissions.query) {
-        navigator.permissions.query({ name: "geolocation" })
-          .then(r => { if (r.state === "granted") geo.trigger(); }).catch(() => {});
+      let pref = null, askedNow = false;
+      try { pref = localStorage.getItem("nooxel_geo"); askedNow = !!sessionStorage.getItem("nooxel_geo_asked"); } catch (e) {}
+      if (pref === "never") return;
+      if (pref === "yes" && navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: "geolocation" }).then(r => {
+          if (r.state === "granted") geo.trigger();
+          else if (r.state === "denied" && !askedNow) toast("La localisation est bloquée dans les réglages de votre navigateur.");
+          else if (!askedNow) $("geo-ask").classList.remove("hidden");
+        }).catch(() => {});
+        try { sessionStorage.setItem("nooxel_geo_asked", "1"); } catch (e) {}
+        return;
       }
+      if (askedNow) return;
+      try { sessionStorage.setItem("nooxel_geo_asked", "1"); } catch (e) {}
+      $("geo-ask").classList.remove("hidden");
     }
-    function answerLocation(yes) {
-      try { localStorage.setItem("nooxel_geo", yes ? "yes" : "no"); } catch (e) {}
+    function answerLocation(choice) {
+      try { localStorage.setItem("nooxel_geo", choice); } catch (e) {}
       $("geo-ask").classList.add("hidden");
-      if (yes && geo) geo.trigger();
+      if (choice === "yes" && geo) geo.trigger();
     }
-    $("geo-yes").onclick = () => answerLocation(true);
-    $("geo-no").onclick = () => answerLocation(false);
+    $("geo-yes").onclick = () => answerLocation("yes");
+    $("geo-no").onclick = () => answerLocation("no");
+    $("geo-never").onclick = () => answerLocation("never");
 
     async function startMap() {
       if (map) { map.resize(); return; }
