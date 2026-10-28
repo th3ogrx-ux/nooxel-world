@@ -8,7 +8,7 @@
   <style>
     html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
     body { margin: 0; height: 100dvh; box-sizing: border-box; background: #000; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: center; padding: 2rem 1rem; text-align: center; }
-    main { width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; }
+    main { width: 100%; max-width: 420px; }
     input, button { font: inherit; padding: .6rem .8rem; border-radius: 8px; border: 1px solid #333; background: #16161d; color: #fff; }
     button { cursor: pointer; background: #3b82f6; border-color: #3b82f6; }
     button.ghost { background: transparent; border-color: #333; }
@@ -24,7 +24,9 @@
     .muted { color: #8a8a99; font-size: .95rem; }
     .card { display: grid; gap: .9rem; justify-items: stretch; }
     .card .logo-n { width: 84px; margin: 0 auto; }
-    .logo-planet { width: 130px; margin: 0 auto; border-radius: 23%; box-shadow: 0 0 36px 4px rgba(25,120,255,.45); }
+    .logo-wrap { position: relative; width: 130px; height: 130px; margin: 0 auto; }
+    .logo-wrap::before { content: ""; position: absolute; left: 50%; top: 50%; width: 320px; height: 320px; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(25,120,255,.35) 0%, rgba(25,120,255,.12) 35%, rgba(0,0,0,0) 65%); pointer-events: none; }
+    .logo-planet { position: relative; display: block; width: 130px; height: 130px; border-radius: 23%; }
     .card h1 { font-size: 1.6rem; margin: .2rem 0 0; }
     .card input { font: inherit; font-size: 16px; padding: .8rem 1rem; border-radius: 12px; border: 1px solid #1c2a4a; background: #07102a; color: #fff; outline: none; }
     .card input:focus { border-color: #1a6bff; box-shadow: 0 0 0 3px rgba(26,107,255,.25); }
@@ -41,7 +43,7 @@
 <body>
   <main>
     <section id="welcome" class="card hidden">
-      <img class="logo-planet" src="assets/logo.png" alt="Nooxel World">
+      <div class="logo-wrap"><img class="logo-planet" src="assets/logo.png" alt="Nooxel World"></div>
       <h1>Nooxel World</h1>
       <p class="muted">Explorez le monde autrement.</p>
       <button type="button" class="btn-nooxel" id="go-login"><span>Se connecter à Nooxel</span></button>
