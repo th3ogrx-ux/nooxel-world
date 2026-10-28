@@ -142,6 +142,18 @@
     .sheet h2 { margin: .2rem 0 0; font-size: 1.25rem; font-weight: 600; }
     .sheet p { margin: 0 0 .4rem; color: #5f6368; font-size: .95rem; line-height: 1.4; }
     #geo-toast { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem); transform: translateX(-50%); z-index: 7; margin: 0; max-width: 85vw; padding: .7rem 1rem; border-radius: 14px; background: #fff; color: #1f1f1f; font-size: .92rem; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+    .sheet.help { max-height: calc(100% - 1.6rem); overflow-y: auto; text-align: left; }
+    .sheet.help h2, .sheet.help .for { text-align: center; }
+    .sheet .pin.off { background: #fdecea; color: #d93025; }
+    .sheet .for { margin: 0 0 .2rem; font-size: .9rem; }
+    #help-steps { list-style: none; margin: .2rem 0 .4rem; padding: 0; display: grid; gap: .6rem; counter-reset: st; }
+    #help-steps li { counter-increment: st; border: 0; display: grid; grid-template-columns: 28px 1fr; gap: .7rem; align-items: start; padding: .7rem .8rem; border-radius: 14px; background: #f4f7fd; font-size: .95rem; line-height: 1.4; color: #1f1f1f; }
+    #help-steps li::before { content: counter(st); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #1a6bff; color: #fff; font-weight: 700; font-size: .9rem; }
+    #help-steps b { color: #0b3fa8; }
+    #help-steps kbd { display: inline-block; padding: .05rem .5rem; border-radius: 8px; background: #fff; border: 1px solid #c4d3f2; box-shadow: 0 1px 0 #c4d3f2; font: inherit; font-weight: 600; color: #1a6bff; }
+    #help-steps .tip { color: #5f6368; font-size: .88rem; }
+    #help-steps li { animation: rise .4s ease both; }
+    #help-steps li:nth-child(2) { animation-delay: .08s; } #help-steps li:nth-child(3) { animation-delay: .16s; } #help-steps li:nth-child(4) { animation-delay: .24s; }
   </style>
 </head>
 <body>
@@ -203,6 +215,14 @@
         <button type="button" class="btn-blue wide" id="geo-yes">Activer</button>
         <button type="button" class="btn-outline" id="geo-no">Plus tard</button>
         <button type="button" class="link" id="geo-never">Ne plus demander</button>
+      </div>
+      <div id="geo-help" class="sheet help hidden" role="dialog" aria-labelledby="help-title">
+        <div class="pin off"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.6"/><path d="M3 3l18 18"/></svg></div>
+        <h2 id="help-title">La localisation est bloquée</h2>
+        <p class="for" id="help-for"></p>
+        <ol id="help-steps"></ol>
+        <button type="button" class="btn-blue wide" id="help-retry">J'ai autorisé, réessayer</button>
+        <button type="button" class="link" id="help-close">Plus tard</button>
       </div>
       <p id="geo-toast" class="hidden"></p>
       <p id="map-error" class="hidden">Impossible de charger la carte. Vérifiez votre connexion.</p>
@@ -373,6 +393,54 @@
       try { sessionStorage.setItem("nooxel_geo_asked", "1"); } catch (e) {}
       $("geo-ask").classList.remove("hidden");
     }
+    // ----- Guide « localisation bloquée » : étapes adaptées à l'appareil
+    function platform() {
+      const ua = navigator.userAgent || "";
+      const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      if (ios) return /CriOS/.test(ua) ? "ios-chrome" : "ios-safari";
+      if (/Android/.test(ua)) return "android";
+      return "desktop";
+    }
+    const GUIDES = {
+      "ios-safari": { label: "iPhone · Safari", steps: [
+        "Touchez <kbd>aA</kbd> à gauche de l'adresse en haut de l'écran.",
+        "Touchez <b>Réglages du site web</b>.",
+        "À la ligne <b>Localisation</b>, choisissez <b>Autoriser</b>.",
+        "<span class=\"tip\">Toujours bloqué ? Allez dans <b>Réglages → Confidentialité et sécurité → Service de localisation → Safari (Sites web)</b> : choisissez <b>Lors de l'utilisation</b> et activez <b>Localisation précise</b>.</span>"
+      ] },
+      "ios-chrome": { label: "iPhone · Chrome", steps: [
+        "Touchez l'<b>icône à gauche de l'adresse</b> en haut de l'écran.",
+        "Touchez <b>Autorisations</b>, puis <b>Localisation</b>.",
+        "Choisissez <b>Autoriser</b>.",
+        "<span class=\"tip\">Toujours bloqué ? Allez dans <b>Réglages → Confidentialité et sécurité → Service de localisation → Chrome</b> : choisissez <b>Lors de l'utilisation</b> et activez <b>Localisation précise</b>.</span>"
+      ] },
+      "android": { label: "Android · Chrome", steps: [
+        "Touchez l'<b>icône à gauche de l'adresse</b> (cadenas ou réglages).",
+        "Touchez <b>Autorisations</b>, puis <b>Localisation</b> et choisissez <b>Autoriser</b>.",
+        "Vérifiez que la <b>localisation du téléphone</b> est activée (volet de réglages rapides).",
+        "<span class=\"tip\">Pour une position exacte, activez le mode <b>haute précision</b> dans les réglages de localisation.</span>"
+      ] },
+      "desktop": { label: "Ordinateur", steps: [
+        "Cliquez sur l'<b>icône à gauche de l'adresse</b> en haut du navigateur.",
+        "À la ligne <b>Localisation</b>, choisissez <b>Autoriser</b>.",
+        "<b>Rechargez la page</b> si le navigateur le demande."
+      ] }
+    };
+    let retrying = false;
+    function showHelp(force) {
+      let never = false, shown = false;
+      try { never = localStorage.getItem("nooxel_geo") === "never"; shown = !!sessionStorage.getItem("nooxel_geo_help"); } catch (e) {}
+      if (!force && (never || shown)) return toast("La localisation est bloquée dans les réglages de votre navigateur.");
+      try { sessionStorage.setItem("nooxel_geo_help", "1"); } catch (e) {}
+      const g = GUIDES[platform()];
+      $("help-for").textContent = "Voici comment la débloquer sur " + g.label;
+      $("help-steps").innerHTML = g.steps.map(t => "<li><div>" + t + "</div></li>").join("");
+      $("geo-ask").classList.add("hidden");
+      $("geo-help").classList.remove("hidden");
+    }
+    $("help-close").onclick = () => $("geo-help").classList.add("hidden");
+    $("help-retry").onclick = () => { $("geo-help").classList.add("hidden"); retrying = true; if (geo) geo.trigger(); };
+
     function answerLocation(choice) {
       try { localStorage.setItem("nooxel_geo", choice); } catch (e) {}
       $("geo-ask").classList.add("hidden");
@@ -411,9 +479,11 @@
         map.addControl(geo, "bottom-right");
         map.touchZoomRotate.disableRotation();   // pincer pour zoomer, sans faire tourner
         map.keyboard.disableRotation();
-        geo.on("error", err => toast(err && err.code === 1
-          ? "Localisation refusée. Activez-la dans les réglages de votre navigateur."
-          : "Position introuvable pour le moment."));
+        geo.on("error", err => {
+          const wasRetry = retrying; retrying = false;
+          if (err && err.code === 1) showHelp(wasRetry);
+          else toast("Position introuvable pour le moment.");
+        });
         // Première position reçue : zoom fort et fixe (niveau village/rues), même si le GPS est approximatif.
         // Si une position nettement plus précise arrive ensuite (le GPS se verrouille), on se recentre dessus.
         let bestAcc = Infinity;
