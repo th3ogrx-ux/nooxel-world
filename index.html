@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nooxel World</title>
   <link rel="icon" href="assets/favicon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#040b1c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Nooxel">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://openmaptiles.github.io" crossorigin>
@@ -146,14 +153,17 @@
     .sheet.help h2, .sheet.help .for { text-align: center; }
     .sheet .pin.off { background: #fdecea; color: #d93025; }
     .sheet .for { margin: 0 0 .2rem; font-size: .9rem; }
-    #help-steps { list-style: none; margin: .2rem 0 .4rem; padding: 0; display: grid; gap: .6rem; counter-reset: st; }
-    #help-steps li { counter-increment: st; border: 0; display: grid; grid-template-columns: 28px 1fr; gap: .7rem; align-items: start; padding: .7rem .8rem; border-radius: 14px; background: #f4f7fd; font-size: .95rem; line-height: 1.4; color: #1f1f1f; }
-    #help-steps li::before { content: counter(st); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #1a6bff; color: #fff; font-weight: 700; font-size: .9rem; }
-    #help-steps b { color: #0b3fa8; }
-    #help-steps kbd { display: inline-block; padding: .05rem .5rem; border-radius: 8px; background: #fff; border: 1px solid #c4d3f2; box-shadow: 0 1px 0 #c4d3f2; font: inherit; font-weight: 600; color: #1a6bff; }
-    #help-steps .tip { color: #5f6368; font-size: .88rem; }
-    #help-steps li { animation: rise .4s ease both; }
-    #help-steps li:nth-child(2) { animation-delay: .08s; } #help-steps li:nth-child(3) { animation-delay: .16s; } #help-steps li:nth-child(4) { animation-delay: .24s; }
+    .steps { list-style: none; margin: .2rem 0 .4rem; padding: 0; display: grid; gap: .6rem; counter-reset: st; }
+    .steps li { counter-increment: st; border: 0; display: grid; grid-template-columns: 28px 1fr; gap: .7rem; align-items: start; padding: .7rem .8rem; border-radius: 14px; background: #f4f7fd; font-size: .95rem; line-height: 1.4; color: #1f1f1f; }
+    .steps li::before { content: counter(st); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #1a6bff; color: #fff; font-weight: 700; font-size: .9rem; }
+    .steps b { color: #0b3fa8; }
+    .steps kbd { display: inline-block; padding: .05rem .5rem; border-radius: 8px; background: #fff; border: 1px solid #c4d3f2; box-shadow: 0 1px 0 #c4d3f2; font: inherit; font-weight: 600; color: #1a6bff; }
+    .steps .tip { color: #5f6368; font-size: .88rem; }
+    .steps li { animation: rise .4s ease both; }
+    .steps li:nth-child(2) { animation-delay: .08s; } .steps li:nth-child(3) { animation-delay: .16s; } .steps li:nth-child(4) { animation-delay: .24s; }
+    .sheet .app-icon { width: 56px; height: 56px; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 14px rgba(26,107,255,.35); }
+    .steps svg { vertical-align: -4px; }
+    #menu #menu-install { width: 100%; margin-bottom: .5rem; font: inherit; font-weight: 600; color: #1a6bff; background: #eaf1ff; border: 0; border-radius: 12px; padding: .65rem; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -206,6 +216,7 @@
       <button type="button" id="me" aria-label="Mon compte"></button>
       <div id="menu" class="hidden" role="menu">
         <p id="who"></p>
+        <button type="button" id="menu-install" class="hidden" role="menuitem">Installer l'application</button>
         <button type="button" id="logout" role="menuitem">Se déconnecter</button>
       </div>
       <div id="geo-ask" class="sheet hidden" role="dialog" aria-labelledby="geo-title">
@@ -220,9 +231,24 @@
         <div class="pin off"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.6"/><path d="M3 3l18 18"/></svg></div>
         <h2 id="help-title">La localisation est bloquée</h2>
         <p class="for" id="help-for"></p>
-        <ol id="help-steps"></ol>
+        <ol id="help-steps" class="steps"></ol>
         <button type="button" class="btn-blue wide" id="help-retry">J'ai autorisé, réessayer</button>
         <button type="button" class="link" id="help-close">Plus tard</button>
+      </div>
+      <div id="install-bar" class="sheet install hidden" role="dialog" aria-labelledby="inst-title">
+        <img class="app-icon" src="assets/icon-192.png" alt="" width="56" height="56">
+        <h2 id="inst-title">Gardez Nooxel World sur votre téléphone</h2>
+        <p>Ajoutez l'application à votre écran d'accueil : un seul toucher pour l'ouvrir, en plein écran, comme une vraie appli.</p>
+        <button type="button" class="btn-blue wide" id="inst-yes">Ajouter à l'écran d'accueil</button>
+        <button type="button" class="btn-outline" id="inst-later">Plus tard</button>
+        <button type="button" class="link" id="inst-never">Ne plus demander</button>
+      </div>
+      <div id="install-help" class="sheet help hidden" role="dialog" aria-labelledby="ih-title">
+        <img class="app-icon" src="assets/icon-192.png" alt="" width="56" height="56">
+        <h2 id="ih-title">Ajouter à l'écran d'accueil</h2>
+        <p class="for" id="ih-for"></p>
+        <ol id="ih-steps" class="steps"></ol>
+        <button type="button" class="btn-blue wide" id="ih-ok">C'est compris</button>
       </div>
       <p id="geo-toast" class="hidden"></p>
       <p id="map-error" class="hidden">Impossible de charger la carte. Vérifiez votre connexion.</p>
@@ -441,6 +467,69 @@
     $("help-close").onclick = () => $("geo-help").classList.add("hidden");
     $("help-retry").onclick = () => { $("geo-help").classList.add("hidden"); retrying = true; if (geo) geo.trigger(); };
 
+    // ----- Installation sur l'écran d'accueil
+    if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    const SHARE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1a6bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+    const INSTALL_GUIDES = {
+      "ios-safari": { label: "iPhone · Safari", steps: [
+        "Touchez le bouton <b>Partager</b> <kbd>" + SHARE + "</kbd> en bas de l'écran.",
+        "Faites défiler le menu et touchez <b>Sur l'écran d'accueil</b>.",
+        "Touchez <b>Ajouter</b> en haut à droite. L'icône Nooxel apparaît sur votre écran !"
+      ] },
+      "ios-chrome": { label: "iPhone · Chrome", steps: [
+        "Touchez le bouton <b>Partager</b> <kbd>" + SHARE + "</kbd> à droite de la barre d'adresse, en haut.",
+        "Faites défiler le menu et touchez <b>Sur l'écran d'accueil</b>.",
+        "Touchez <b>Ajouter</b>. L'icône Nooxel apparaît sur votre écran !"
+      ] },
+      "android": { label: "Android · Chrome", steps: [
+        "Touchez les <b>trois points</b> <kbd>⋮</kbd> en haut à droite.",
+        "Touchez <b>Installer l'application</b> (ou <b>Ajouter à l'écran d'accueil</b>).",
+        "Confirmez avec <b>Installer</b>. L'icône Nooxel apparaît sur votre écran !"
+      ] },
+      "desktop": { label: "Ordinateur", steps: [
+        "Cherchez l'icône d'<b>installation</b> à droite de la barre d'adresse (un écran avec une flèche).",
+        "Cliquez dessus, puis sur <b>Installer</b>.",
+        "<span class=\"tip\">Sinon : menu du navigateur → <b>Enregistrer et partager</b> → <b>Installer Nooxel World</b>.</span>"
+      ] }
+    };
+    let deferredInstall = null;
+    addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; });
+    addEventListener("appinstalled", () => { setInstallPref({ never: true }); $("install-bar").classList.add("hidden"); $("install-help").classList.add("hidden"); $("menu-install").classList.add("hidden"); });
+
+    const getInstallPref = () => { try { return JSON.parse(localStorage.getItem("nooxel_install")) || {}; } catch (e) { return {}; } };
+    const setInstallPref = p => { try { localStorage.setItem("nooxel_install", JSON.stringify({ ...getInstallPref(), ...p })); } catch (e) {} };
+
+    async function startInstall() {
+      $("install-bar").classList.add("hidden");
+      if (deferredInstall) {              // Android / ordinateur : fenêtre d'installation native
+        deferredInstall.prompt();
+        try { await deferredInstall.userChoice; } catch (e) {}
+        deferredInstall = null;
+        return;
+      }
+      const g = INSTALL_GUIDES[platform()];  // iPhone (et autres) : on guide pas à pas
+      $("ih-for").textContent = "Voici comment faire sur " + g.label;
+      $("ih-steps").innerHTML = g.steps.map(t => "<li><div>" + t + "</div></li>").join("");
+      $("install-help").classList.remove("hidden");
+    }
+    const sheetOpen = () => ["geo-ask", "geo-help", "install-help"].some(id => !$(id).classList.contains("hidden"));
+
+    // Proposition automatique : pas tout de suite, jamais si déjà installée, pas plus d'une fois par semaine.
+    function maybeOfferInstall(tries = 0) {
+      const pref = getInstallPref();
+      if (isStandalone() || pref.never) return;
+      if (pref.later && Date.now() - pref.later < 7 * 864e5) return;
+      if (sheetOpen()) { if (tries < 6) setTimeout(() => maybeOfferInstall(tries + 1), 8000); return; }
+      $("install-bar").classList.remove("hidden");
+    }
+    $("inst-yes").onclick = startInstall;
+    $("inst-later").onclick = () => { setInstallPref({ later: Date.now() }); $("install-bar").classList.add("hidden"); };
+    $("inst-never").onclick = () => { setInstallPref({ never: true }); $("install-bar").classList.add("hidden"); };
+    $("ih-ok").onclick = () => { $("install-help").classList.add("hidden"); };
+    $("menu-install").onclick = () => { $("menu").classList.add("hidden"); startInstall(); };
+    if (!isStandalone()) $("menu-install").classList.remove("hidden");
+
     function answerLocation(choice) {
       try { localStorage.setItem("nooxel_geo", choice); } catch (e) {}
       $("geo-ask").classList.add("hidden");
@@ -495,6 +584,7 @@
           map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: first ? 16 : Math.max(map.getZoom(), 16), duration: first ? 2200 : 900, essential: true });
         });
         map.on("load", askLocation);
+        map.once("idle", () => setTimeout(maybeOfferInstall, 9000));
         // Erreur affichée seulement si la carte n'a jamais réussi à démarrer (pas pour une tuile ou une icône manquante).
         let ready = false;
         const ok = () => { ready = true; $("map-error").classList.add("hidden"); };
