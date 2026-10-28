@@ -205,13 +205,14 @@
     const ready = () => setTimeout(showButton, Math.max(0, LOAD_MS - (Date.now() - t0)));
     if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
 
-    $("go-login").onclick = () => { wantsLogin = true; render(); $("email").focus(); };
+    // Curseur dans le champ email seulement avec une souris : sur téléphone, ça ouvrirait le clavier tout de suite.
+    $("go-login").onclick = () => { wantsLogin = true; render(); if (matchMedia("(pointer: fine)").matches) $("email").focus(); };
     const closeCard = () => { wantsLogin = false; setMode(false); render(); };
     $("back").onclick = closeCard;
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
-    $("toggle").onclick = () => { setMode(!signupMode, true); $("email").focus(); };
+    $("toggle").onclick = () => setMode(!signupMode, true);
     $("login").onsubmit = async e => {
       e.preventDefault();
       if (signupMode && $("password").value !== $("password2").value) return say("Les mots de passe ne correspondent pas.");
