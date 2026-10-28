@@ -1,0 +1,8 @@
+{
+  // Cloudflare : le site est un ensemble de fichiers statiques servis tels quels (aucun build).
+  "name": "nooxel-world",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./"
+  }
+}
