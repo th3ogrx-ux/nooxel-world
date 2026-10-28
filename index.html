@@ -57,6 +57,13 @@
     </div>
   </div>
   <main>
+    <section id="welcome" class="card hidden">
+      <img class="logo-n" src="assets/logo-n.png" alt="Nooxel" style="width:120px">
+      <h1>Nooxel World</h1>
+      <p class="muted">Explorez le monde autrement.</p>
+      <button type="button" class="btn-nooxel" id="go-login"><img src="assets/logo-n.png" alt=""><span>Se connecter à Nooxel</span></button>
+    </section>
+
     <form id="login" class="card hidden">
       <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
       <h1>Bienvenue sur Nooxel</h1>
@@ -66,6 +73,7 @@
       <button type="submit" class="btn-nooxel" id="submit"><img src="assets/logo-n.png" alt=""><span id="submit-label">Se connecter avec Nooxel</span></button>
       <p id="msg" role="alert"></p>
       <button type="button" class="link" id="toggle">Pas de compte ? Créer un compte</button>
+      <button type="button" class="link" id="back">← Retour</button>
     </form>
 
     <section id="home" class="card hidden">
@@ -109,12 +117,18 @@
       say("");
     }
 
+    let wantsLogin = false;
+
     async function render() {
       const { data: { session } } = await sb.auth.getSession();
-      $("login").classList.toggle("hidden", !!session);
+      $("welcome").classList.toggle("hidden", !!session || wantsLogin);
+      $("login").classList.toggle("hidden", !!session || !wantsLogin);
       $("home").classList.toggle("hidden", !session);
-      if (session) $("who").textContent = session.user.email;
+      if (session) { wantsLogin = false; $("who").textContent = session.user.email; }
     }
+
+    $("go-login").onclick = () => { wantsLogin = true; render(); $("email").focus(); };
+    $("back").onclick = () => { wantsLogin = false; setMode(false); render(); };
 
     $("toggle").onclick = () => setMode(!signupMode);
     $("login").onsubmit = async e => {
