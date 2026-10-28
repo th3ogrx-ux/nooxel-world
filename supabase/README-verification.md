@@ -58,6 +58,19 @@ depuis l'environnement de développement. **Testez avec un vrai SIRET** (le vôt
 d'ouvrir au public : si le résultat est « SIRET introuvable » alors qu'il existe, c'est
 `_shared/siret.ts` (`parseCompanySearch`) qu'il faut ajuster.
 
+## 6. Les pages
+| Page | Pour qui | Accès |
+|---|---|---|
+| `/pro.html` | le commerçant : créer son profil, SIRET, pièce + photo, statut, contestation, suppression de ses pièces | menu du compte → « Espace professionnel » |
+| `/admin.html` | vous : file de validation, visionneuse de pièces, approuver / refuser, contestations, révocation | taper l'adresse à la main (aucun lien dans l'appli) ; il faut être connecté avec le compte administrateur |
+
+La page admin n'est qu'une façade : **chaque action est contrôlée côté serveur** (`is_admin()`), un
+non-administrateur reçoit « Accès refusé » même s'il connaît l'adresse.
+
+**Essai complet conseillé avant d'ouvrir :** créez 2 comptes de test, faites passer l'un par le SIRET et
+l'autre par la pièce d'identité ; ouvrez `/admin.html` avec votre compte administrateur, refusez, contestez,
+puis révoquez. Vérifiez à chaque fois l'historique côté commerçant.
+
 ## Rappels de sécurité
 - Ne jamais mettre la clé `service_role` dans `index.html` ni dans le dépôt.
 - Tant que la confirmation d'email est désactivée dans Supabase, « email confirmé » ne prouve rien :
