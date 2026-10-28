@@ -20,18 +20,23 @@ select id from auth.users where email = 'votre-email@exemple.com';
 Activez aussi l'**authentification à deux facteurs** sur ce compte quand l'écran d'administration existera
 (Supabase Auth gratuit : TOTP).
 
-## 3. Fonctions serveur (3)
-Supabase → **Edge Functions** → *Deploy a new function* (éditeur dans le navigateur), une par dossier de
-`supabase/functions/`. Chaque fonction a aussi besoin du dossier `_shared/` : si vous utilisez l'éditeur
-du navigateur, copiez le contenu de `_shared/errors.ts` et `_shared/siret.ts` à côté. Le plus simple et le
-plus fiable est la ligne de commande Supabase (gratuite) :
+## 3. Fonctions serveur (3) — sans ligne de commande
+Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**. Pour chaque fonction : donner
+**exactement** le nom ci-dessous, effacer le code d'exemple, coller le contenu du fichier correspondant de
+`supabase/functions-bundled/` (version « un seul fichier »), puis **Deploy**.
 
-```bash
-supabase functions deploy verify-siret
-supabase functions deploy admin-document-url
-supabase functions deploy purge-documents --no-verify-jwt   # protégée par un secret, voir ci-dessous
-supabase secrets set CRON_SECRET="<une longue chaîne aléatoire>"
-```
+| Nom exact | Fichier à coller | « Verify JWT » |
+|---|---|---|
+| `verify-siret` | `functions-bundled/verify-siret.ts` | laissé activé |
+| `admin-document-url` | `functions-bundled/admin-document-url.ts` | laissé activé |
+| `purge-documents` | `functions-bundled/purge-documents.ts` | **désactivé** (elle est protégée par un secret) |
+
+Puis **Edge Functions → Secrets** → ajouter `CRON_SECRET` = une longue chaîne aléatoire (gardez-la : elle sert
+à l'étape 4). Les clés `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont fournies
+automatiquement par Supabase : ne les copiez nulle part.
+
+Alternative avec la ligne de commande Supabase (versions modulaires dans `supabase/functions/`) :
+`supabase functions deploy verify-siret`, `... admin-document-url`, `... purge-documents --no-verify-jwt`.
 
 | Fonction | Rôle | Qui l'appelle |
 |---|---|---|
