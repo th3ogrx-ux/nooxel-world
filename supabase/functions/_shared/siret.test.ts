@@ -15,9 +15,11 @@ test("clé de Luhn : SIRET connus valides, altérés invalides", () => {
   assert.equal(isValidSiretFormat("7328293200007a"), false);
   assert.equal(isValidSiretFormat("12345678901234"), false);
 });
-test("La Poste : règle spéciale (somme des chiffres multiple de 5)", () => {
-  assert.equal(isValidSiretFormat("35600000000010"), true);    // somme = 15
-  assert.equal(isValidSiretFormat("35600000000011"), false);   // somme = 16
+test("La Poste : le siège passe Luhn ; les autres établissements via la règle « somme multiple de 5 »", () => {
+  assert.equal(isValidSiretFormat("35600000000048"), true);    // siège de La Poste, valide par Luhn
+  assert.equal(isValidSiretFormat("35600000000010"), true);    // somme = 15 (règle La Poste)
+  assert.equal(isValidSiretFormat("35600000000011"), false);   // ni Luhn ni somme multiple de 5
+  assert.equal(isValidSiretFormat("12300000000010"), false);   // la règle La Poste ne s'applique qu'à ce SIREN
 });
 const sample = (over: any = {}) => ({ results: [{
   siren: "732829320", nom_complet: "BOULANGERIE TEST", etat_administratif: "A",
