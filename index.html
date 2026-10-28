@@ -121,6 +121,9 @@
     .chip .caret { color: #5f6368; font-size: .75rem; }
     .empty { margin: .4rem 0 .8rem; padding: 1.1rem; border-radius: 14px; background: #f6f8fc; color: #5f6368; text-align: center; font-size: .98rem; }
     .btn-blue.wide { width: 100%; margin-top: .5rem; padding: .85rem 1.5rem; }
+    .btn-outline { width: 100%; display: flex; align-items: center; justify-content: center; gap: .6rem; font: inherit; font-weight: 600; color: #1a6bff; background: #f3f7ff; border: 1.5px solid #1a6bff; border-radius: 999px; padding: .8rem 1.2rem; cursor: pointer; transition: background .15s, transform .1s; }
+    .btn-outline:hover { background: #e6efff; }
+    .btn-outline:active { transform: scale(.98); }
   </style>
 </head>
 <body>
@@ -152,7 +155,7 @@
         <div id="chooser" class="hidden">
           <p id="empty" class="empty hidden">Aucun compte sur cet appareil</p>
           <ul id="acc-list"></ul>
-          <button type="button" class="acc other" id="other"><span class="av plus">+</span><span id="other-label">Utiliser un autre compte</span></button>
+          <button type="button" class="btn-outline" id="other"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7"/></svg><span id="other-label">Utiliser un autre compte</span></button>
           <button type="button" class="btn-blue wide" id="create">Créer un compte</button>
         </div>
         <div id="fields" class="fields">
@@ -162,7 +165,7 @@
           <input id="password2" class="hidden" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password" minlength="6">
           <p id="msg" role="alert"></p>
           <div class="actions">
-            <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
+            <button type="button" class="link" id="toggle">← Retour</button>
             <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
           </div>
         </div>
@@ -198,7 +201,7 @@
       $("title").textContent = signup ? "Créer un compte Nooxel" : "Connexion";
       $("sub").innerHTML = signup ? SUB_UP : SUB;
       $("submit-label").textContent = signup ? "Créer mon compte" : "Se connecter";
-      $("toggle").textContent = signup ? "J'ai déjà un compte" : "Créer un compte Nooxel";
+      $("toggle").textContent = "← Retour";
       $("password").autocomplete = signup ? "new-password" : "current-password";
       $("password2").classList.toggle("hidden", !signup);
       $("password2").required = signup;
@@ -290,12 +293,7 @@
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
-    $("toggle").onclick = () => {
-      const toSignup = !signupMode;
-      setMode(toSignup, true);
-      if (toSignup) { $("email").classList.remove("hidden"); $("chip").classList.add("hidden"); $("email").value = ""; }
-      else showChooser();
-    };
+    $("toggle").onclick = () => { setMode(false, true); showChooser(); };
     $("login").onsubmit = async e => {
       e.preventDefault();
       if (signupMode && $("password").value !== $("password2").value) return say("Les mots de passe ne correspondent pas.");
