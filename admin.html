@@ -42,6 +42,11 @@
     #viewer .wm { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: difference; opacity: .5; background-repeat: repeat; }
     #viewer .bar { color: #fff; display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; font-size: .9rem; }
     #viewer button { background: #fff; color: var(--ink); border: 0; border-radius: 999px; padding: .35rem .9rem; }
+    .gate { max-width: 440px; margin: 2rem auto; text-align: center; }
+    .gate ol { text-align: left; padding-left: 1.2rem; color: var(--mute); font-size: .92rem; }
+    .gate .qr { width: 210px; height: 210px; margin: .6rem auto; display: block; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+    .gate .secret { font-family: ui-monospace, monospace; word-break: break-all; background: #f6f8fc; padding: .45rem .6rem; border-radius: 8px; font-size: .88rem; user-select: all; }
+    .gate input[type=text] { text-align: center; font-size: 1.6rem; letter-spacing: .4em; padding: .6rem; margin-top: .6rem; }
     .search { display: flex; gap: .5rem; margin-bottom: .8rem; }
     .search input { flex: 1; }
   </style>
@@ -97,11 +102,60 @@
 
   let tab = "review", me = null;
 
+  // ---------- Double authentification (TOTP) : obligatoire pour toute action d'administrateur ----------
+  // La règle est imposée par la base de données (is_admin() exige aal2) ; cet écran ne fait que demander le code.
+  function gateCard(...kids) { $("main").replaceChildren(el("div", { class: "card gate" }, ...kids)); }
+  function codeForm(label, onSubmit) {
+    const input = el("input", { type: "text", id: "mfa-code", inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, placeholder: "000000", "aria-label": "Code à 6 chiffres" });
+    const err = el("p", { class: "err", id: "mfa-err" }), btn = el("button", { class: "btn", id: "mfa-btn", type: "submit", text: label });
+    const form = el("form", { onsubmit: async (e) => {
+      e.preventDefault(); err.textContent = ""; const code = input.value.replace(/\s/g, "");
+      if (!/^[0-9]{6}$/.test(code)) { err.textContent = "Saisissez les 6 chiffres affichés par l'application."; return; }
+      btn.disabled = true; try { await onSubmit(code); } catch (x) { err.textContent = "Code incorrect ou expiré. Réessayez avec le code actuel."; btn.disabled = false; input.select(); }
+    } }, input, err, btn);
+    return { form, input };
+  }
+  async function askCode(factorId) {
+    return new Promise((done) => {
+      const f = codeForm("Valider", async (code) => {
+        const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code }); if (error) throw error; done(true);
+      });
+      gateCard(el("h2", { text: "Code de vérification" }), el("p", { class: "meta", text: "Ouvrez votre application d'authentification et saisissez le code à 6 chiffres de « Nooxel »." }), f.form); f.input.focus();
+    });
+  }
+  async function enrollFactor(all) {
+    for (const x of all) if (x.status !== "verified") await sb.auth.mfa.unenroll({ factorId: x.id });   // restes d'une configuration abandonnée
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", issuer: "Nooxel", friendlyName: "Nooxel admin " + Date.now() });
+    if (error) throw error;
+    return new Promise((done) => {
+      const f = codeForm("Activer la protection", async (code) => {
+        const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: data.id, code }); if (error) throw error; done(true);
+      });
+      gateCard(el("h2", { text: "Protégez votre compte administrateur" }),
+        el("p", { class: "meta", text: "Ce compte voit des pièces d'identité : un second verrou est obligatoire." }),
+        el("ol", {}, el("li", { text: "Installez une application d'authentification (Google Authenticator, Microsoft Authenticator, 2FAS…)." }), el("li", { text: "Scannez ce code avec l'application." }), el("li", { text: "Saisissez le code à 6 chiffres qu'elle affiche." })),
+        el("img", { class: "qr", id: "mfa-qr", alt: "QR code à scanner", src: data.totp.qr_code }),
+        el("p", { class: "meta", text: "Impossible de scanner ? Saisissez cette clé à la main. Conservez-la : elle permet de reconfigurer l'application si vous changez de téléphone." }),
+        el("div", { class: "secret", id: "mfa-secret", text: data.totp.secret }), f.form);
+      f.input.focus();
+    });
+  }
+  async function gate() {
+    const { data: lvl, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel(); if (error) throw error;
+    if (lvl.currentLevel === "aal2") return;
+    const { data: f } = await sb.auth.mfa.listFactors();
+    const verified = (f?.totp || [])[0];
+    if (verified) await askCode(verified.id); else await enrollFactor(f?.all || []);
+  }
+
   async function boot() {
     if (!sb) { $("main").replaceChildren(el("p", { class: "empty", text: "Service indisponible. Rechargez la page." })); return; }
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { $("main").replaceChildren(el("p", { class: "empty" }, "Connectez-vous d'abord sur ", el("a", { href: "/", text: "Nooxel World" }), ", puis revenez ici.")); return; }
     me = session.user; $("who").textContent = me.email || "";
+    const who = await sb.rpc("am_i_admin");
+    if (who.error || !who.data) { $("main").replaceChildren(el("p", { class: "empty", text: "Accès refusé : ce compte n'est pas administrateur." })); return; }
+    try { await gate(); } catch { $("main").replaceChildren(el("p", { class: "empty", text: "Impossible de vérifier la double authentification. Rechargez la page." })); return; }
     show("review");
   }
 

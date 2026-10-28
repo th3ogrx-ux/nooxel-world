@@ -17,8 +17,15 @@ insert into public.admins (user_id)
 select id from auth.users where email = 'votre-email@exemple.com';
 ```
 
-Activez aussi l'**authentification à deux facteurs** sur ce compte quand l'écran d'administration existera
-(Supabase Auth gratuit : TOTP).
+### Double authentification (obligatoire pour l'administrateur)
+1. Supabase → SQL Editor : coller `supabase/admin-mfa.sql` → **Run**. Dès lors, `is_admin()` exige une session
+   à deux facteurs (`aal2`) : sans elle, toute action d'administration est refusée par la base.
+2. Vérifier que **Authentication → Sign In / Providers → Multi-Factor** a le TOTP activé (gratuit).
+3. Ouvrir `/admin` connecté avec le compte administrateur : au premier passage, scanner le QR code avec une
+   application d'authentification, **noter la clé secrète affichée**, saisir le code à 6 chiffres.
+   Aux connexions suivantes, seul le code est demandé.
+4. Téléphone perdu : dans le SQL Editor, `delete from auth.mfa_factors where user_id = (select id from auth.users where email = 'votre-email');`
+   puis recommencer l'étape 3.
 
 ## 3. Fonctions serveur (3) — sans ligne de commande
 Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**. Pour chaque fonction : donner
