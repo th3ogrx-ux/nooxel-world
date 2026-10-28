@@ -243,6 +243,24 @@
     #nav-stop { flex: none; padding: .75rem 1.2rem; }
     #home.navigating #search, #home.navigating #place-card, #home.navigating #route-card { display: none !important; }
     #rc-start { margin-top: .5rem; }
+    #nav-top { background: linear-gradient(135deg, #0a37a0 0%, #1a6bff 100%); border: 1px solid rgba(255,255,255,.25); box-shadow: 0 10px 34px rgba(10,60,200,.55), 0 0 0 1px rgba(0,0,0,.2); }
+    #nav-ico { width: 62px; height: 62px; border-radius: 50%; background: #fff; color: #1a6bff; font-size: 2.4rem; font-weight: 700; box-shadow: 0 0 22px rgba(255,255,255,.55); }
+    #nav-dist { font-size: 2rem; letter-spacing: -.01em; }
+    #nav-then { margin: .4rem 0 0; padding-top: .35rem; border-top: 1px solid rgba(255,255,255,.22); font-size: .84rem; opacity: .85; }
+    #nav-then.hidden { display: none; }
+    #nav-bottom { background: rgba(7,14,36,.86); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(120,160,255,.28); color: #fff; }
+    #nav-bottom .nb-info b { color: #58ffa0; font-size: 1.45rem; }
+    #nav-bottom .nb-info span { color: #9db4e8; }
+    #nav-bottom .x { background: rgba(255,255,255,.12); color: #fff; }
+    #nav-speed { position: absolute; left: .9rem; bottom: calc(env(safe-area-inset-bottom, 0px) + 4.2rem + var(--dock)); z-index: 6; width: 66px; height: 66px; border-radius: 50%; display: grid; place-content: center; text-align: center; background: rgba(7,14,36,.88); border: 2px solid #fff; color: #fff; box-shadow: 0 6px 22px rgba(0,0,0,.5); transition: bottom .25s ease; }
+    #nav-speed.hidden { display: none; }
+    #nav-speed b { font-size: 1.45rem; line-height: 1; }
+    #nav-speed span { font-size: .6rem; opacity: .75; letter-spacing: .06em; }
+    #home.navigating .maplibregl-user-location-dot, #home.navigating .maplibregl-user-location-accuracy-circle { display: none !important; }
+    .puck { width: 54px; height: 54px; position: relative; pointer-events: none; }
+    .puck::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle, rgba(60,150,255,.55), rgba(60,150,255,0) 70%); animation: puckpulse 1.8s ease-out infinite; }
+    .puck svg { position: absolute; inset: 0; filter: drop-shadow(0 5px 6px rgba(0,0,0,.55)); }
+    @keyframes puckpulse { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
   </style>
 </head>
 <body>
@@ -298,8 +316,9 @@
       <p id="brand" aria-hidden="true">Nooxel World</p>
       <div id="nav-top" class="hidden" role="status" aria-live="assertive">
         <span id="nav-ico" aria-hidden="true">↑</span>
-        <div class="nav-txt"><p id="nav-dist"></p><p id="nav-text"></p></div>
+        <div class="nav-txt"><p id="nav-dist"></p><p id="nav-text"></p><p id="nav-then" class="hidden"></p></div>
       </div>
+      <div id="nav-speed" class="hidden" aria-label="Vitesse"><b id="nav-kmh">0</b><span>km/h</span></div>
       <div id="dock" class="hidden">
         <div id="nav-bottom" class="dcard hidden">
           <div class="nb-info"><b id="nav-eta"></b><span id="nav-rest"></span></div>
@@ -707,8 +726,10 @@
       const data = { type: "Feature", geometry: { type: "LineString", coordinates: coords } };
       if (map.getSource("route")) return map.getSource("route").setData(data);
       map.addSource("route", { type: "geojson", data });
-      map.addLayer({ id: "route-casing", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": 10, "line-opacity": .95 } });
-      map.addLayer({ id: "route-line", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#1a6bff", "line-width": 6 } });
+      const lay = { "line-cap": "round", "line-join": "round" };
+      map.addLayer({ id: "route-glow", type: "line", source: "route", layout: lay, paint: { "line-color": "#19b8ff", "line-width": 20, "line-blur": 12, "line-opacity": .55 } });
+      map.addLayer({ id: "route-casing", type: "line", source: "route", layout: lay, paint: { "line-color": "#ffffff", "line-width": 10, "line-opacity": .95 } });
+      map.addLayer({ id: "route-line", type: "line", source: "route", layout: lay, paint: { "line-color": "#2a7bff", "line-width": 6 } });
     }
     const fmtTime = s => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); };
     const fmtDist = m => m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " km";
@@ -784,6 +805,28 @@
 
     // ----- Guidage en temps réel -----
     const nav = { active: false };
+    let puck = null;
+    const PUCK_SVG = '<svg viewBox="0 0 54 54" aria-hidden="true"><defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fc0ff"/><stop offset="1" stop-color="#1a5cff"/></linearGradient></defs><path d="M27 6 L44 46 L27 38 L10 46 Z" fill="url(#pg)" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg>';
+    const toDeg = x => x * 180 / Math.PI;
+    function bearingBetween(a, b) {
+      const y = Math.sin(toRad(b[0] - a[0])) * Math.cos(toRad(b[1]));
+      const x = Math.cos(toRad(a[1])) * Math.sin(toRad(b[1])) - Math.sin(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.cos(toRad(b[0] - a[0]));
+      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    }
+    function pointAt(d) {                               // point du tracé à la distance d depuis le départ
+      const c = nav.coords, cum = nav.cum; d = Math.max(0, Math.min(nav.total, d));
+      let i = 0; while (i < cum.length - 2 && cum[i + 1] < d) i++;
+      const seg = (cum[i + 1] - cum[i]) || 1, t = (d - cum[i]) / seg;
+      return [c[i][0] + (c[i + 1][0] - c[i][0]) * t, c[i][1] + (c[i + 1][1] - c[i][1]) * t];
+    }
+    function camBearing(along) {                        // direction du tracé juste devant vous
+      const a = pointAt(along), b = pointAt(along + 35);
+      return hav(a, b) < 3 ? (nav.bearing || 0) : bearingBetween(a, b);
+    }
+    function smoothBearing(target) {                    // tourne par le chemin le plus court
+      const cur = nav.bearing == null ? target : nav.bearing; let diff = ((target - cur + 540) % 360) - 180;
+      nav.bearing = cur + diff * 0.6; return nav.bearing;
+    }
     const ARROW = { "left": "↰", "right": "↱", "slight left": "↖", "slight right": "↗", "sharp left": "↰", "sharp right": "↱", "straight": "↑", "uturn": "↶" };
     const toRad = x => x * Math.PI / 180;
     function hav(a, b) {
@@ -852,8 +895,16 @@
       if (toNext < 20) say("now", st.type === "arrive" ? "Vous êtes arrivé" : st.text);
       else if (toNext < far[1] + 15) say("near", "Dans " + spokenDist(far[1]) + ", " + low);
       else if (toNext < far[0] + 25) say("far", "Dans " + spokenDist(far[0]) + ", " + low);
-      // la caméra suit, sauf si l'utilisateur a déplacé la carte
-      if (!nav.free) map.easeTo({ center: pt, zoom: Math.max(map.getZoom(), routeMode === "car" ? 16.3 : 17), duration: 700, essential: true });
+      // ensuite…
+      const nx = nav.steps[i + 1];
+      if (nx && st.type !== "arrive") { $("nav-then").textContent = "Ensuite : " + (nx.type === "arrive" ? "arrivée" : nx.text); $("nav-then").classList.remove("hidden"); } else $("nav-then").classList.add("hidden");
+      // vitesse (si le téléphone la donne)
+      const kmh = c.speed != null && !isNaN(c.speed) ? Math.round(c.speed * 3.6) : null;
+      $("nav-speed").classList.toggle("hidden", kmh == null || routeMode === "foot"); if (kmh != null) $("nav-kmh").textContent = kmh;
+      // flèche de navigation + caméra 3D qui suit, dans le sens de la route
+      const brg = smoothBearing(camBearing(pr.along));
+      if (puck) { puck.setLngLat(pt).setRotation(brg); }
+      if (!nav.free) map.easeTo({ center: pt, bearing: brg, pitch: 62, zoom: routeMode === "car" ? 17 : 17.8, offset: [0, 150], duration: 900, essential: true });
     }
     async function rerouteNav(pt) {
       nav.rerouting = true; nav.lastReroute = Date.now();
@@ -876,6 +927,10 @@
       buildNav(currentRoute);
       Object.assign(nav, { active: true, arrived: false, free: false, rerouting: false, muted: nav.muted || false, lastReroute: 0 });
       $("home").classList.add("navigating"); $("nav-top").classList.remove("hidden"); $("nav-bottom").classList.remove("hidden");
+      nav.bearing = null;
+      if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d", "visibility", "visible");
+      const el = document.createElement("div"); el.className = "puck"; el.innerHTML = PUCK_SVG;
+      puck = new maplibregl.Marker({ element: el, rotationAlignment: "map", pitchAlignment: "map" }).setLngLat(lastPosGlobal ? [lastPosGlobal.longitude, lastPosGlobal.latitude] : nav.coords[0]).addTo(map);
       $("nav-mute").textContent = nav.muted ? "🔇" : "🔊";
       speak("Guidage démarré. " + nav.steps[0].text);     // lancé par un geste : débloque la voix sur iPhone
       showNav(Math.min(1, nav.steps.length - 1), nav.steps[Math.min(1, nav.steps.length - 1)].along, nav.total);
@@ -888,8 +943,11 @@
       nav.active = false;
       try { speechSynthesis.cancel(); } catch (e) {}
       try { if (nav.wake) nav.wake.release(); } catch (e) {} nav.wake = null;
-      $("home").classList.remove("navigating"); $("nav-top").classList.add("hidden"); $("nav-bottom").classList.add("hidden");
+      $("home").classList.remove("navigating"); $("nav-top").classList.add("hidden"); $("nav-bottom").classList.add("hidden"); $("nav-speed").classList.add("hidden");
       $("route-card").classList.remove("hidden");
+      if (puck) { puck.remove(); puck = null; }
+      if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d", "visibility", "none");
+      map.easeTo({ pitch: 0, bearing: 0, zoom: Math.min(map.getZoom(), 16.5), offset: [0, 0], duration: 1000 });
     }
     $("rc-start").onclick = startNav;
     $("nav-stop").onclick = stopNav;
@@ -984,7 +1042,7 @@
           dragRotate: false,          // pas de rotation à la souris
           pitchWithRotate: false,
           touchPitch: false,          // pas d'inclinaison à deux doigts
-          maxPitch: 0,
+          maxPitch: 70,
           bearing: 0,
           maxZoom: 19,   // au-delà, les données n'ont plus de détail : on bloque ici
           attributionControl: { compact: true }
