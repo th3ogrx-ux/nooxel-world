@@ -38,15 +38,41 @@
     .link { background: none; border: 0; color: #6fa8ff; font: inherit; cursor: pointer; padding: .3rem; }
     #msg { min-height: 1.3em; margin: 0; color: #ff8a8a; }
     #msg.ok { color: #7fe3a8; }
+
+    body { background: radial-gradient(ellipse at 50% 40%, #04123a 0%, #000716 60%, #00030b 100%); }
+    #welcome { display: grid; justify-items: center; gap: 3.2rem; }
+    .planet-wrap { position: relative; width: min(66vw, 300px); }
+    .planet-wrap::before { content: ""; position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(20,110,255,.38) 0%, rgba(20,110,255,.12) 38%, rgba(0,0,0,0) 66%); animation: pulse 3s ease-in-out infinite; pointer-events: none; }
+    .planet { position: relative; display: block; width: 100%; animation: float 4s ease-in-out infinite; }
+    .intro-bottom { width: 100%; min-height: 64px; display: grid; place-items: center; }
+    .loader { width: 100%; max-width: 280px; transition: opacity .4s ease; }
+    .loader.out { opacity: 0; }
+    .bar { height: 6px; border-radius: 6px; background: rgba(40,90,200,.25); overflow: hidden; }
+    .bar span { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #0a5cff, #19b8ff); box-shadow: 0 0 12px rgba(25,150,255,.8); }
+    .loader p { margin: .9rem 0 0; color: #7fa8ff; font-size: .95rem; letter-spacing: .04em; }
+    .btn-white { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; font: inherit; font-size: 1.05rem; font-weight: 600; color: #0b1636; background: #fff; border: 0; border-radius: 18px; padding: .95rem 1.2rem; cursor: pointer; box-shadow: 0 8px 30px rgba(20,110,255,.25); animation: rise .5s ease both; }
+    .btn-white:active { transform: scale(.98); }
+    .btn-white img { width: 30px; height: 28px; object-fit: contain; }
+    @keyframes float { 50% { transform: translateY(-9px); } }
+    @keyframes pulse { 50% { opacity: .65; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .planet, .planet-wrap::before, .btn-white { animation: none; } }
   </style>
 </head>
 <body>
   <main>
-    <section id="welcome" class="card hidden">
-      <div class="logo-wrap"><img class="logo-planet" src="assets/logo.png" alt="Nooxel World"></div>
-      <h1>Nooxel World</h1>
-      <p class="muted">Explorez le monde autrement.</p>
-      <button type="button" class="btn-nooxel" id="go-login"><span>Se connecter à Nooxel</span></button>
+    <section id="welcome" class="hidden">
+      <div class="planet-wrap"><img class="planet" src="assets/planet.png" alt="Nooxel World"></div>
+      <div class="intro-bottom">
+        <div class="loader" id="loader">
+          <div class="bar"><span id="bar-fill"></span></div>
+          <p>Chargement…</p>
+        </div>
+        <button type="button" class="btn-white hidden" id="go-login">
+          <span>Se connecter à Nooxel</span>
+          <img src="assets/logo-n.png" alt="">
+        </button>
+      </div>
     </section>
 
     <form id="login" class="card hidden">
@@ -99,6 +125,17 @@
       $("home").classList.toggle("hidden", !session);
       if (session) { wantsLogin = false; $("who").textContent = session.user.email; }
     }
+
+    // Écran de chargement : la barre se remplit, puis le bouton blanc apparaît.
+    const LOAD_MS = 2600;
+    const t0 = Date.now();
+    $("bar-fill").animate([{ width: "0%" }, { width: "100%" }], { duration: LOAD_MS, easing: "ease-in-out", fill: "forwards" });
+    function showButton() {
+      $("loader").classList.add("out");
+      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); }, 400);
+    }
+    const ready = () => setTimeout(showButton, Math.max(0, LOAD_MS - (Date.now() - t0)));
+    if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
 
     $("go-login").onclick = () => { wantsLogin = true; render(); $("email").focus(); };
     $("back").onclick = () => { wantsLogin = false; setMode(false); render(); };
