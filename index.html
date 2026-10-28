@@ -365,13 +365,8 @@
       let pref = null, askedNow = false;
       try { pref = localStorage.getItem("nooxel_geo"); askedNow = !!sessionStorage.getItem("nooxel_geo_asked"); } catch (e) {}
       if (pref === "never") return;
-      if (pref === "yes" && navigator.permissions && navigator.permissions.query) {
-        navigator.permissions.query({ name: "geolocation" }).then(r => {
-          if (r.state === "granted") geo.trigger();
-          else if (r.state === "denied" && !askedNow) toast("La localisation est bloquée dans les réglages de votre navigateur.");
-          else if (!askedNow) $("geo-ask").classList.remove("hidden");
-        }).catch(() => {});
-        try { sessionStorage.setItem("nooxel_geo_asked", "1"); } catch (e) {}
+      if (pref === "yes") {          // déjà accepté une fois : plus de question de notre part, on localise directement
+        geo.trigger();
         return;
       }
       if (askedNow) return;
