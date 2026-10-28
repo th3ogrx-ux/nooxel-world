@@ -1176,6 +1176,9 @@
     };
     $("logout").onclick = async () => { if (sb) await sb.auth.signOut(); render(); };
     if (sb) sb.auth.onAuthStateChange(() => render());
+    // Confirmation d'email ouverte dans un autre onglet : cet onglet-ci bascule dès que la session apparaît.
+    window.addEventListener("storage", e => { if (e.key === AUTH_KEY && storedSession()) render(); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && storedSession()) render(); });
     if (storedSession()) startMap();   // pas besoin d'attendre la vérification pour lancer la carte
     render();
   </script>
