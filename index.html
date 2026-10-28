@@ -200,6 +200,15 @@
     const $ = id => document.getElementById(id);
     let signupMode = false;
 
+    function frError(m) {
+      const t = (m || "").toLowerCase();
+      if (t.includes("not confirmed")) return "Email non confirmé : ouvrez le message de confirmation reçu par email.";
+      if (t.includes("invalid login")) return "Email ou mot de passe incorrect.";
+      if (t.includes("already registered")) return "Un compte existe déjà avec cet email.";
+      if (t.includes("rate limit") || t.includes("too many")) return "Trop de tentatives, réessayez dans quelques minutes.";
+      if (t.includes("password")) return "Mot de passe trop court ou invalide (6 caractères minimum).";
+      return m;
+    }
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
     const SUB = '<span>pour continuer vers</span> <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong>';
@@ -345,8 +354,12 @@
       const creds = { email: $("email").value.trim(), password: $("password").value };
       const { data, error } = signupMode ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
       $("submit").disabled = false;
-      if (error) return say(error.message);
-      if (signupMode && !data.session) { say("Compte créé. Confirmez votre email, puis connectez-vous.", true); return setMode(false); }
+      if (error) return say(frError(error.message));
+      if (signupMode && !data.session) {
+        // Confirmation par email activée côté Supabase : on reste sur l'inscription et on explique.
+        saveAccount(creds.email);
+        return say("Compte créé. Un email de confirmation a été envoyé à " + creds.email + ". Ouvrez-le pour activer votre compte.", true);
+      }
       saveAccount(creds.email); render();
     };
     $("logout").onclick = async () => { await sb.auth.signOut(); render(); };
