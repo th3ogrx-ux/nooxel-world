@@ -398,10 +398,15 @@
           style: new URL("assets/map-style.json", location.href).href,
           center: [2.35, 46.8],
           zoom: 4.6,
+          dragRotate: false,          // pas de rotation à la souris
+          pitchWithRotate: false,
+          touchPitch: false,          // pas d'inclinaison à deux doigts
+          maxPitch: 0,
+          bearing: 0,
           maxZoom: 19,   // au-delà, les données n'ont plus de détail : on bloque ici
           attributionControl: { compact: true }
         });
-        map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
+        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
         geo = new maplibregl.GeolocateControl({
           positionOptions: { enableHighAccuracy: true },
           fitBoundsOptions: { maxZoom: 16 },
@@ -409,6 +414,8 @@
           showUserHeading: true
         });
         map.addControl(geo, "bottom-right");
+        map.touchZoomRotate.disableRotation();   // pincer pour zoomer, sans faire tourner
+        map.keyboard.disableRotation();
         geo.on("error", err => toast(err && err.code === 1
           ? "Localisation refusée. Activez-la dans les réglages de votre navigateur."
           : "Position introuvable pour le moment."));
