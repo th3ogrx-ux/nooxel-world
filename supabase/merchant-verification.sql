@@ -147,7 +147,7 @@ create table if not exists public.verification_requests (
   docs_deleted_at   timestamptz,
   created_at        timestamptz not null default now(),
   -- une demande « profil » doit contenir la pièce et la photo
-  constraint profile_needs_docs check (kind <> 'profile' or status = 'cancelled' or (id_doc_path is not null and selfie_path is not null)),
+  constraint profile_needs_docs check (kind <> 'profile' or status = 'cancelled' or docs_deleted_at is not null or (id_doc_path is not null and selfie_path is not null)),
   -- une demande « entreprise » doit contenir un SIRET
   constraint company_needs_siret check (kind <> 'company' or siret is not null)
 );
