@@ -353,8 +353,13 @@
           trackUserLocation: true,
           showUserHeading: true
         }), "bottom-right");
-        map.on("error", e => { if (e && e.error && !map.loaded()) $("map-error").classList.remove("hidden"); });
-        map.on("load", () => $("map-error").classList.add("hidden"));
+        // Erreur affichée seulement si la carte n'a jamais réussi à démarrer (pas pour une tuile ou une icône manquante).
+        let ready = false;
+        const ok = () => { ready = true; $("map-error").classList.add("hidden"); };
+        map.on("load", ok);
+        map.on("idle", ok);
+        map.on("error", e => { if (!ready && e && e.error && !map.isStyleLoaded()) $("map-error").classList.remove("hidden"); });
+        setTimeout(() => { if (!ready) $("map-error").classList.remove("hidden"); }, 20000);
       } catch (e) {
         $("map-error").classList.remove("hidden");
       } finally { starting = false; }
