@@ -39,7 +39,7 @@
     #viewer { position: fixed; inset: 0; background: rgb(4,11,28); z-index: 20; display: grid; place-items: center; padding: 1rem; }
     #viewer .frame { position: relative; max-width: min(92vw, 900px); max-height: 88vh; }
     #viewer img { max-width: 100%; max-height: 82vh; border-radius: 10px; display: block; user-select: none; -webkit-user-drag: none; }
-    #viewer .wm { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.28); font-weight: 800; font-size: 2rem; transform: rotate(-24deg); pointer-events: none; text-align: center; }
+    #viewer .wm { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: difference; opacity: .5; background-repeat: repeat; }
     #viewer .bar { color: #fff; display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; font-size: .9rem; }
     #viewer button { background: #fff; color: var(--ink); border: 0; border-radius: 999px; padding: .35rem .9rem; }
     .search { display: flex; gap: .5rem; margin-bottom: .8rem; }
@@ -62,7 +62,7 @@
   <div class="frame">
     <div class="bar"><span id="v-title"></span><span><span id="v-count"></span> <button id="v-close" type="button">Fermer</button></span></div>
     <img id="v-img" alt="Pièce justificative" referrerpolicy="no-referrer" draggable="false">
-    <div class="wm">NOOXEL<br>VÉRIFICATION UNIQUEMENT</div>
+    <div class="wm" id="v-wm" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -167,6 +167,10 @@
     err.textContent = "";
     const { data, error } = await sb.functions.invoke("admin-document-url", { body: { request_id: r.id, which } });
     if (error) { let m = "Impossible d'afficher la pièce."; try { m = (await error.context.json()).message || m; } catch {} err.textContent = m; return; }
+    // Filigrane répété sur toute l'image, avec l'email de l'administrateur : visible sur fond clair comme sombre.
+    const mark = ((me && me.email) || "administrateur").replace(/[<>&"']/g, "");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><text x="150" y="75" text-anchor="middle" transform="rotate(-24 150 75)" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#fff">NOOXEL · VÉRIFICATION</text><text x="150" y="98" text-anchor="middle" transform="rotate(-24 150 75)" font-family="Arial,sans-serif" font-size="14" fill="#fff">${mark}</text></svg>`;
+    $("v-wm").style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
     $("v-title").textContent = `${r.merchant.business_name} — ${which === "id" ? "pièce d'identité" : "photo"}`;
     $("v-img").src = data.url; $("viewer").classList.remove("hidden");
     let left = data.expires_in || 60; $("v-count").textContent = `se ferme dans ${left} s`;
