@@ -90,8 +90,6 @@
     .btn-blue { white-space: nowrap; flex-shrink: 0; font: inherit; font-weight: 600; color: #fff; background: #1a6bff; border: 0; border-radius: 999px; padding: .7rem 1.5rem; cursor: pointer; }
     .btn-blue:hover { background: #0f5ae6; }
     .btn-blue:disabled { opacity: .6; cursor: default; }
-    #back { position: absolute; top: .7rem; right: .7rem; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: #5f6368; font-size: 1rem; cursor: pointer; }
-    #back:hover { background: #f1f3f4; }
     @keyframes fade { from { opacity: 0; } }
     @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.96); } }
 
@@ -148,7 +146,6 @@
 
     <div id="layer" class="hidden">
       <form id="login" class="gcard" role="dialog" aria-modal="true" aria-labelledby="title">
-        <button type="button" id="back" aria-label="Fermer">✕</button>
         <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
         <h1 id="title">Connexion</h1>
         <p class="continue" id="sub"></p>
@@ -291,7 +288,6 @@
       wantsLogin = true; render(); showChooser();
     };
     const closeCard = () => { wantsLogin = false; setMode(false); $("email").value = ""; $("password").value = ""; render(); };
-    $("back").onclick = closeCard;
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
