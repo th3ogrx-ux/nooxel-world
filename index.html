@@ -101,6 +101,24 @@
     .gcard.swap-up h1 { color: #1a6bff; }
     @keyframes slideLeft { from { opacity: .3; transform: translateX(40px); } }
     @keyframes slideRight { from { opacity: .3; transform: translateX(-40px); } }
+
+    #chooser { display: grid; gap: .4rem; text-align: left; }
+    #acc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+    #acc-list li { display: flex; align-items: center; gap: .3rem; padding: 0; border: 0; }
+    .acc { flex: 1; min-width: 0; display: flex; align-items: center; gap: .8rem; padding: .7rem .8rem; border: 1px solid #dadce0; border-radius: 14px; background: #fff; color: #1f1f1f; font: inherit; cursor: pointer; text-align: left; }
+    .acc:hover { background: #f6f8ff; border-color: #b9ccff; }
+    .acc .em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .98rem; }
+    .acc.other { width: 100%; flex: none; border-style: dashed; color: #1a6bff; font-weight: 600; }
+    .av { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 600; font-size: .95rem; text-transform: uppercase; }
+    .av.plus { background: #e8f0ff; color: #1a6bff; font-size: 1.3rem; }
+    .rm { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: #80868b; cursor: pointer; font-size: .9rem; }
+    .rm:hover { background: #f1f3f4; color: #d93025; }
+    .fields { display: grid; gap: .9rem; }
+    .chip { display: flex; align-items: center; gap: .6rem; justify-self: center; max-width: 100%; padding: .3rem .8rem .3rem .3rem; border: 1px solid #dadce0; border-radius: 999px; background: #fff; color: #1f1f1f; font: inherit; font-size: .92rem; cursor: pointer; }
+    .chip:hover { background: #f6f8ff; }
+    .chip .av { width: 26px; height: 26px; font-size: .8rem; }
+    .chip #chip-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chip .caret { color: #5f6368; font-size: .75rem; }
   </style>
 </head>
 <body>
@@ -129,13 +147,20 @@
         <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
         <h1 id="title">Connexion</h1>
         <p class="continue" id="sub"></p>
+        <div id="chooser" class="hidden">
+          <ul id="acc-list"></ul>
+          <button type="button" class="acc other" id="other"><span class="av plus">+</span><span>Utiliser un autre compte</span></button>
+        </div>
+        <div id="fields" class="fields">
+          <button type="button" id="chip" class="chip hidden" aria-label="Changer de compte"><span class="av" id="chip-av"></span><span id="chip-email"></span><span class="caret">▾</span></button>
         <input id="email" type="email" placeholder="Email" autocomplete="email" required>
-        <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
-        <input id="password2" class="hidden" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password" minlength="6">
-        <p id="msg" role="alert"></p>
-        <div class="actions">
-          <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
-          <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
+          <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
+          <input id="password2" class="hidden" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password" minlength="6">
+          <p id="msg" role="alert"></p>
+          <div class="actions">
+            <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
+            <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
+          </div>
         </div>
       </form>
     </div>
@@ -184,6 +209,47 @@
     }
     setMode(false);
 
+
+    // ----- Comptes mémorisés sur cet appareil (emails seulement, jamais de mot de passe)
+    const KEY = "nooxel_accounts";
+    const loadAccounts = () => { try { const a = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+    const storeAccounts = a => { try { localStorage.setItem(KEY, JSON.stringify(a.slice(0, 5))); } catch (e) {} };
+    const saveAccount = email => storeAccounts([email, ...loadAccounts().filter(x => x !== email)]);
+    const removeAccount = email => storeAccounts(loadAccounts().filter(x => x !== email));
+    const hue = str => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+    function paintAvatar(el, email) { el.textContent = email[0]; el.style.background = `hsl(${hue(email)} 65% 45%)`; }
+
+    function showChooser() {
+      const list = loadAccounts();
+      if (!list.length) return showForm();
+      $("title").textContent = "Choisir un compte";
+      $("sub").innerHTML = SUB;
+      $("acc-list").innerHTML = "";
+      for (const email of list) {
+        const li = document.createElement("li");
+        const b = document.createElement("button"); b.type = "button"; b.className = "acc";
+        const av = document.createElement("span"); av.className = "av"; paintAvatar(av, email);
+        const em = document.createElement("span"); em.className = "em"; em.textContent = email;
+        b.append(av, em); b.onclick = () => showForm(email);
+        const rm = document.createElement("button"); rm.type = "button"; rm.className = "rm"; rm.textContent = "✕"; rm.title = "Retirer de cet appareil"; rm.setAttribute("aria-label", "Retirer " + email);
+        rm.onclick = () => { removeAccount(email); showChooser(); };
+        li.append(b, rm); $("acc-list").append(li);
+      }
+      $("chooser").classList.remove("hidden"); $("fields").classList.add("hidden"); say("");
+    }
+
+    function showForm(email) {
+      $("chooser").classList.add("hidden"); $("fields").classList.remove("hidden");
+      setMode(signupMode);
+      const known = !!email && !signupMode;
+      $("email").classList.toggle("hidden", known);
+      $("chip").classList.toggle("hidden", !known);
+      if (known) { $("email").value = email; $("chip-email").textContent = email; paintAvatar($("chip-av"), email); }
+      else if (email === undefined) $("email").value = $("email").value;
+    }
+    $("chip").onclick = () => showChooser();
+    $("other").onclick = () => { $("email").value = ""; showForm(); };
+
     let wantsLogin = false;
 
     async function render() {
@@ -206,13 +272,21 @@
     if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
 
     // Curseur dans le champ email seulement avec une souris : sur téléphone, ça ouvrirait le clavier tout de suite.
-    $("go-login").onclick = () => { wantsLogin = true; render(); if (matchMedia("(pointer: fine)").matches) $("email").focus(); };
-    const closeCard = () => { wantsLogin = false; setMode(false); render(); };
+    $("go-login").onclick = () => {
+      wantsLogin = true; render(); showChooser();
+      if (!loadAccounts().length && matchMedia("(pointer: fine)").matches) $("email").focus();
+    };
+    const closeCard = () => { wantsLogin = false; setMode(false); $("email").value = ""; $("password").value = ""; render(); };
     $("back").onclick = closeCard;
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
-    $("toggle").onclick = () => setMode(!signupMode, true);
+    $("toggle").onclick = () => {
+      const toSignup = !signupMode;
+      setMode(toSignup, true);
+      if (toSignup) { $("email").classList.remove("hidden"); $("chip").classList.add("hidden"); $("email").value = ""; }
+      else showChooser();
+    };
     $("login").onsubmit = async e => {
       e.preventDefault();
       if (signupMode && $("password").value !== $("password2").value) return say("Les mots de passe ne correspondent pas.");
@@ -222,7 +296,7 @@
       $("submit").disabled = false;
       if (error) return say(error.message);
       if (signupMode && !data.session) { say("Compte créé. Confirmez votre email, puis connectez-vous.", true); return setMode(false); }
-      render();
+      saveAccount(creds.email); render();
     };
     $("logout").onclick = async () => { await sb.auth.signOut(); render(); };
     sb.auth.onAuthStateChange(() => render());
