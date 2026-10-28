@@ -1,0 +1,9 @@
+# Fichiers du dépôt qui ne doivent PAS être publiés sur le site
+.git
+.github
+.assetsignore
+wrangler.jsonc
+vercel.json
+README.md
+supabase
+node_modules

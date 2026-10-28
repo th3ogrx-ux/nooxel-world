@@ -11,10 +11,19 @@
 /sw.js
   Cache-Control: no-cache
 
+# Cloudflare sert /pro.html à l'adresse /pro : on protège les deux formes
 /admin.html
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
 
+/admin
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
 /pro.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/pro
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
