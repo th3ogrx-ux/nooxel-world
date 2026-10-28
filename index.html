@@ -228,6 +228,21 @@
     #rc-steps { list-style: decimal; margin: .5rem 0 0; padding: 0 0 0 1.3rem; max-height: min(34dvh, 260px); overflow-y: auto; font-size: .92rem; line-height: 1.4; }
     #rc-steps li { display: list-item; padding: .35rem 0; border: 0; color: #1f1f1f; }
     #rc-steps li span { color: #5f6368; font-size: .82rem; }
+    #nav-top { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .8rem); left: .8rem; right: .8rem; z-index: 7; max-width: 460px; margin: 0 auto; display: flex; align-items: center; gap: .9rem; padding: .9rem 1.1rem; border-radius: 22px; background: #0b3fa8; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.5); animation: rise .3s ease both; }
+    #nav-top.hidden { display: none; }
+    #nav-ico { flex: none; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; background: rgba(255,255,255,.16); font-size: 2rem; line-height: 1; }
+    .nav-txt { min-width: 0; text-align: left; }
+    #nav-dist { margin: 0; font-size: 1.6rem; font-weight: 700; line-height: 1.15; }
+    #nav-text { margin: .1rem 0 0; font-size: .98rem; opacity: .92; line-height: 1.3; }
+    #nav-bottom { display: none; align-items: center; gap: .7rem; }
+    #nav-bottom:not(.hidden) { display: flex; }
+    .nb-info { flex: 1; min-width: 0; display: grid; }
+    .nb-info b { font-size: 1.3rem; color: #188038; }
+    .nb-info span { font-size: .85rem; color: #5f6368; }
+    .dcard .x.big { width: 44px; height: 44px; font-size: 1.15rem; }
+    #nav-stop { flex: none; padding: .75rem 1.2rem; }
+    #home.navigating #search, #home.navigating #place-card, #home.navigating #route-card { display: none !important; }
+    #rc-start { margin-top: .5rem; }
   </style>
 </head>
 <body>
@@ -281,7 +296,16 @@
     <section id="home" class="hidden">
       <div id="map" aria-label="Carte"></div>
       <p id="brand" aria-hidden="true">Nooxel World</p>
+      <div id="nav-top" class="hidden" role="status" aria-live="assertive">
+        <span id="nav-ico" aria-hidden="true">↑</span>
+        <div class="nav-txt"><p id="nav-dist"></p><p id="nav-text"></p></div>
+      </div>
       <div id="dock" class="hidden">
+        <div id="nav-bottom" class="dcard hidden">
+          <div class="nb-info"><b id="nav-eta"></b><span id="nav-rest"></span></div>
+          <button type="button" class="x big" id="nav-mute" aria-label="Couper la voix">🔊</button>
+          <button type="button" class="btn-red" id="nav-stop">Arrêter</button>
+        </div>
         <div id="place-card" class="dcard hidden">
           <div class="pc-text"><h3 id="pc-title"></h3><p id="pc-sub"></p></div>
           <button type="button" class="btn-blue" id="pc-go">Itinéraire</button>
@@ -295,6 +319,7 @@
             <button type="button" role="tab" data-mode="bike">🚲 Vélo</button>
           </div>
           <p class="rc-sum" id="rc-sum" aria-live="polite"></p>
+          <button type="button" class="btn-blue wide hidden" id="rc-start">Démarrer le guidage</button>
           <button type="button" class="link" id="rc-toggle">Voir les étapes</button>
           <ol id="rc-steps" class="hidden"></ol>
         </div>
@@ -713,21 +738,26 @@
       });
       return { lng: p.coords.longitude, lat: p.coords.latitude };
     }
+    let currentRoute = null;
+    async function fetchRouteRaw(o) {
+      const url = "https://routing.openstreetmap.de/routed-" + routeMode + "/route/v1/driving/" + o.lng + "," + o.lat + ";" + dest.lng + "," + dest.lat + "?overview=full&geometries=geojson&steps=true";
+      const r = await fetch(url); if (!r.ok) throw new Error(r.status);
+      const j = await r.json(); const rt = j.routes && j.routes[0]; if (!rt) throw new Error("none");
+      return rt;
+    }
     async function computeRoute() {
       if (!dest) return;
       const req = ++routeReq;
       $("place-card").classList.add("hidden");
       $("route-card").classList.remove("hidden"); dockEl.classList.remove("hidden");
-      $("rc-dest").textContent = "Vers " + dest.title;
+      $("rc-dest").textContent = "Vers " + dest.title; $("rc-start").classList.add("hidden"); currentRoute = null;
       $("rc-sum").textContent = "Calcul de l'itinéraire…"; $("rc-steps").innerHTML = ""; $("rc-steps").classList.add("hidden"); $("rc-toggle").classList.add("hidden");
       let o;
       try { o = await getOrigin(); }
       catch (e) { $("rc-sum").innerHTML = ""; const sp = document.createElement("span"); sp.className = "err"; sp.textContent = "Activez la localisation pour calculer un itinéraire depuis votre position."; $("rc-sum").append(sp); if (geo) geo.trigger(); return; }
-      const url = "https://routing.openstreetmap.de/routed-" + routeMode + "/route/v1/driving/" + o.lng + "," + o.lat + ";" + dest.lng + "," + dest.lat + "?overview=full&geometries=geojson&steps=true";
       try {
-        const r = await fetch(url); if (!r.ok) throw new Error(r.status);
-        const j = await r.json(); if (req !== routeReq) return;
-        const rt = j.routes && j.routes[0]; if (!rt) throw new Error("none");
+        const rt = await fetchRouteRaw(o); if (req !== routeReq) return;
+        currentRoute = rt; $("rc-start").classList.remove("hidden");
         drawRoute(rt.geometry.coordinates);
         $("rc-sum").innerHTML = "<b></b> <span></span>";
         $("rc-sum").querySelector("b").textContent = fmtTime(rt.duration); $("rc-sum").querySelector("span").textContent = "(" + fmtDist(rt.distance) + ")";
@@ -749,6 +779,123 @@
     document.querySelectorAll(".modes button").forEach(b => b.onclick = () => {
       document.querySelectorAll(".modes button").forEach(x => x.classList.toggle("on", x === b));
       routeMode = b.dataset.mode; computeRoute();
+    });
+
+
+    // ----- Guidage en temps réel -----
+    const nav = { active: false };
+    const ARROW = { "left": "↰", "right": "↱", "slight left": "↖", "slight right": "↗", "sharp left": "↰", "sharp right": "↱", "straight": "↑", "uturn": "↶" };
+    const toRad = x => x * Math.PI / 180;
+    function hav(a, b) {
+      const dLat = toRad(b[1] - a[1]), dLng = toRad(b[0] - a[0]);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+      return 2 * 6371000 * Math.asin(Math.sqrt(h));
+    }
+    function projectOnRoute(pt) {            // position la plus proche sur le tracé : distance parcourue + écart au tracé
+      const c = nav.coords, kx = 111320 * Math.cos(toRad(pt[1])), ky = 110540;
+      let best = { dist: Infinity, along: 0 };
+      for (let i = 0; i < c.length - 1; i++) {
+        const ax = (c[i][0] - pt[0]) * kx, ay = (c[i][1] - pt[1]) * ky, bx = (c[i + 1][0] - pt[0]) * kx, by = (c[i + 1][1] - pt[1]) * ky;
+        const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+        const t = len2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+        const px = ax + t * dx, py = ay + t * dy, d = Math.hypot(px, py);
+        if (d < best.dist) best = { dist: d, along: nav.cum[i] + t * (nav.cum[i + 1] - nav.cum[i]) };
+      }
+      return best;
+    }
+    function buildNav(rt) {
+      nav.coords = rt.geometry.coordinates; nav.duration = rt.duration;
+      nav.cum = [0]; for (let i = 1; i < nav.coords.length; i++) nav.cum.push(nav.cum[i - 1] + hav(nav.coords[i - 1], nav.coords[i]));
+      nav.total = nav.cum[nav.cum.length - 1] || 1;
+      const raw = (rt.legs[0] && rt.legs[0].steps) || []; let prev = 0;
+      nav.steps = raw.map(st => { const al = Math.max(prev, projectOnRoute(st.maneuver.location).along); prev = al; return { along: al, text: stepText(st), type: st.maneuver.type, mod: st.maneuver.modifier }; });
+      nav.said = new Set(); nav.offCount = 0;
+    }
+    function speak(text) {
+      if (nav.muted || !("speechSynthesis" in window)) return;
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text); u.lang = "fr-FR"; u.rate = 1.0;
+        const v = speechSynthesis.getVoices().find(v => /^fr/i.test(v.lang)); if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    const spokenDist = m => m >= 1000 ? (m / 1000).toFixed(1).replace(".", ",").replace(",0", "") + " kilomètre" + (m >= 2000 ? "s" : "") : Math.round(m / 10) * 10 + " mètres";
+    function showNav(i, toNext, remain) {
+      const st = nav.steps[i];
+      $("nav-ico").textContent = st.type === "arrive" ? "⚑" : (st.type === "roundabout" || st.type === "rotary" ? "⟳" : (ARROW[st.mod] || "↑"));
+      $("nav-dist").textContent = toNext < 1 ? "Maintenant" : fmtDist(toNext);
+      $("nav-text").textContent = st.type === "arrive" ? "Votre destination : " + (dest ? dest.title : "") : st.text;
+      const sec = nav.duration * (remain / nav.total), eta = new Date(Date.now() + sec * 1000);
+      $("nav-eta").textContent = fmtTime(sec);
+      $("nav-rest").textContent = fmtDist(remain) + " · arrivée " + eta.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+    function onNavPosition(c) {
+      if (!nav.active) return;
+      const pt = [c.longitude, c.latitude], pr = projectOnRoute(pt), remain = Math.max(0, nav.total - pr.along);
+      // arrivée
+      if (remain < 25 || (hav(pt, nav.coords[nav.coords.length - 1]) < 20)) return arriveNav();
+      // hors itinéraire ? recalcul
+      if (pr.dist > Math.max(45, (c.accuracy || 0) * 1.5)) {
+        nav.offCount++;
+        if (nav.offCount >= 3 && !nav.rerouting && Date.now() - (nav.lastReroute || 0) > 15000) return rerouteNav(pt);
+      } else nav.offCount = 0;
+      // prochaine manœuvre
+      let i = nav.steps.findIndex((st, k) => k >= 1 && st.along > pr.along - 5);
+      if (i < 0) i = nav.steps.length - 1;
+      const toNext = Math.max(0, nav.steps[i].along - pr.along);
+      showNav(i, toNext, remain);
+      // annonces vocales (une seule fois par seuil)
+      const far = routeMode === "car" ? [400, 120] : [70, 25], st = nav.steps[i];
+      const say = (lvl, txt) => { const k = i + ":" + lvl; if (!nav.said.has(k)) { nav.said.add(k); speak(txt); } };
+      const low = st.type === "arrive" ? "vous arriverez à destination" : st.text.charAt(0).toLowerCase() + st.text.slice(1);
+      if (toNext < 20) say("now", st.type === "arrive" ? "Vous êtes arrivé" : st.text);
+      else if (toNext < far[1] + 15) say("near", "Dans " + spokenDist(far[1]) + ", " + low);
+      else if (toNext < far[0] + 25) say("far", "Dans " + spokenDist(far[0]) + ", " + low);
+      // la caméra suit, sauf si l'utilisateur a déplacé la carte
+      if (!nav.free) map.easeTo({ center: pt, zoom: Math.max(map.getZoom(), routeMode === "car" ? 16.3 : 17), duration: 700, essential: true });
+    }
+    async function rerouteNav(pt) {
+      nav.rerouting = true; nav.lastReroute = Date.now();
+      toast("Recalcul de l'itinéraire…"); speak("Recalcul de l'itinéraire");
+      try {
+        const rt = await fetchRouteRaw({ lng: pt[0], lat: pt[1] });
+        if (!nav.active) return;
+        currentRoute = rt; drawRoute(rt.geometry.coordinates); buildNav(rt);
+      } catch (e) { toast("Recalcul impossible pour le moment."); }
+      finally { nav.rerouting = false; }
+    }
+    function arriveNav() {
+      if (nav.arrived) return; nav.arrived = true;
+      $("nav-ico").textContent = "⚑"; $("nav-dist").textContent = "Vous êtes arrivé"; $("nav-text").textContent = dest ? dest.title : "";
+      speak("Vous êtes arrivé"); if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+      setTimeout(() => { if (nav.active && nav.arrived) stopNav(); }, 6000);
+    }
+    async function startNav() {
+      if (!currentRoute || !map) return;
+      buildNav(currentRoute);
+      Object.assign(nav, { active: true, arrived: false, free: false, rerouting: false, muted: nav.muted || false, lastReroute: 0 });
+      $("home").classList.add("navigating"); $("nav-top").classList.remove("hidden"); $("nav-bottom").classList.remove("hidden");
+      $("nav-mute").textContent = nav.muted ? "🔇" : "🔊";
+      speak("Guidage démarré. " + nav.steps[0].text);     // lancé par un geste : débloque la voix sur iPhone
+      showNav(Math.min(1, nav.steps.length - 1), nav.steps[Math.min(1, nav.steps.length - 1)].along, nav.total);
+      const c = geo && document.querySelector(".maplibregl-ctrl-geolocate");
+      if (c && !c.classList.contains("maplibregl-ctrl-geolocate-active") && !c.classList.contains("maplibregl-ctrl-geolocate-background")) geo.trigger();   // position en continu
+      try { if ("wakeLock" in navigator) nav.wake = await navigator.wakeLock.request("screen"); } catch (e) {}   // écran allumé
+      if (lastPosGlobal) onNavPosition(lastPosGlobal);
+    }
+    function stopNav() {
+      nav.active = false;
+      try { speechSynthesis.cancel(); } catch (e) {}
+      try { if (nav.wake) nav.wake.release(); } catch (e) {} nav.wake = null;
+      $("home").classList.remove("navigating"); $("nav-top").classList.add("hidden"); $("nav-bottom").classList.add("hidden");
+      $("route-card").classList.remove("hidden");
+    }
+    $("rc-start").onclick = startNav;
+    $("nav-stop").onclick = stopNav;
+    $("nav-mute").onclick = () => { nav.muted = !nav.muted; $("nav-mute").textContent = nav.muted ? "🔇" : "🔊"; if (nav.muted) { try { speechSynthesis.cancel(); } catch (e) {} } };
+    document.addEventListener("visibilitychange", async () => {   // le verrou d'écran saute quand on change d'appli : on le reprend au retour
+      if (nav.active && document.visibilityState === "visible" && "wakeLock" in navigator) { try { nav.wake = await navigator.wakeLock.request("screen"); } catch (e) {} }
     });
 
     // ----- Installation sur l'écran d'accueil
@@ -855,6 +1002,7 @@
           // Déjà centré sur vous : un toucher recentre au lieu de couper le suivi (qui ferait disparaître le point bleu).
           gb.parentElement.addEventListener("click", e => {
             if (swallowClick) { swallowClick = false; e.stopPropagation(); e.preventDefault(); return; }   // le "relâché" d'un appui long
+            if (nav.active) nav.free = false;
             if (gb.classList.contains("maplibregl-ctrl-geolocate-active") && lastPos) {
               e.stopPropagation(); e.preventDefault();
               map.flyTo({ center: [lastPos.longitude, lastPos.latitude], zoom: Math.max(map.getZoom(), 16), duration: 900, essential: true });
@@ -891,6 +1039,7 @@
         let bestAcc = Infinity, lastPos = null, swallowClick = false;
         geo.on("geolocate", pos => {
           lastPos = pos.coords; lastPosGlobal = pos.coords;
+          if (nav.active) { onNavPosition(pos.coords); return; }
           const acc = pos.coords.accuracy || Infinity;
           const first = bestAcc === Infinity;
           if (!first && acc > bestAcc / 2) return;
@@ -898,6 +1047,7 @@
           map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: first ? 16 : Math.max(map.getZoom(), 16), duration: first ? 2200 : 900, essential: true });
         });
         map.on("load", askLocation);
+        map.on("dragstart", () => { if (nav.active) nav.free = true; });
         map.once("idle", () => setTimeout(maybeOfferInstall, 9000));
         // Erreur affichée seulement si la carte n'a jamais réussi à démarrer (pas pour une tuile ou une icône manquante).
         let ready = false;
