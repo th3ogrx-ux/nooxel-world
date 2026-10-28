@@ -4,20 +4,21 @@ export function normalizeSiret(input: unknown): string {
   return String(input ?? "").replace(/[\s.-]/g, "");
 }
 
-// Clé de contrôle de Luhn. Exception connue : les établissements de La Poste (SIREN 356 000 000)
-// sont valides si la somme des chiffres est un multiple de 5.
+// Clé de contrôle de Luhn. Exception connue : certains établissements de La Poste (SIREN 356 000 000)
+// ne respectent pas Luhn mais ont une somme de chiffres multiple de 5. On accepte donc : Luhn OU cette règle.
 export function isValidSiretFormat(siret: string): boolean {
   if (!/^[0-9]{14}$/.test(siret)) return false;
-  if (siret.startsWith("356000000")) {
-    return [...siret].reduce((s, d) => s + Number(d), 0) % 5 === 0;
-  }
   let sum = 0;
   for (let i = 0; i < 14; i++) {
     let d = Number(siret[13 - i]);
     if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; }
     sum += d;
   }
-  return sum % 10 === 0;
+  if (sum % 10 === 0) return true;
+  if (siret.startsWith("356000000")) {
+    return [...siret].reduce((s, d) => s + Number(d), 0) % 5 === 0;
+  }
+  return false;
 }
 
 export type SiretLookup =

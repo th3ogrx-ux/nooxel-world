@@ -42,9 +42,6 @@ function normalizeSiret(input) {
 }
 function isValidSiretFormat(siret) {
   if (!/^[0-9]{14}$/.test(siret)) return false;
-  if (siret.startsWith("356000000")) {
-    return [...siret].reduce((s, d) => s + Number(d), 0) % 5 === 0;
-  }
   let sum = 0;
   for (let i = 0; i < 14; i++) {
     let d = Number(siret[13 - i]);
@@ -54,7 +51,11 @@ function isValidSiretFormat(siret) {
     }
     sum += d;
   }
-  return sum % 10 === 0;
+  if (sum % 10 === 0) return true;
+  if (siret.startsWith("356000000")) {
+    return [...siret].reduce((s, d) => s + Number(d), 0) % 5 === 0;
+  }
+  return false;
 }
 function parseCompanySearch(json2, siret) {
   const results = Array.isArray(json2?.results) ? json2.results : [];
