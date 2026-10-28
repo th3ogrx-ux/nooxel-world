@@ -16,6 +16,7 @@
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://openmaptiles.github.io" crossorigin>
   <link rel="preconnect" href="https://photon.komoot.io" crossorigin>
+  <link rel="preconnect" href="https://routing.openstreetmap.de" crossorigin>
   <link rel="preload" href="assets/map-style.json" as="fetch" crossorigin>
   <style>
     html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -203,6 +204,30 @@
     .locate-ctrl button.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon, .locate-ctrl button.maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23d93025%22 stroke-width=%222%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%226.5%22/%3E%3Cpath d=%22M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22M5 5l14 14%22/%3E%3C/svg%3E") !important; }
     .locate-ctrl button.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon { animation: locpulse .9s ease-in-out infinite; }
     @keyframes locpulse { 50% { opacity: .35; transform: scale(.85); } }
+    #home { --dock: 0px; }
+    .maplibregl-ctrl-bottom-right { bottom: calc(env(safe-area-inset-bottom, 0px) + var(--dock)) !important; transition: bottom .25s ease; }
+    #brand { bottom: calc(env(safe-area-inset-bottom, 0px) + 1.6rem + var(--dock)) !important; transition: bottom .25s ease; }
+    #dock { position: absolute; left: .8rem; right: .8rem; bottom: calc(env(safe-area-inset-bottom, 0px) + .8rem); z-index: 6; max-width: 460px; margin: 0 auto; }
+    .dcard { position: relative; background: #fff; color: #1f1f1f; border-radius: 22px; padding: .95rem 1rem; box-shadow: 0 -2px 36px rgba(0,0,0,.5); text-align: left; animation: rise .3s ease both; }
+    #place-card { display: flex; align-items: center; gap: .8rem; }
+    #place-card.hidden, #route-card.hidden { display: none; }
+    .pc-text { flex: 1; min-width: 0; }
+    .pc-text h3 { margin: 0; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pc-text p { margin: .1rem 0 0; font-size: .85rem; color: #5f6368; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #pc-go { flex: none; padding: .7rem 1.1rem; }
+    .dcard .x { flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #f1f3f4; color: #5f6368; font-size: .85rem; cursor: pointer; }
+    .rc-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+    .rc-dest { margin: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .modes { display: flex; gap: .4rem; margin: .7rem 0 .6rem; }
+    .modes button { flex: 1; padding: .55rem .3rem; border: 1.5px solid #dadce0; border-radius: 999px; background: #fff; color: #1f1f1f; font: inherit; font-size: .88rem; cursor: pointer; white-space: nowrap; }
+    .modes button.on { border-color: #1a6bff; background: #e8f0ff; color: #0b3fa8; font-weight: 600; }
+    .rc-sum { margin: 0; font-size: 1.05rem; }
+    .rc-sum b { font-size: 1.35rem; color: #188038; }
+    .rc-sum .err { color: #d93025; font-size: .95rem; }
+    #route-card .link { padding: .4rem 0 0; color: #1a6bff; font-weight: 600; font-size: .9rem; }
+    #rc-steps { list-style: decimal; margin: .5rem 0 0; padding: 0 0 0 1.3rem; max-height: min(34dvh, 260px); overflow-y: auto; font-size: .92rem; line-height: 1.4; }
+    #rc-steps li { display: list-item; padding: .35rem 0; border: 0; color: #1f1f1f; }
+    #rc-steps li span { color: #5f6368; font-size: .82rem; }
   </style>
 </head>
 <body>
@@ -256,6 +281,24 @@
     <section id="home" class="hidden">
       <div id="map" aria-label="Carte"></div>
       <p id="brand" aria-hidden="true">Nooxel World</p>
+      <div id="dock" class="hidden">
+        <div id="place-card" class="dcard hidden">
+          <div class="pc-text"><h3 id="pc-title"></h3><p id="pc-sub"></p></div>
+          <button type="button" class="btn-blue" id="pc-go">Itinéraire</button>
+          <button type="button" class="x" id="pc-x" aria-label="Fermer">✕</button>
+        </div>
+        <div id="route-card" class="dcard hidden">
+          <div class="rc-top"><p class="rc-dest" id="rc-dest"></p><button type="button" class="x" id="rc-x" aria-label="Fermer l'itinéraire">✕</button></div>
+          <div class="modes" role="tablist">
+            <button type="button" role="tab" data-mode="car" class="on">🚗 Voiture</button>
+            <button type="button" role="tab" data-mode="foot">🚶 À pied</button>
+            <button type="button" role="tab" data-mode="bike">🚲 Vélo</button>
+          </div>
+          <p class="rc-sum" id="rc-sum" aria-live="polite"></p>
+          <button type="button" class="link" id="rc-toggle">Voir les étapes</button>
+          <ol id="rc-steps" class="hidden"></ol>
+        </div>
+      </div>
       <div id="search" role="search">
         <div class="sbox">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -462,7 +505,7 @@
     }
 
     // ----- Carte (MapLibre + OpenStreetMap via OpenFreeMap, sans clé API)
-    let map = null, geo = null, starting = false;
+    let map = null, geo = null, starting = false, lastPosGlobal = null;
     function toast(msg) {
       $("geo-toast").textContent = msg; $("geo-toast").classList.remove("hidden");
       setTimeout(() => $("geo-toast").classList.add("hidden"), 4500);
@@ -578,7 +621,8 @@
     function pickResult(i) {
       const f = results[i]; if (!f || !map) return;
       const p = f.properties, [lng, lat] = f.geometry.coordinates;
-      const { title } = placeLabel(p);
+      const { title, sub } = placeLabel(p);
+      showPlace({ title, sub, lng, lat });
       $("q").value = title; $("q-clear").classList.remove("hidden"); setList(false); $("q").blur();
       if (marker) marker.remove();
       marker = new maplibregl.Marker({ color: "#1a6bff" }).setLngLat([lng, lat]).addTo(map);
@@ -589,6 +633,7 @@
     function clearSearch() {
       $("q").value = ""; $("q-clear").classList.add("hidden"); results = []; setList(false);
       if (marker) { marker.remove(); marker = null; }
+      closeDock();
     }
     $("q").addEventListener("input", () => {
       const q = $("q").value.trim();
@@ -612,6 +657,99 @@
     $("q").addEventListener("focus", () => { if (results.length) setList(true); });
     $("q").addEventListener("blur", () => setTimeout(() => setList(false), 150));
     $("q-clear").onclick = () => { clearSearch(); $("q").focus(); };
+
+
+    // ----- Itinéraires (OSRM d'OpenStreetMap Allemagne) -----
+    let dest = null, routeMode = "car", routeReq = 0;
+    const dockEl = $("dock");
+    new ResizeObserver(() => {
+      $("home").style.setProperty("--dock", dockEl.classList.contains("hidden") ? "0px" : (dockEl.offsetHeight + 12) + "px");
+    }).observe(dockEl);
+
+    function showPlace(d) {
+      dest = d;
+      $("pc-title").textContent = d.title; $("pc-sub").textContent = d.sub || "";
+      $("route-card").classList.add("hidden"); $("place-card").classList.remove("hidden"); dockEl.classList.remove("hidden");
+    }
+    function closeDock() {
+      dockEl.classList.add("hidden"); $("place-card").classList.add("hidden"); $("route-card").classList.add("hidden");
+      clearRouteLine(); dest = null;
+    }
+    function clearRouteLine() {
+      if (map && map.getSource && map.getSource("route")) map.getSource("route").setData({ type: "FeatureCollection", features: [] });
+    }
+    function drawRoute(coords) {
+      const data = { type: "Feature", geometry: { type: "LineString", coordinates: coords } };
+      if (map.getSource("route")) return map.getSource("route").setData(data);
+      map.addSource("route", { type: "geojson", data });
+      map.addLayer({ id: "route-casing", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": 10, "line-opacity": .95 } });
+      map.addLayer({ id: "route-line", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#1a6bff", "line-width": 6 } });
+    }
+    const fmtTime = s => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); };
+    const fmtDist = m => m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(m < 10000 ? 1 : 0).replace(".", ",") + " km";
+
+    const DIR = { "left": "à gauche", "right": "à droite", "slight left": "légèrement à gauche", "slight right": "légèrement à droite", "sharp left": "franchement à gauche", "sharp right": "franchement à droite", "straight": "tout droit", "uturn": "demi-tour" };
+    function stepText(st) {
+      const m = st.maneuver || {}, on = st.name ? " sur " + st.name : "", d = DIR[m.modifier] || "";
+      switch (m.type) {
+        case "depart": return "Démarrez" + on;
+        case "arrive": return "Vous êtes arrivé" + (d ? " (destination " + d + ")" : "");
+        case "turn": case "end of road": return m.modifier === "uturn" ? "Faites demi-tour" + on : "Tournez " + d + on;
+        case "new name": case "continue": return "Continuez" + (d && m.modifier !== "straight" ? " " + d : "") + on;
+        case "merge": return "Insérez-vous" + on;
+        case "on ramp": return "Prenez la bretelle" + on;
+        case "off ramp": return "Prenez la sortie" + on;
+        case "fork": return "Prenez à " + (m.modifier && m.modifier.includes("left") ? "gauche" : "droite") + " à l'embranchement" + on;
+        case "roundabout": case "rotary": return "Au rond-point, prenez la sortie " + (m.exit || "") + on;
+        case "roundabout turn": return "Au rond-point, tournez " + d + on;
+        default: return "Continuez" + on;
+      }
+    }
+    async function getOrigin() {
+      if (lastPosGlobal) return { lng: lastPosGlobal.longitude, lat: lastPosGlobal.latitude };
+      const p = await new Promise((ok, fail) => {
+        if (!navigator.geolocation) return fail({ code: 0 });
+        navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 });
+      });
+      return { lng: p.coords.longitude, lat: p.coords.latitude };
+    }
+    async function computeRoute() {
+      if (!dest) return;
+      const req = ++routeReq;
+      $("place-card").classList.add("hidden");
+      $("route-card").classList.remove("hidden"); dockEl.classList.remove("hidden");
+      $("rc-dest").textContent = "Vers " + dest.title;
+      $("rc-sum").textContent = "Calcul de l'itinéraire…"; $("rc-steps").innerHTML = ""; $("rc-steps").classList.add("hidden"); $("rc-toggle").classList.add("hidden");
+      let o;
+      try { o = await getOrigin(); }
+      catch (e) { $("rc-sum").innerHTML = ""; const sp = document.createElement("span"); sp.className = "err"; sp.textContent = "Activez la localisation pour calculer un itinéraire depuis votre position."; $("rc-sum").append(sp); if (geo) geo.trigger(); return; }
+      const url = "https://routing.openstreetmap.de/routed-" + routeMode + "/route/v1/driving/" + o.lng + "," + o.lat + ";" + dest.lng + "," + dest.lat + "?overview=full&geometries=geojson&steps=true";
+      try {
+        const r = await fetch(url); if (!r.ok) throw new Error(r.status);
+        const j = await r.json(); if (req !== routeReq) return;
+        const rt = j.routes && j.routes[0]; if (!rt) throw new Error("none");
+        drawRoute(rt.geometry.coordinates);
+        $("rc-sum").innerHTML = "<b></b> <span></span>";
+        $("rc-sum").querySelector("b").textContent = fmtTime(rt.duration); $("rc-sum").querySelector("span").textContent = "(" + fmtDist(rt.distance) + ")";
+        const steps = (rt.legs[0] && rt.legs[0].steps) || [];
+        $("rc-steps").innerHTML = ""; steps.forEach(st => { const li = document.createElement("li"); li.textContent = stepText(st); if (st.distance > 0 && st.maneuver.type !== "arrive") { const sp = document.createElement("span"); sp.textContent = "  · " + fmtDist(st.distance); li.append(sp); } $("rc-steps").append(li); });
+        $("rc-toggle").classList.toggle("hidden", !steps.length); $("rc-toggle").textContent = "Voir les étapes";
+        const xs = rt.geometry.coordinates.map(c => c[0]), ys = rt.geometry.coordinates.map(c => c[1]);
+        map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: { top: 90, bottom: dockEl.offsetHeight + 40, left: 40, right: 40 }, maxZoom: 17, duration: 1200 });
+      } catch (e) {
+        if (req !== routeReq) return;
+        clearRouteLine(); $("rc-sum").innerHTML = ""; const sp = document.createElement("span"); sp.className = "err";
+        sp.textContent = e.message === "none" ? "Aucun itinéraire trouvé pour ce mode." : "Le calcul d'itinéraire est indisponible pour le moment."; $("rc-sum").append(sp);
+      }
+    }
+    $("pc-go").onclick = computeRoute;
+    $("pc-x").onclick = () => { closeDock(); if (marker) { marker.remove(); marker = null; } };
+    $("rc-x").onclick = () => { routeReq++; clearRouteLine(); $("route-card").classList.add("hidden"); if (dest) showPlace(dest); };
+    $("rc-toggle").onclick = () => { const open = $("rc-steps").classList.toggle("hidden"); $("rc-toggle").textContent = open ? "Voir les étapes" : "Masquer les étapes"; };
+    document.querySelectorAll(".modes button").forEach(b => b.onclick = () => {
+      document.querySelectorAll(".modes button").forEach(x => x.classList.toggle("on", x === b));
+      routeMode = b.dataset.mode; computeRoute();
+    });
 
     // ----- Installation sur l'écran d'accueil
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
@@ -752,7 +890,7 @@
         // Si une position nettement plus précise arrive ensuite (le GPS se verrouille), on se recentre dessus.
         let bestAcc = Infinity, lastPos = null, swallowClick = false;
         geo.on("geolocate", pos => {
-          lastPos = pos.coords;
+          lastPos = pos.coords; lastPosGlobal = pos.coords;
           const acc = pos.coords.accuracy || Infinity;
           const first = bestAcc === Infinity;
           if (!first && acc > bestAcc / 2) return;
