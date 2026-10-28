@@ -137,6 +137,11 @@
     .maplibregl-ctrl-attrib { background: rgba(4,11,28,.7) !important; color: #8fa6d1 !important; }
     .maplibregl-ctrl-attrib a { color: #8fa6d1 !important; }
     .maplibregl-ctrl-bottom-right { bottom: env(safe-area-inset-bottom, 0px); }
+    .sheet { position: absolute; left: .8rem; right: .8rem; bottom: calc(env(safe-area-inset-bottom, 0px) + .8rem); z-index: 7; max-width: 420px; margin: 0 auto; display: grid; gap: .6rem; padding: 1.4rem 1.2rem 1.2rem; border-radius: 24px; background: #fff; color: #1f1f1f; text-align: center; box-shadow: 0 -4px 40px rgba(0,0,0,.5); animation: rise .45s ease both; }
+    .sheet .pin { width: 52px; height: 52px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: #e8f0ff; color: #1a6bff; }
+    .sheet h2 { margin: .2rem 0 0; font-size: 1.25rem; font-weight: 600; }
+    .sheet p { margin: 0 0 .4rem; color: #5f6368; font-size: .95rem; line-height: 1.4; }
+    #geo-toast { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem); transform: translateX(-50%); z-index: 7; margin: 0; max-width: 85vw; padding: .7rem 1rem; border-radius: 14px; background: #fff; color: #1f1f1f; font-size: .92rem; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
   </style>
 </head>
 <body>
@@ -191,6 +196,14 @@
         <p id="who"></p>
         <button type="button" id="logout" role="menuitem">Se déconnecter</button>
       </div>
+      <div id="geo-ask" class="sheet hidden" role="dialog" aria-labelledby="geo-title">
+        <div class="pin"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
+        <h2 id="geo-title">Activer la localisation ?</h2>
+        <p>Nooxel World utilise votre position pour vous montrer où vous êtes sur la carte. Elle n'est pas enregistrée.</p>
+        <button type="button" class="btn-blue wide" id="geo-yes">Activer</button>
+        <button type="button" class="btn-outline" id="geo-no">Plus tard</button>
+      </div>
+      <p id="geo-toast" class="hidden"></p>
       <p id="map-error" class="hidden">Impossible de charger la carte. Vérifiez votre connexion.</p>
     </section>
   </main>
@@ -339,7 +352,29 @@
     }
 
     // ----- Carte (MapLibre + OpenStreetMap via OpenFreeMap, sans clé API)
-    let map = null, starting = false;
+    let map = null, geo = null, starting = false;
+    function toast(msg) {
+      $("geo-toast").textContent = msg; $("geo-toast").classList.remove("hidden");
+      setTimeout(() => $("geo-toast").classList.add("hidden"), 4500);
+    }
+    // Première visite : on demande d'abord à l'utilisateur ; ensuite le navigateur demande sa propre permission.
+    function askLocation() {
+      let asked = false;
+      try { asked = !!localStorage.getItem("nooxel_geo"); } catch (e) {}
+      if (!asked) { $("geo-ask").classList.remove("hidden"); return; }
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: "geolocation" })
+          .then(r => { if (r.state === "granted") geo.trigger(); }).catch(() => {});
+      }
+    }
+    function answerLocation(yes) {
+      try { localStorage.setItem("nooxel_geo", yes ? "yes" : "no"); } catch (e) {}
+      $("geo-ask").classList.add("hidden");
+      if (yes && geo) geo.trigger();
+    }
+    $("geo-yes").onclick = () => answerLocation(true);
+    $("geo-no").onclick = () => answerLocation(false);
+
     async function startMap() {
       if (map) { map.resize(); return; }
       if (starting) return;
@@ -354,11 +389,17 @@
           attributionControl: { compact: true }
         });
         map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
-        map.addControl(new maplibregl.GeolocateControl({
+        geo = new maplibregl.GeolocateControl({
           positionOptions: { enableHighAccuracy: true },
+          fitBoundsOptions: { maxZoom: 17 },   // zoom "à fond" sur votre position
           trackUserLocation: true,
           showUserHeading: true
-        }), "bottom-right");
+        });
+        map.addControl(geo, "bottom-right");
+        geo.on("error", err => toast(err && err.code === 1
+          ? "Localisation refusée. Activez-la dans les réglages de votre navigateur."
+          : "Position introuvable pour le moment."));
+        map.on("load", askLocation);
         // Erreur affichée seulement si la carte n'a jamais réussi à démarrer (pas pour une tuile ou une icône manquante).
         let ready = false;
         const ok = () => { ready = true; $("map-error").classList.add("hidden"); };
