@@ -194,6 +194,15 @@
     #q-list li.note { cursor: default; color: #5f6368; font-size: .92rem; }
     #q-list li.note:hover { background: transparent; }
     #brand { position: absolute; left: .9rem; bottom: calc(env(safe-area-inset-bottom, 0px) + 1.6rem); z-index: 5; margin: 0; padding: .35rem .8rem; border-radius: 999px; background: rgba(4,11,28,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #e6f0ff; font-size: .85rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 0 12px rgba(30,130,255,.6); pointer-events: none; user-select: none; }
+
+    .maplibregl-ctrl-group.locate-ctrl { width: 52px; height: 52px; margin: 0 .8rem 1.9rem 0 !important; border-radius: 50% !important; background: #fff; box-shadow: 0 6px 22px rgba(0,0,0,.5), 0 0 0 1px rgba(26,107,255,.25) !important; overflow: hidden; }
+    .locate-ctrl button { width: 52px !important; height: 52px !important; border-radius: 50% !important; transition: background .2s; }
+    .locate-ctrl button .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%231a6bff%22 stroke-width=%222%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%226.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222.2%22 fill=%22%231a6bff%22 stroke=%22none%22/%3E%3Cpath d=%22M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22%22/%3E%3C/svg%3E") !important; background-size: 28px 28px !important; background-repeat: no-repeat; background-position: center; }
+    .locate-ctrl button.maplibregl-ctrl-geolocate-active, .locate-ctrl button.maplibregl-ctrl-geolocate-background { background: #e8f0ff; }
+    .locate-ctrl button.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon, .locate-ctrl button.maplibregl-ctrl-geolocate-background .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%231a6bff%22 stroke-width=%222%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%226.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%223.6%22 fill=%22%231a6bff%22 stroke=%22none%22/%3E%3Cpath d=%22M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22%22/%3E%3C/svg%3E") !important; }
+    .locate-ctrl button.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon, .locate-ctrl button.maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23d93025%22 stroke-width=%222%22 stroke-linecap=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%226.5%22/%3E%3Cpath d=%22M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22M5 5l14 14%22/%3E%3C/svg%3E") !important; }
+    .locate-ctrl button.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon { animation: locpulse .9s ease-in-out infinite; }
+    @keyframes locpulse { 50% { opacity: .35; transform: scale(.85); } }
   </style>
 </head>
 <body>
@@ -702,6 +711,8 @@
           showUserHeading: true
         });
         map.addControl(geo, "bottom-right");
+        const gb = document.querySelector(".maplibregl-ctrl-geolocate");
+        if (gb && gb.parentElement) gb.parentElement.classList.add("locate-ctrl");
         map.touchZoomRotate.disableRotation();   // pincer pour zoomer, sans faire tourner
         map.keyboard.disableRotation();
         geo.on("error", err => {
