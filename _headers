@@ -1,0 +1,20 @@
+# En-têtes HTTP pour Cloudflare Pages (équivalent de vercel.json). Ignoré par les autres hébergeurs.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self)
+
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/sw.js
+  Cache-Control: no-cache
+
+/admin.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+
+/pro.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
