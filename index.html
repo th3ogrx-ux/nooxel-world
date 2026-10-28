@@ -191,6 +191,18 @@
     </section>
   </main>
 
+  <script>
+    // Déjà connecté sur cet appareil ? On va directement à la carte, sans passer par l'écran d'entrée.
+    const AUTH_KEY = "sb-smjbgjolteovcwkoxcar-auth-token";
+    function storedSession() {
+      try { const v = JSON.parse(localStorage.getItem(AUTH_KEY)); return v && v.user ? v : null; } catch (e) { return null; }
+    }
+    if (storedSession()) {
+      document.getElementById("welcome").classList.add("hidden");
+      document.getElementById("home").classList.remove("hidden");
+    }
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
     // Clé publique (anon) : conçue pour être exposée côté navigateur.
@@ -288,9 +300,9 @@
 
     // Si la vérification de connexion traîne (ou échoue), on affiche quand même l'écran d'entrée.
     function getSession() {
-      if (!sb) return Promise.resolve(null);
-      const wait = new Promise(r => setTimeout(() => r(null), 4000));
-      return Promise.race([sb.auth.getSession().then(r => r.data.session), wait]).catch(() => null);
+      if (!sb) return Promise.resolve(storedSession());
+      const wait = new Promise(r => setTimeout(() => r(storedSession()), 4000));
+      return Promise.race([sb.auth.getSession().then(r => r.data.session), wait]).catch(() => storedSession());
     }
 
     async function render() {
