@@ -136,7 +136,7 @@
     #home { position: fixed; inset: 0; z-index: 5; background: #040b1c; }
     #map { position: absolute; inset: 0; }
     #me { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .8rem); right: .8rem; z-index: 6; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: inherit; font-weight: 700; font-size: 1.05rem; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
-    #menu { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 3.6rem); right: .8rem; z-index: 6; min-width: 210px; max-width: calc(100vw - 1.6rem); padding: .9rem; border-radius: 18px; background: #fff; color: #1f1f1f; box-shadow: 0 12px 40px rgba(0,0,0,.4); text-align: left; animation: pop .2s ease both; }
+    #menu { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 3.6rem); right: .8rem; z-index: 6; box-sizing: border-box; width: min(280px, calc(100vw - 1.6rem)); padding: .9rem; border-radius: 18px; background: #fff; color: #1f1f1f; box-shadow: 0 12px 40px rgba(0,0,0,.4); text-align: left; animation: pop .2s ease both; }
     #menu #who { margin: 0 0 .7rem; font-size: .92rem; color: #5f6368; word-break: break-all; }
     #menu #logout { width: 100%; font: inherit; font-weight: 600; color: #d93025; background: #fdecea; border: 0; border-radius: 12px; padding: .65rem; cursor: pointer; }
     #map-error { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; margin: 0; padding: 1rem 1.2rem; border-radius: 14px; background: #fff; color: #1f1f1f; max-width: 80vw; }
@@ -166,6 +166,15 @@
     #menu #menu-install { width: 100%; margin-bottom: .5rem; font: inherit; font-weight: 600; color: #1a6bff; background: #eaf1ff; border: 0; border-radius: 12px; padding: .65rem; cursor: pointer; }
     .gcard .check { display: flex; align-items: center; gap: .7rem; text-align: left; cursor: pointer; color: #1f1f1f; font-size: .95rem; }
     .gcard .check input { flex: none; width: 22px; height: 22px; padding: 0; accent-color: #1a6bff; cursor: pointer; }
+    .legal-links { margin: .8rem 0 0; font-size: .75rem; line-height: 1.5; color: #8a93a6; text-align: center; }
+    .legal-links a { color: inherit; }
+    #welcome .legal-links.foot { margin-top: 1.4rem; color: #4d6395; }
+    #menu .danger-link { width: 100%; margin-top: .5rem; font: inherit; font-size: .88rem; color: #80868b; background: none; border: 0; padding: .4rem; cursor: pointer; }
+    #menu .danger-link:hover { color: #d93025; }
+    .gcard .terms { margin: 0; font-size: .82rem; color: #5f6368; text-align: left; line-height: 1.4; }
+    .gcard .terms a { color: #1a6bff; }
+    .btn-red { font: inherit; font-weight: 600; color: #fff; background: #d93025; border: 0; border-radius: 999px; padding: .85rem 1.5rem; cursor: pointer; }
+    .btn-red:disabled { opacity: .6; }
   </style>
 </head>
 <body>
@@ -185,6 +194,7 @@
           <img src="assets/logo-n.webp" alt="">
         </button>
         <p class="req hidden" id="req">Un compte Nooxel est requis pour accéder à Nooxel World</p>
+        <p class="legal-links foot"><a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></p>
       </div>
     </section>
 
@@ -204,7 +214,8 @@
         <input id="email" type="email" placeholder="Email" autocomplete="email" required>
           <input id="password" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
           <input id="password2" class="hidden" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password" minlength="6">
-          <label id="age-row" class="check hidden"><input type="checkbox" id="age"><span>J'ai 15 ans ou plus</span></label>
+          <p id="terms" class="terms hidden">En créant un compte, vous acceptez les <a href="cgu.html">conditions d'utilisation</a> et la <a href="confidentialite.html">politique de confidentialité</a>.</p>
+        <label id="age-row" class="check hidden"><input type="checkbox" id="age"><span>J'ai 15 ans ou plus</span></label>
         <p id="msg" role="alert"></p>
           <div class="actions">
             <button type="button" class="link" id="toggle">← Retour</button>
@@ -221,6 +232,8 @@
         <p id="who"></p>
         <button type="button" id="menu-install" class="hidden" role="menuitem">Installer l'application</button>
         <button type="button" id="logout" role="menuitem">Se déconnecter</button>
+        <button type="button" id="delete-account" class="danger-link" role="menuitem">Supprimer mon compte</button>
+        <p class="legal-links"><a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></p>
       </div>
       <div id="geo-ask" class="sheet hidden" role="dialog" aria-labelledby="geo-title">
         <div class="pin"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
@@ -252,6 +265,13 @@
         <p class="for" id="ih-for"></p>
         <ol id="ih-steps" class="steps"></ol>
         <button type="button" class="btn-blue wide" id="ih-ok">C'est compris</button>
+      </div>
+      <div id="del-confirm" class="sheet hidden" role="alertdialog" aria-labelledby="del-title">
+        <div class="pin off"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg></div>
+        <h2 id="del-title">Supprimer votre compte ?</h2>
+        <p>Votre compte Nooxel et vos données seront effacés définitivement. Cette action est irréversible.</p>
+        <button type="button" class="btn-red" id="del-yes">Supprimer définitivement</button>
+        <button type="button" class="btn-outline" id="del-no">Annuler</button>
       </div>
       <p id="geo-toast" class="hidden"></p>
       <p id="map-error" class="hidden">Impossible de charger la carte. Vérifiez votre connexion.</p>
@@ -319,6 +339,7 @@
       $("password").minLength = signup ? 6 : 0;
       $("password2").classList.toggle("hidden", !signup);
       $("age-row").classList.toggle("hidden", !signup);
+      $("terms").classList.toggle("hidden", !signup);
       $("age").checked = false;
       $("password2").required = signup;
       $("password2").value = "";
@@ -640,6 +661,20 @@
         return say("Compte créé. Un email de confirmation a été envoyé à " + creds.email + ". Ouvrez-le pour activer votre compte.", true);
       }
       saveAccount(creds.email); render();
+    };
+    $("delete-account").onclick = () => { $("menu").classList.add("hidden"); $("del-confirm").classList.remove("hidden"); };
+    $("del-no").onclick = () => $("del-confirm").classList.add("hidden");
+    $("del-yes").onclick = async () => {
+      if (!sb) return;
+      $("del-yes").disabled = true;
+      const { error } = await sb.rpc("delete_my_account");
+      $("del-yes").disabled = false;
+      $("del-confirm").classList.add("hidden");
+      if (error) return toast("La suppression n'a pas pu être faite pour le moment. Contactez-nous pour effacer votre compte.");
+      const em = $("who").textContent;
+      try { removeAccount(em); localStorage.removeItem(AUTH_KEY); } catch (e) {}
+      await sb.auth.signOut().catch(() => {});
+      location.reload();
     };
     $("logout").onclick = async () => { if (sb) await sb.auth.signOut(); render(); };
     if (sb) sb.auth.onAuthStateChange(() => render());
