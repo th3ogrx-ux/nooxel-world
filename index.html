@@ -4,7 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nooxel World</title>
-  <link rel="icon" href="assets/logo-n.png">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+  <link rel="preconnect" href="https://openmaptiles.github.io" crossorigin>
+  <link rel="preload" href="assets/map-style.json" as="fetch" crossorigin>
   <style>
     html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
     body { margin: 0; height: 100dvh; box-sizing: border-box; background: #000; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: center; padding: 2rem 1rem; text-align: center; }
@@ -139,7 +143,7 @@
   <main>
     <section id="welcome">
       <div class="hero">
-        <div class="planet-wrap"><img class="planet" src="assets/planet.png" alt="Nooxel World"></div>
+        <div class="planet-wrap"><img class="planet" src="assets/planet.webp" alt="Nooxel World"></div>
         <h1 class="brand">Nooxel World</h1>
       </div>
       <div class="intro-bottom">
@@ -149,7 +153,7 @@
         </div>
         <button type="button" class="btn-white hidden" id="go-login">
           <span>Se connecter à Nooxel</span>
-          <img src="assets/logo-n.png" alt="">
+          <img src="assets/logo-n.webp" alt="">
         </button>
         <p class="req hidden" id="req">Un compte Nooxel est requis pour accéder à Nooxel World</p>
       </div>
@@ -157,7 +161,7 @@
 
     <div id="layer" class="hidden">
       <form id="login" class="gcard" role="dialog" aria-modal="true" aria-labelledby="title">
-        <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
+        <img class="logo-n" src="assets/logo-n.webp" alt="Nooxel">
         <h1 id="title">Connexion</h1>
         <p class="continue" id="sub"></p>
         <div id="chooser" class="hidden">
@@ -201,6 +205,20 @@
       document.getElementById("welcome").classList.add("hidden");
       document.getElementById("home").classList.remove("hidden");
     }
+
+    function loadMapLib() {
+      if (window.maplibregl) return Promise.resolve();
+      return new Promise((ok, fail) => {
+        const css = document.createElement("link"); css.rel = "stylesheet";
+        css.href = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css";
+        const js = document.createElement("script");
+        js.src = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js";
+        js.onload = ok; js.onerror = fail;
+        document.head.append(css, js);
+      });
+    }
+    // Déjà connecté : on télécharge la bibliothèque de carte tout de suite, en parallèle du reste.
+    if (storedSession()) window.__lib = loadMapLib();
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -224,8 +242,8 @@
     }
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
-    const SUB = '<span>pour continuer vers</span> <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong>';
-    const SUB_UP = '<span>Un seul compte pour accéder à</span> <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong>';
+    const SUB = '<span>pour continuer vers</span> <img src="assets/planet.webp" alt=""> <strong>Nooxel World</strong>';
+    const SUB_UP = '<span>Un seul compte pour accéder à</span> <img src="assets/planet.webp" alt=""> <strong>Nooxel World</strong>';
 
     function setMode(signup, animate) {
       signupMode = signup;
@@ -322,24 +340,12 @@
 
     // ----- Carte (MapLibre + OpenStreetMap via OpenFreeMap, sans clé API)
     let map = null, starting = false;
-    function loadMapLib() {
-      if (window.maplibregl) return Promise.resolve();
-      return new Promise((ok, fail) => {
-        const css = document.createElement("link"); css.rel = "stylesheet";
-        css.href = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css";
-        const js = document.createElement("script");
-        js.src = "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js";
-        js.onload = ok; js.onerror = fail;
-        document.head.append(css, js);
-      });
-    }
-
     async function startMap() {
       if (map) { map.resize(); return; }
       if (starting) return;
       starting = true;
       try {
-        await loadMapLib();
+        await (window.__lib || loadMapLib());
         map = new maplibregl.Map({
           container: "map",
           style: new URL("assets/map-style.json", location.href).href,
@@ -405,6 +411,7 @@
     };
     $("logout").onclick = async () => { if (sb) await sb.auth.signOut(); render(); };
     if (sb) sb.auth.onAuthStateChange(() => render());
+    if (storedSession()) startMap();   // pas besoin d'attendre la vérification pour lancer la carte
     render();
   </script>
 </body>
