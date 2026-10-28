@@ -94,6 +94,13 @@
     #back:hover { background: #f1f3f4; }
     @keyframes fade { from { opacity: 0; } }
     @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+
+    .gcard .continue span { white-space: nowrap; }
+    .gcard.swap-up { animation: slideLeft .35s ease both; }
+    .gcard.swap { animation: slideRight .35s ease both; }
+    .gcard.swap-up h1 { color: #1a6bff; }
+    @keyframes slideLeft { from { opacity: .3; transform: translateX(40px); } }
+    @keyframes slideRight { from { opacity: .3; transform: translateX(-40px); } }
   </style>
 </head>
 <body>
@@ -121,9 +128,10 @@
         <button type="button" id="back" aria-label="Fermer">✕</button>
         <img class="logo-n" src="assets/logo-n.png" alt="Nooxel">
         <h1 id="title">Connexion</h1>
-        <p class="continue" id="sub">pour continuer vers <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong></p>
+        <p class="continue" id="sub"></p>
         <input id="email" type="email" placeholder="Email" autocomplete="email" required>
         <input id="password" type="password" placeholder="Mot de passe (6 caractères min.)" autocomplete="current-password" minlength="6" required>
+        <input id="password2" class="hidden" type="password" placeholder="Confirmer le mot de passe" autocomplete="new-password" minlength="6">
         <p id="msg" role="alert"></p>
         <div class="actions">
           <button type="button" class="link" id="toggle">Créer un compte Nooxel</button>
@@ -153,14 +161,28 @@
 
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
-    function setMode(signup) {
+    const SUB = '<span>pour continuer vers</span> <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong>';
+    const SUB_UP = '<span>Un seul compte pour accéder à</span> <img src="assets/planet.png" alt=""> <strong>Nooxel World</strong>';
+
+    function setMode(signup, animate) {
       signupMode = signup;
       $("title").textContent = signup ? "Créer un compte Nooxel" : "Connexion";
+      $("sub").innerHTML = signup ? SUB_UP : SUB;
       $("submit-label").textContent = signup ? "Créer mon compte" : "Se connecter";
-      $("toggle").textContent = signup ? "J'ai déjà un compte Nooxel" : "Créer un compte Nooxel";
+      $("toggle").textContent = signup ? "J'ai déjà un compte" : "Créer un compte Nooxel";
       $("password").autocomplete = signup ? "new-password" : "current-password";
+      $("password2").classList.toggle("hidden", !signup);
+      $("password2").required = signup;
+      $("password2").value = "";
       say("");
+      if (animate) {
+        const f = $("login");
+        f.classList.remove("swap"); void f.offsetWidth;
+        
+        f.classList.toggle("swap-up", signup); f.classList.toggle("swap", !signup);
+      }
     }
+    setMode(false);
 
     let wantsLogin = false;
 
@@ -189,9 +211,10 @@
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
-    $("toggle").onclick = () => setMode(!signupMode);
+    $("toggle").onclick = () => { setMode(!signupMode, true); $("email").focus(); };
     $("login").onsubmit = async e => {
       e.preventDefault();
+      if (signupMode && $("password").value !== $("password2").value) return say("Les mots de passe ne correspondent pas.");
       $("submit").disabled = true; say("");
       const creds = { email: $("email").value.trim(), password: $("password").value };
       const { data, error } = signupMode ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
