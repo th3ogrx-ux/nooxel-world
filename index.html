@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nooxel World</title>
   <style>
-    body { margin: 0; min-height: 100vh; background: #0b0b0f; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: start center; padding: 2rem 1rem; }
+    body { margin: 0; min-height: 100vh; background: #000; color: #fff; font-family: system-ui, sans-serif; display: grid; place-items: center; padding: 2rem 1rem; text-align: center; }
     main { width: 100%; max-width: 420px; }
     input, button { font: inherit; padding: .6rem .8rem; border-radius: 8px; border: 1px solid #333; background: #16161d; color: #fff; }
     button { cursor: pointer; background: #3b82f6; border-color: #3b82f6; }
@@ -40,26 +40,9 @@
   </div>
   <main>
     <h1>Nooxel World</h1>
-    <p id="msg" class="muted"></p>
-
-    <form id="auth">
-      <input id="email" type="email" placeholder="Email" required>
-      <input id="password" type="password" placeholder="Mot de passe (6+ car.)" required minlength="6">
-      <button type="submit" id="login">Connexion</button>
-      <button type="button" id="signup" class="ghost">Créer un compte</button>
-    </form>
-
-    <section id="app" class="hidden">
-      <p class="muted"><span id="who"></span> · <a href="#" id="logout" style="color:#8ab4ff">Déconnexion</a></p>
-      <form id="add">
-        <input id="title" placeholder="Nouvel élément" required maxlength="200">
-        <button type="submit">Ajouter</button>
-      </form>
-      <ul id="list"></ul>
-    </section>
+    <p class="muted">La carte arrive bientôt.</p>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script>
     // Clé publique (anon) : conçue pour être exposée côté navigateur.
     const sb = supabase.createClient(
