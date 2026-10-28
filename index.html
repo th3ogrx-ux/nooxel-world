@@ -57,12 +57,26 @@
     @keyframes pulse { 50% { opacity: .65; } }
     @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { .planet, .planet-wrap::before, .btn-white { animation: none; } }
+
+    #welcome { gap: 2.4rem; }
+    .hero { display: grid; justify-items: center; gap: 1.6rem; transition: transform .45s ease, opacity .45s ease; }
+    .brand { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; padding-left: .32em; color: #e6f0ff; text-shadow: 0 0 18px rgba(30,130,255,.7); animation: rise .8s ease .2s both; }
+    .planet-wrap { perspective: 800px; }
+    .planet { animation: float 4s ease-in-out infinite, sway 7s ease-in-out infinite; }
+    @keyframes sway { 0%, 100% { rotate: y -9deg; } 50% { rotate: y 9deg; } }
+    #welcome.leaving .hero { transform: translateY(-40px) scale(.55); opacity: 0; }
+    #welcome.leaving .intro-bottom { opacity: 0; transition: opacity .25s ease; }
+    #login, #home { animation: rise .45s ease both; }
+    @media (prefers-reduced-motion: reduce) { .planet, .brand { animation: none; } }
   </style>
 </head>
 <body>
   <main>
     <section id="welcome" class="hidden">
-      <div class="planet-wrap"><img class="planet" src="assets/planet.png" alt="Nooxel World"></div>
+      <div class="hero">
+        <div class="planet-wrap"><img class="planet" src="assets/planet.png" alt="Nooxel World"></div>
+        <h1 class="brand">Nooxel World</h1>
+      </div>
       <div class="intro-bottom">
         <div class="loader" id="loader">
           <div class="bar"><span id="bar-fill"></span></div>
@@ -132,12 +146,15 @@
     $("bar-fill").animate([{ width: "0%" }, { width: "100%" }], { duration: LOAD_MS, easing: "ease-in-out", fill: "forwards" });
     function showButton() {
       $("loader").classList.add("out");
-      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); }, 400);
+      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); if (navigator.vibrate) navigator.vibrate(15); }, 400);
     }
     const ready = () => setTimeout(showButton, Math.max(0, LOAD_MS - (Date.now() - t0)));
     if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
 
-    $("go-login").onclick = () => { wantsLogin = true; render(); $("email").focus(); };
+    $("go-login").onclick = () => {
+      $("welcome").classList.add("leaving");
+      setTimeout(() => { wantsLogin = true; render(); $("welcome").classList.remove("leaving"); $("email").focus(); }, 380);
+    };
     $("back").onclick = () => { wantsLogin = false; setMode(false); render(); };
 
     $("toggle").onclick = () => setMode(!signupMode);
