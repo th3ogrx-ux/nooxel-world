@@ -22,7 +22,7 @@
     .card p { margin: .3rem 0 .6rem; color: var(--mute); font-size: .95rem; }
     .card .ink { color: var(--ink); }
     label { display: grid; gap: .25rem; margin: .7rem 0 0; font-size: .9rem; color: var(--mute); }
-    input[type=text], input[type=url], textarea { font: inherit; font-size: 16px; padding: .7rem .8rem; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; width: 100%; }
+    input[type=text], input[type=url], input[type=tel], textarea { font: inherit; font-size: 16px; padding: .7rem .8rem; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; width: 100%; }
     input:focus, textarea:focus { outline: 2px solid rgba(26,107,255,.35); border-color: var(--blue); }
     textarea { min-height: 84px; resize: vertical; }
     button { font: inherit; cursor: pointer; }
@@ -43,6 +43,7 @@
     .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
     .err { color: #b3261e; font-size: .92rem; margin: .5rem 0 0; min-height: 1.2em; }
     .okmsg { color: #0d6b3a; font-size: .92rem; margin: .5rem 0 0; }
+    #siret-ok { color: #8ae6b0; }
     .code { font: 700 1.3rem ui-monospace, monospace; letter-spacing: .12em; background: #f1f5ff; padding: .3rem .7rem; border-radius: 10px; color: #0b3fa8; }
     .hist { list-style: none; margin: .4rem 0 0; padding: 0; }
     .hist li { padding: .45rem 0; border-top: 1px solid #eceff3; font-size: .92rem; color: var(--ink); display: flex; justify-content: space-between; gap: 1rem; }
@@ -52,6 +53,7 @@
     .thumb { max-width: 120px; max-height: 90px; border-radius: 8px; margin-top: .4rem; border: 1px solid #dadce0; }
     .hidden { display: none !important; }
     details summary { cursor: pointer; font-weight: 600; color: var(--blue); }
+    .banner details summary { color: inherit; text-decoration: underline; }
     footer { margin-top: 2rem; font-size: .85rem; color: #7f93bd; }
   </style>
 </head>
@@ -93,15 +95,15 @@
     email_not_confirmed: "Confirmez d'abord votre adresse email.",
     not_eligible: "Une vérification est déjà en cours ou terminée.",
     too_many_requests: "Trop de demandes récentes. Réessayez plus tard.",
-    documents_not_found: "Les photos n'ont pas été reçues. Réessayez.",
-    documents_required: "Ajoutez la pièce d'identité et la photo.",
-    invalid_document_path: "Fichier invalide.",
+    invalid_phone: "Numéro de téléphone invalide (par exemple 06 12 34 56 78).",
+    invalid_social_url: "Indiquez un lien complet vers votre page Instagram, Facebook ou TikTok (https://…).",
+    invalid_siret: "Ce numéro SIRET n'est pas valide (14 chiffres).",
+    siret_not_checked: "Contrôlez d'abord votre SIRET avec le bouton, ou laissez le champ vide.",
     invalid_referral_code: "Ce code de parrainage n'est pas valide.",
     not_contestable: "Ce refus ne peut plus être contesté.",
     contest_window_closed: "Le délai de 30 jours pour contester est dépassé.",
     message_too_short: "Expliquez votre contestation (10 caractères minimum).",
     another_request_open: "Une autre demande est déjà ouverte.",
-    documents_already_deleted: "Les pièces ont déjà été supprimées : déposez une nouvelle demande.",
     no_profile: "Créez d'abord votre profil.",
   };
   const fr = (e) => { const m = String(e?.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
@@ -112,29 +114,10 @@
   const HIST = {
     profile_created: "Profil créé", siret_checked: "SIRET contrôlé", submitted: "Demande envoyée", cancelled: "Demande annulée",
     approved: "Demande approuvée", rejected: "Demande refusée", contested: "Contestation envoyée", contest_upheld: "Contestation acceptée",
-    contest_dismissed: "Contestation rejetée (décision finale)", document_viewed: "Pièce consultée par l'équipe de vérification",
-    documents_deleted: "Pièces supprimées", revoked: "Badge retiré",
+    contest_dismissed: "Contestation rejetée (décision finale)", document_viewed: "Ancienne pièce consultée par l'équipe de vérification",
+    documents_deleted: "Anciennes pièces supprimées", revoked: "Badge retiré",
   };
   const BY = { owner: "vous", admin: "équipe", system: "automatique" };
-
-  // Réduit la photo (≤ 1600 px, JPEG) : plus rapide à envoyer, et retire les métadonnées (position GPS de la photo…).
-  async function compress(file) {
-    if (!file || !file.type.startsWith("image/")) throw new Error("Choisissez une photo (image).");
-    if (file.size > 30e6) throw new Error("Cette image est trop lourde.");
-    let src;
-    try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
-    catch {
-      src = await new Promise((ok, no) => { const u = URL.createObjectURL(file), i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("Impossible de lire cette image. Essayez une photo JPEG ou PNG.")); i.src = u; });
-    }
-    const w = src.width || src.naturalWidth, h = src.height || src.naturalHeight, k = Math.min(1, 1600 / Math.max(w, h));
-    const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
-    c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
-    for (const q of [0.88, 0.75, 0.6]) {
-      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", q));
-      if (blob && blob.size <= 4.5e6) return blob;
-    }
-    throw new Error("Image trop lourde même réduite.");
-  }
 
   let me = null, state = null;
 
@@ -158,12 +141,10 @@
     const req = state.request, v = state.verification;
     // — bandeau de statut
     if (v === "pending") {
-      app.append(el("div", { class: "banner b-pending", id: "status" }, el("b", { text: "En attente de vérification" }),
-        req?.status === "contested" ? "Votre contestation est en cours d'examen." : `Demande envoyée le ${fmtDate(req?.created_at)}. Nous examinons votre dossier.`));
-    } else if (v === "company_verified") {
-      app.append(el("div", { class: "banner b-ok", id: "status" }, el("b", { text: "Entreprise vérifiée" }), "Votre SIRET est actif. Votre profil est visible en priorité et peut recevoir des avis."));
-    } else if (v === "profile_confirmed") {
-      app.append(el("div", { class: "banner b-pro", id: "status" }, el("b", { text: "Profil confirmé" }), "Votre identité a été vérifiée par notre équipe. Votre profil peut recevoir des avis."));
+      app.append(el("div", { class: "banner b-pending", id: "status" }, el("b", { text: "En attente de validation" }),
+        req?.status === "contested" ? "Votre contestation est en cours d'examen." : `Demande envoyée le ${fmtDate(req?.created_at)}. Nous examinons votre dossier à la main.`));
+    } else if (v === "verified") {
+      app.append(el("div", { class: "banner b-ok", id: "status" }, el("b", { text: "Professionnel vérifié" }), "Votre profil a été validé par notre équipe. Il est visible en priorité et peut recevoir des avis."));
     } else {
       app.append(el("div", { class: "banner b-none", id: "status" }, el("b", { text: "Non vérifié" }), "Votre profil existe mais avec une visibilité réduite, et il ne peut pas recevoir d'avis."));
     }
@@ -172,11 +153,9 @@
 
     app.append(profileCard());
     if (v === "pending" && req && ["pending", "contested"].includes(req.status)) app.append(pendingCard(req));
-    if (v === "company_verified") app.append(referralCard());
-    if (v === "none" || v === "profile_confirmed") app.append(siretCard());
-    if (v === "none") app.append(identityCard());
+    if (v === "verified") app.append(referralCard());
+    if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
-    if (req && req.docs_deleted_at == null && ["pending", "contested", "approved", "rejected", "rejected_final"].includes(req.status) && req.kind === "profile") app.append(dataCard(req));
   }
 
   // ---- création du profil
@@ -204,7 +183,7 @@
     const err = el("p", { class: "err" }), ok = el("p", { class: "okmsg" });
     const name = el("input", { type: "text", id: "e-name", maxlength: 120, value: state.business_name });
     const desc = el("textarea", { id: "e-desc", maxlength: 1000 }); desc.value = "";
-    const badge = { company_verified: ["ok", "Entreprise vérifiée"], profile_confirmed: ["pro", "Profil confirmé"], pending: ["wait", "En attente"] }[state.verification] || ["none", "Non vérifié"];
+    const badge = { verified: ["ok", "Professionnel vérifié"], pending: ["wait", "En attente"] }[state.verification] || ["none", "Non vérifié"];
     const form = el("form", { class: "hidden", id: "edit-form", onsubmit: async (e) => {
       e.preventDefault(); err.textContent = ""; ok.textContent = "";
       const { error } = await sb.from("merchant_profiles").update({ business_name: name.value.trim(), description: desc.value.trim() || null }).eq("id", state.merchant_id);
@@ -220,10 +199,14 @@
   // ---- demande en cours
   function pendingCard(req) {
     const err = el("p", { class: "err" });
-    return el("div", { class: "card" }, el("h2", { text: "Votre demande" }),
-      el("p", { text: req.kind === "profile" ? "Pièce d'identité et photo reçues. Réponse sous quelques jours." : "Demande en cours." }),
+    return el("div", { class: "card", id: "pending-card" }, el("h2", { text: "Votre demande" }),
+      el("p", { text: "Un membre de l'équipe examine votre demande et regarde votre page. Réponse sous quelques jours." }),
+      el("ul", { class: "hist" },
+        req.social_url ? el("li", {}, el("span", { text: "Page" }), el("span", { text: req.social_url })) : null,
+        req.phone_end ? el("li", {}, el("span", { text: "Téléphone" }), el("span", { text: "se termine par " + req.phone_end })) : null,
+        req.has_siret ? el("li", {}, el("span", { text: "SIRET" }), el("span", { text: req.company_name ? "contrôlé : " + req.company_name : "contrôlé" })) : null),
       req.status === "pending" ? el("button", { class: "btn danger small", id: "cancel-btn", type: "button", text: "Annuler la demande", onclick: async () => {
-        if (!confirm("Annuler la demande ? Vos pièces seront supprimées.")) return;
+        if (!confirm("Annuler la demande ? Le téléphone et le lien envoyés seront effacés.")) return;
         const { error } = await sb.rpc("cancel_verification", { p_request_id: req.id });
         if (error) { err.textContent = fr(error); return; } await load();
       } }) : null, err);
@@ -244,59 +227,45 @@
     return box;
   }
 
-  // ---- niveau 1 : SIRET
-  function siretCard() {
-    const input = el("input", { type: "text", id: "siret", inputmode: "numeric", autocomplete: "off", placeholder: "14 chiffres", maxlength: 20 });
-    const err = el("p", { class: "err", id: "siret-err" }), btn = el("button", { class: "btn", id: "siret-btn", type: "button", text: "Vérifier mon entreprise" });
-    btn.addEventListener("click", async () => {
-      err.textContent = ""; btn.disabled = true; btn.textContent = "Vérification…";
-      const { data, error } = await sb.functions.invoke("verify-siret", { body: { siret: input.value } });
-      btn.disabled = false; btn.textContent = "Vérifier mon entreprise";
-      if (error) { err.textContent = await fnMessage(error); return; }
-      if (!data?.ok) { err.textContent = data?.message || "Vérification impossible."; return; }
-      await load();
-    });
-    return el("div", { class: "card", id: "siret-card" }, el("h2", { text: "Vous avez un SIRET ?" }),
-      el("p", { text: "Nous vérifions gratuitement, auprès du registre officiel des entreprises, qu'il existe et qu'il est actif. Vous obtenez le badge « entreprise vérifiée »." }),
-      el("label", {}, "Numéro SIRET", input), err, btn);
-  }
-
-  // ---- niveau 2 : pièce d'identité + photo
-  function identityCard() {
-    const mk = (id, label, capture) => {
-      const inp = el("input", { type: "file", id, accept: "image/*", capture }); const th = el("img", { class: "thumb hidden", alt: "" });
-      inp.addEventListener("change", () => { const f = inp.files[0]; if (f) { th.src = URL.createObjectURL(f); th.classList.remove("hidden"); } else th.classList.add("hidden"); });
-      return { inp, node: el("label", {}, label, inp, th) };
-    };
-    const idF = mk("f-id", "Photo de votre pièce d'identité (recto)", "environment");
-    const sfF = mk("f-selfie", "Photo de vous tenant la pièce d'identité", "user");
-    const social = el("input", { type: "url", id: "f-social", placeholder: "https://instagram.com/votre_commerce" });
+  // ---- demande de vérification (examinée à la main)
+  function requestCard() {
+    const phone = el("input", { type: "tel", id: "f-phone", autocomplete: "tel", placeholder: "06 12 34 56 78", maxlength: 24 });
+    const social = el("input", { type: "url", id: "f-social", placeholder: "https://instagram.com/votre_commerce", maxlength: 300 });
+    const siret = el("input", { type: "text", id: "siret", inputmode: "numeric", autocomplete: "off", placeholder: "14 chiffres (facultatif)", maxlength: 20 });
     const ref = el("input", { type: "text", id: "f-ref", placeholder: "Facultatif", maxlength: 12, autocapitalize: "characters" });
     const cons = el("input", { type: "checkbox", id: "f-consent" });
-    const err = el("p", { class: "err", id: "id-err" }), btn = el("button", { class: "btn", id: "id-btn", type: "button", text: "Envoyer ma demande" });
+    const sErr = el("p", { class: "err", id: "siret-err" }), sOk = el("p", { class: "okmsg", id: "siret-ok" });
+    const err = el("p", { class: "err", id: "req-err" });
+    const sBtn = el("button", { class: "btn ghost small", id: "siret-btn", type: "button", text: "Contrôler ce SIRET" });
+    const btn = el("button", { class: "btn", id: "req-btn", type: "button", text: "Envoyer ma demande" });
+    let checked = "";
+    const digits = () => siret.value.replace(/\s/g, "");
+    siret.addEventListener("input", () => { if (digits() !== checked) { checked = ""; sOk.textContent = ""; } });
+    sBtn.addEventListener("click", async () => {
+      sErr.textContent = ""; sOk.textContent = ""; sBtn.disabled = true; sBtn.textContent = "Contrôle…";
+      const { data, error } = await sb.functions.invoke("verify-siret", { body: { siret: siret.value } });
+      sBtn.disabled = false; sBtn.textContent = "Contrôler ce SIRET";
+      if (error) { sErr.textContent = await fnMessage(error); return; }
+      if (!data?.ok) { sErr.textContent = data?.message || "Contrôle impossible."; return; }
+      checked = digits(); err.textContent = ""; sOk.textContent = "✓ Entreprise trouvée" + (data.company ? " : " + data.company : "") + ". Elle sera jointe à votre demande.";
+    });
     btn.addEventListener("click", async () => {
       err.textContent = "";
       if (!me.email_confirmed_at) { err.textContent = ERR.email_not_confirmed; return; }
-      if (!idF.inp.files[0] || !sfF.inp.files[0]) { err.textContent = ERR.documents_required; return; }
-      if (!cons.checked) { err.textContent = "Cochez la case pour autoriser l'examen de vos documents."; return; }
+      if (digits() && digits() !== checked) { err.textContent = ERR.siret_not_checked; return; }
+      if (!cons.checked) { err.textContent = "Cochez la case pour autoriser l'examen de votre demande."; return; }
       btn.disabled = true; btn.textContent = "Envoi…";
-      const folder = `${me.id}/${crypto.randomUUID()}`, idPath = `${folder}/id.jpg`, sfPath = `${folder}/selfie.jpg`;
-      try {
-        const [b1, b2] = [await compress(idF.inp.files[0]), await compress(sfF.inp.files[0])];
-        const bucket = sb.storage.from("verification-docs");
-        let r = await bucket.upload(idPath, b1, { contentType: "image/jpeg", upsert: false }); if (r.error) throw r.error;
-        r = await bucket.upload(sfPath, b2, { contentType: "image/jpeg", upsert: false }); if (r.error) throw r.error;
-        const s = await sb.rpc("submit_profile_confirmation", { p_social_url: social.value.trim() || null, p_referral_code: ref.value.trim() || null, p_id_path: idPath, p_selfie_path: sfPath });
-        if (s.error) { await bucket.remove([idPath, sfPath]); throw s.error; }
-        await load();
-      } catch (e) { err.textContent = e instanceof Error && !e.message.includes("_") ? e.message : fr(e); btn.disabled = false; btn.textContent = "Envoyer ma demande"; }
+      const s = await sb.rpc("submit_pro_request", { p_phone: phone.value, p_social_url: social.value.trim(), p_siret: digits() || null, p_referral_code: ref.value.trim() || null });
+      if (s.error) { err.textContent = fr(s.error); btn.disabled = false; btn.textContent = "Envoyer ma demande"; return; }
+      await load();
     });
-    return el("div", { class: "card", id: "identity-card" }, el("h2", { text: "Pas de SIRET ? Faites confirmer votre profil" }),
-      el("p", { text: "Notre équipe vérifie votre identité à la main. Vos photos ne sont jamais publiques : seuls les administrateurs y accèdent, chaque consultation est enregistrée, et elles sont supprimées 30 jours après la décision." }),
-      idF.node, sfF.node,
-      el("label", {}, "Lien vers votre profil Instagram, Facebook ou TikTok (facultatif)", social),
-      el("label", {}, "Code de parrainage d'un commerçant vérifié (facultatif)", ref),
-      el("label", { class: "check" }, cons, el("span", {}, "J'autorise Nooxel à examiner ces documents pour vérifier mon identité, uniquement dans ce but. ", el("a", { href: "confidentialite.html", target: "_blank", rel: "noopener", text: "En savoir plus" }))),
+    return el("div", { class: "card", id: "request-card" }, el("h2", { text: "Faire vérifier mon commerce" }),
+      el("p", { text: "Aucune pièce d'identité n'est demandée. Un membre de notre équipe examine votre demande à la main : il regarde votre page pour s'assurer qu'elle correspond à un vrai commerce." }),
+      el("label", {}, "Téléphone du commerce", phone),
+      el("label", {}, "Lien vers votre page Instagram, Facebook ou TikTok", social),
+      el("label", {}, "Numéro SIRET (facultatif)", siret), sBtn, sErr, sOk,
+      el("label", {}, "Code de parrainage d'un professionnel vérifié (facultatif)", ref),
+      el("label", { class: "check" }, cons, el("span", {}, "J'autorise Nooxel à examiner ces informations pour vérifier mon commerce, uniquement dans ce but. Le téléphone n'est pas vérifié par SMS ; il est effacé 30 jours après un refus. ", el("a", { href: "confidentialite.html", target: "_blank", rel: "noopener", text: "En savoir plus" }))),
       err, btn);
   }
 
@@ -304,7 +273,7 @@
   function referralCard() {
     const code = state.referral_code || "—";
     return el("div", { class: "card" }, el("h2", { text: "Votre code de parrainage" }),
-      el("p", { text: "Donnez-le à un commerçant sans SIRET : notre équipe le verra comme une recommandation de votre part. Il ne valide rien automatiquement." }),
+      el("p", { text: "Donnez-le à un autre commerçant : notre équipe le verra comme une recommandation de votre part. Il ne valide rien automatiquement." }),
       el("span", { class: "code", id: "ref-code", text: code }));
   }
 
@@ -312,29 +281,6 @@
   function historyCard() {
     return el("div", { class: "card" }, el("h2", { text: "Historique" }),
       el("ul", { class: "hist", id: "history" }, state.history.map((h) => el("li", {}, el("span", { text: HIST[h.action] || h.action }), el("span", { text: `${fmtDT(h.at)} · ${BY[h.by] || ""}` })))));
-  }
-
-  // ---- données personnelles
-  function dataCard(req) {
-    const err = el("p", { class: "err" });
-    return el("div", { class: "card", id: "data-card" }, el("h2", { text: "Mes pièces d'identité" }),
-      el("p", { text: `Elles seront supprimées automatiquement le ${fmtDate(req.docs_delete_after)} au plus tard. Vous pouvez les faire supprimer dès maintenant : une demande en cours sera alors annulée.` }),
-      el("button", { class: "btn danger small", id: "erase-btn", type: "button", text: "Supprimer mes pièces maintenant", onclick: async () => {
-        if (!confirm("Supprimer définitivement vos pièces d'identité ?")) return;
-        const { error } = await sb.rpc("erase_my_documents"); if (error) { err.textContent = fr(error); return; }
-        // suppression immédiate des fichiers (le propriétaire y est autorisé) ; le nettoyage serveur confirme ensuite
-        try {
-          const bucket = sb.storage.from("verification-docs"), paths = [];
-          const top = await bucket.list(me.id, { limit: 100 });
-          for (const it of top.data || []) {
-            if (it.id) { paths.push(`${me.id}/${it.name}`); continue; }
-            const sub = await bucket.list(`${me.id}/${it.name}`, { limit: 100 });
-            for (const f of sub.data || []) paths.push(`${me.id}/${it.name}/${f.name}`);
-          }
-          if (paths.length) await bucket.remove(paths);
-        } catch { /* le nettoyage quotidien finira le travail */ }
-        await load();
-      } }), err);
   }
 
   load();

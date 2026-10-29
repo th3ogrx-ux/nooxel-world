@@ -2,12 +2,23 @@
 
 Tout est gratuit (offre gratuite de Supabase). À faire **dans cet ordre**.
 
-## 1. Base de données (2 collages)
+## 1. Base de données (collages dans cet ordre)
 Supabase → **SQL Editor** → New query → coller → **Run**.
-1. `supabase/merchant-verification.sql` (étape 1 : tables, sécurité, stockage privé)
+1. `supabase/merchant-verification.sql` (étape 1 : tables, sécurité)
 2. `supabase/merchant-functions.sql` (étape 2 : fonctions)
+3. `supabase/admin-mfa.sql` (double authentification obligatoire pour l'administrateur)
+4. `supabase/merchant-manual-review.sql` (étape 3 : validation manuelle **sans pièce d'identité**)
 
-Les deux se relancent sans danger.
+Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
+annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
+anciennes pièces d'identité.
+
+### Principe de la validation manuelle
+Le commerçant fournit un **téléphone** (non vérifié par SMS : c'est un service payant), le **lien de sa page**
+Instagram/Facebook/TikTok, et facultativement un **SIRET** (contrôlé automatiquement, mais sans badge automatique :
+un SIRET est public) et un **code de parrainage**. Vous examinez chaque demande dans `/admin` et approuvez ou refusez.
+Le téléphone et le lien sont effacés tout de suite à l'annulation et 30 jours après un refus (tâche planifiée
+`purge-request-personal-data`, créée par l'étape 3 si l'extension `pg_cron` est activée).
 
 ## 2. Vous donner les droits d'administrateur
 Dans le SQL Editor, avec **votre** email (celui de votre compte Nooxel) :
@@ -35,8 +46,12 @@ Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**
 | Nom exact | Fichier à coller | « Verify JWT » |
 |---|---|---|
 | `verify-siret` | `functions-bundled/verify-siret.ts` | laissé activé |
-| `admin-document-url` | `functions-bundled/admin-document-url.ts` | laissé activé |
 | `purge-documents` | `functions-bundled/purge-documents.ts` | **désactivé** (elle est protégée par un secret) |
+
+> **Ancien système (pièces d'identité) :** la fonction `admin-document-url` n'est plus utilisée : vous pouvez la
+> supprimer dans le tableau de bord. Gardez `purge-documents` jusqu'à ce que les anciennes pièces soient effacées.
+> Il faut re-coller `verify-siret.ts` : la nouvelle version ne donne plus de badge, elle mémorise seulement le
+> résultat pour la demande (l'ancienne version continue de fonctionner, mais affiche un message obsolète).
 
 Puis **Edge Functions → Secrets** → ajouter `CRON_SECRET` = une longue chaîne aléatoire (gardez-la : elle sert
 à l'étape 4). Les clés `SUPABASE_URL`, `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY` sont fournies
@@ -47,9 +62,8 @@ Alternative avec la ligne de commande Supabase (versions modulaires dans `supaba
 
 | Fonction | Rôle | Qui l'appelle |
 |---|---|---|
-| `verify-siret` | contrôle un SIRET (niveau 1) | le commerçant connecté |
-| `admin-document-url` | lien de 60 s vers une pièce + trace | un administrateur |
-| `purge-documents` | supprime les pièces échues et les fichiers orphelins | tâche planifiée |
+| `verify-siret` | contrôle un SIRET et mémorise le résultat pour la demande (aucun badge) | le commerçant connecté |
+| `purge-documents` | supprime les anciennes pièces échues et les fichiers orphelins | tâche planifiée |
 
 ## 4. Nettoyage automatique quotidien (RGPD)
 Supabase → **Database → Extensions** : activer `pg_cron` et `pg_net` (gratuits). Puis, dans le SQL Editor
@@ -65,27 +79,24 @@ $$);
 ```
 
 ## 5. Tester le contrôle SIRET
-Le format de la réponse de l'API « Recherche d'entreprises » a été écrit de mémoire, sans pouvoir l'appeler
-depuis l'environnement de développement. **Testez avec un vrai SIRET** (le vôtre ou un SIRET public) avant
-d'ouvrir au public : si le résultat est « SIRET introuvable » alors qu'il existe, c'est
-`_shared/siret.ts` (`parseCompanySearch`) qu'il faut ajuster.
+Testez avec un vrai SIRET (le vôtre ou un SIRET public) : le champ doit afficher « Entreprise trouvée : NOM ».
+Si un SIRET qui existe est « introuvable », c'est `_shared/siret.ts` (`parseCompanySearch`) qu'il faut ajuster.
 
 ## 6. Les pages
 | Page | Pour qui | Accès |
 |---|---|---|
-| `/pro.html` | le commerçant : créer son profil, SIRET, pièce + photo, statut, contestation, suppression de ses pièces | menu du compte → « Espace professionnel » |
-| `/admin.html` | vous : file de validation, visionneuse de pièces, approuver / refuser, contestations, révocation | taper l'adresse à la main (aucun lien dans l'appli) ; il faut être connecté avec le compte administrateur |
+| `/pro.html` | le commerçant : créer son profil, demander la vérification (téléphone, page, SIRET, parrainage), statut, contestation | menu du compte → « Espace professionnel » |
+| `/admin.html` | vous : file de validation (page à ouvrir, téléphone, SIRET, parrain), approuver / refuser, contestations, révocation | taper l'adresse à la main (aucun lien dans l'appli) ; il faut être connecté avec le compte administrateur |
 
 La page admin n'est qu'une façade : **chaque action est contrôlée côté serveur** (`is_admin()`), un
 non-administrateur reçoit « Accès refusé » même s'il connaît l'adresse.
 
 **Essai complet conseillé avant d'ouvrir :** créez 2 comptes de test, faites passer l'un par le SIRET et
-l'autre par la pièce d'identité ; ouvrez `/admin.html` avec votre compte administrateur, refusez, contestez,
+l'autre sans SIRET avec un code de parrainage ; ouvrez `/admin.html` avec votre compte administrateur, refusez, contestez,
 puis révoquez. Vérifiez à chaque fois l'historique côté commerçant.
 
 ## Rappels de sécurité
 - Ne jamais mettre la clé `service_role` dans `index.html` ni dans le dépôt.
 - Tant que la confirmation d'email est désactivée dans Supabase, « email confirmé » ne prouve rien :
   la réactiver (avec un envoi d'emails gratuit) avant le lancement.
-- Ne pas ouvrir la collecte des pièces d'identité au public avant d'avoir décidé qui en est
-  juridiquement responsable.
+- Plus aucune pièce d'identité n'est collectée : le risque juridique associé a disparu.

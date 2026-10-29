@@ -1,5 +1,6 @@
-// Niveau 1 : vérifie un SIRET auprès de l'API publique « Recherche d'entreprises » (gratuite, sans clé).
-// POST { siret }  — nécessite d'être connecté. Renvoie { ok, badge, referral_code, company }.
+// Contrôle un SIRET auprès de l'API publique « Recherche d'entreprises » (gratuite, sans clé).
+// POST { siret }  — nécessite d'être connecté. Renvoie { ok, company } et mémorise le résultat pour la demande :
+// aucun badge n'est attribué ici, c'est l'administrateur qui décide après examen.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { CORS, json, mapError } from "../_shared/errors.ts";
 import { isValidSiretFormat, normalizeSiret, parseCompanySearch } from "../_shared/siret.ts";
@@ -39,8 +40,8 @@ Deno.serve(async (req) => {
   if (!lookup.found) return fail("siret_not_found");
   if (!lookup.active) return fail("siret_inactive");
 
-  // 4) Attribution du niveau 1 (réservée au serveur)
+  // 4) Mémorisation du résultat (réservée au serveur) : il sera joint à la demande, sans attribuer de badge
   const done = await admin.rpc("system_set_company_verified", { p_user: user.id, p_siret: siret, p_check: lookup.check });
   if (done.error) return fail(done.error.message);
-  return json({ ok: true, badge: "entreprise vérifiée", referral_code: done.data, company: lookup.check.name ?? null });
+  return json({ ok: true, company: lookup.check.name ?? null });
 });
