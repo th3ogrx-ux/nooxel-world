@@ -80,6 +80,38 @@
     #welcome.leaving .hero { transform: translateY(-40px) scale(.55); opacity: 0; }
     #welcome.leaving .intro-bottom { opacity: 0; transition: opacity .25s ease; }
     #login, #home { animation: rise .45s ease both; }
+
+    /* Logo animé : l'épingle-bulle tombe sur la carte, onde d'impact, puis les points « écrivent » pendant le chargement.
+       Uniquement transform/opacity : fluide même sur un téléphone d'entrée de gamme. */
+    .pin-wrap { width: min(36vw, 150px); }
+    .pinlogo { position: relative; display: block; width: 100%; overflow: visible; filter: drop-shadow(0 0 22px rgba(25,140,255,.45)); }
+    .pin-drop { transform-box: fill-box; transform-origin: 50% 100%; animation: pindrop 1.05s both; }
+    @keyframes pindrop {
+      0%   { transform: translateY(-85vh); opacity: 0; animation-timing-function: cubic-bezier(.55,0,.9,.55); }
+      6%   { opacity: 1; }
+      38%  { transform: translateY(0) scale(1.1,.86); opacity: 1; animation-timing-function: ease-out; }
+      52%  { transform: translateY(-34px) scale(.97,1.04); animation-timing-function: ease-in; }
+      66%  { transform: translateY(0) scale(1.05,.93); animation-timing-function: ease-out; }
+      78%  { transform: translateY(-10px) scale(1); animation-timing-function: ease-in; }
+      88%  { transform: translateY(0) scale(1.02,.97); }
+      100% { transform: none; opacity: 1; }
+    }
+    .pin-ground, .pin-ring { transform-box: fill-box; transform-origin: 50% 50%; }
+    .pin-ground { animation: pinground 1.05s both; }
+    @keyframes pinground {
+      0% { transform: scale(.2); opacity: 0; } 38% { transform: scale(1); opacity: 1; } 52% { transform: scale(.7); }
+      66% { transform: scale(1); } 78% { transform: scale(.85); } 100% { transform: scale(1); opacity: 1; }
+    }
+    .pin-ring { fill: none; stroke: #19b8ff; stroke-width: 1.6; animation: pinring 1.3s ease-out .4s both; }
+    .pin-ring.r2 { animation-delay: .55s; }
+    @keyframes pinring { 0% { transform: scale(.3); opacity: 0; } 12% { opacity: .75; } 100% { transform: scale(2.8); opacity: 0; } }
+    .pin-dot { fill: #fff; transform-box: fill-box; transform-origin: 50% 50%; animation: pintype 1.2s ease-in-out 1.1s infinite; }
+    .pin-dot.d2 { animation-delay: 1.26s; } .pin-dot.d3 { animation-delay: 1.42s; }
+    @keyframes pintype { 0%, 60%, 100% { opacity: .45; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-5px); } }
+    #welcome.ready .pin-dot { animation: none; opacity: 1; }
+    #welcome.ready .pinlogo { animation: pinpop .55s ease; }
+    @keyframes pinpop { 40% { transform: scale(1.08); } }
+    @media (prefers-reduced-motion: reduce) { .pin-drop, .pin-ground, .pin-ring, .pin-dot, #welcome.ready .pinlogo { animation: none !important; } .pin-ring { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .planet, .brand { animation: none; } }
 
     .req { margin: 0; max-width: 270px; color: #6f8fc9; font-size: .85rem; line-height: 1.4; animation: rise .6s ease .15s both; }
@@ -268,7 +300,23 @@
   <main>
     <section id="welcome">
       <div class="hero">
-        <div class="planet-wrap"><img class="planet" src="assets/planet.webp" alt="Nooxel World"></div>
+        <div class="planet-wrap pin-wrap">
+          <svg class="pinlogo" viewBox="0 0 120 150" role="img" aria-label="Nooxel World">
+            <defs>
+              <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2fc4ff"/><stop offset="1" stop-color="#0a4fe0"/></linearGradient>
+            </defs>
+            <ellipse class="pin-ground" cx="60" cy="140" rx="20" ry="4.5" fill="rgba(10,92,255,.45)"/>
+            <ellipse class="pin-ring" cx="60" cy="140" rx="20" ry="4.5"/>
+            <ellipse class="pin-ring r2" cx="60" cy="140" rx="20" ry="4.5"/>
+            <g class="pin-drop">
+              <path d="M60 134C60 134 12 92 12 56a48 48 0 0 1 96 0c0 36-48 78-48 78z" fill="url(#pg)"/>
+              <path d="M24 50a36 36 0 0 1 36-34" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="5" stroke-linecap="round"/>
+              <circle class="pin-dot d1" cx="39" cy="56" r="7.5"/>
+              <circle class="pin-dot d2" cx="60" cy="56" r="7.5"/>
+              <circle class="pin-dot d3" cx="81" cy="56" r="7.5"/>
+            </g>
+          </svg>
+        </div>
         <h1 class="brand">Nooxel World</h1>
       </div>
       <div class="intro-bottom">
@@ -1128,6 +1176,7 @@
     const t0 = Date.now();
     $("bar-fill").animate([{ width: "0%" }, { width: "100%" }], { duration: LOAD_MS, easing: "ease-in-out", fill: "forwards" });
     function showButton() {
+      $("welcome").classList.add("ready");
       $("loader").classList.add("out");
       setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); $("req").classList.remove("hidden"); if (navigator.vibrate) navigator.vibrate(15); }, 400);
     }
