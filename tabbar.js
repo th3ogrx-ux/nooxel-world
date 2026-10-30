@@ -1,10 +1,9 @@
 // Barre de navigation du bas : un seul composant, construit au même endroit du code pour tous les écrans (carte, fil, compte).
-// Utilisation : <script src="tabbar.js" data-active="map|feed|account"></script> à l'endroit où la barre doit apparaître.
+// Utilisation : <script src="tabbar.js" data-active="notifications|account" (rien : la carte)></script> à l'endroit où la barre doit apparaître.
 (function () {
   const me = document.currentScript, active = me && me.dataset.active || "";
   const svg = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
   const TABS = [
-    ["map", "tab-map", "/", "Carte", svg('<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>')],
     ["search", "tab-search", "/?search=1", "Chercher", svg('<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>')],
     ["locate", "tab-locate", "/", null, svg('<path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/>')],
     ["notifications", "tab-notifs", "notifications.html", "Notifications", svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>')],
@@ -27,16 +26,19 @@
   const jump = (a) => { ind.style.transition = "none"; place(a); void ind.offsetWidth; ind.style.transition = ""; };      // sans animation (démarrage, rotation)
   let last = null;
   const sync = (animate) => {
-    const cur = current(); if (!cur) return;
+    const cur = current();
+    if (!cur) { ind.style.opacity = "0"; last = null; try { sessionStorage.setItem(KEY, ""); } catch (e) {} return; }       // sur la carte : le bouton rond est « actif », pas d'indicateur
+    ind.style.opacity = "";
     if (!animate || reduce || !last) jump(cur); else place(cur);
     last = cur; try { sessionStorage.setItem(KEY, cur.id); } catch (e) {}
   };
   // D'une page à l'autre : l'indicateur repart de l'onglet quitté puis glisse vers le nouveau.
   let prevId = null; try { prevId = sessionStorage.getItem(KEY); } catch (e) {}
-  const prev = prevId && nav.querySelector("#" + prevId + ".tab");
+  const prev = prevId ? nav.querySelector("#" + prevId + ".tab") : null;
   ind.hidden = true;
   const start = () => {
-    const cur = current(); if (!cur) return;
+    const cur = current();
+    if (!cur) { if (prev && !reduce && place(prev)) { ind.dataset.from = prev.id; ind.style.opacity = "1"; void ind.offsetWidth; requestAnimationFrame(() => requestAnimationFrame(() => { ind.style.opacity = "0"; })); } else ind.style.opacity = "0"; return; }
     if (prev && prev !== cur && !reduce && place(prev)) { ind.dataset.from = prev.id; last = prev; void ind.offsetWidth; requestAnimationFrame(() => requestAnimationFrame(() => sync(true))); }
     else sync(false);
   };
