@@ -8,6 +8,7 @@ Supabase → **SQL Editor** → New query → coller → **Run**.
 2. `supabase/merchant-functions.sql` (étape 2 : fonctions)
 3. `supabase/admin-mfa.sql` (double authentification obligatoire pour l'administrateur)
 4. `supabase/merchant-manual-review.sql` (étape 3 : validation manuelle **sans pièce d'identité**)
+5. `supabase/commerce-pages.sql` (phase 2, étape 1 : pages commerçants, posts, abonnés, fil d'actualité)
 
 Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
 annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
@@ -100,3 +101,16 @@ puis révoquez. Vérifiez à chaque fois l'historique côté commerçant.
 - Tant que la confirmation d'email est désactivée dans Supabase, « email confirmé » ne prouve rien :
   la réactiver (avec un envoi d'emails gratuit) avant le lancement.
 - Plus aucune pièce d'identité n'est collectée : le risque juridique associé a disparu.
+
+## Pages commerçants (phase 2, étape 1)
+`commerce-pages.sql` ajoute : l'adresse et la position d'un commerce, ses posts (texte + photo facultative), les
+abonnements, le fil d'actualité, la recherche de commerces et leurs épingles sur la carte, et un espace de photos
+(`merchant-media`, lecture publique, écriture réservée au propriétaire d'un commerce **vérifié**).
+
+- Seuls les commerces **vérifiés** ont une page visible, apparaissent sur la carte et peuvent publier (20 posts / 24 h).
+- Le navigateur n'écrit jamais directement dans les tables : posts, abonnements et compteur d'abonnés passent par
+  des fonctions serveur qui vérifient l'identité de l'appelant.
+- Re-coller `functions-bundled/purge-documents.ts` : la tâche du soir supprime aussi les photos de posts
+  devenues orphelines (post ou compte supprimé), pour respecter le droit à l'effacement.
+- **À surveiller** : stockage (photos ~150 Ko chacune) et trafic des photos sur l'offre gratuite de Supabase (5 Go
+  de trafic par mois) ; voir la comparaison des offres avec le propriétaire du projet.

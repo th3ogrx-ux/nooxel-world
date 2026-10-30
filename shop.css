@@ -1,0 +1,35 @@
+/* Style partagé des pages publiques des commerçants (commerce.html, fil.html). */
+  :root { color-scheme: dark; --blue: #1a6bff; --ink: #1f1f1f; --mute: #5f6368; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #040b1c; color: #dbe6ff; font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 1.2rem 1rem 5rem; }
+  a { color: #6fa8ff; } .back { text-decoration: none; }
+  h1 { color: #fff; font-size: 1.6rem; margin: .8rem 0 .2rem; }
+  .lead { color: #9db4e8; margin: 0 0 1.2rem; }
+  .card { background: #fff; color: var(--ink); border-radius: 20px; padding: 1.1rem 1.2rem; margin: 0 0 1rem; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+  .card h2 { margin: 0; font-size: 1.3rem; } .card p { margin: .3rem 0; color: var(--mute); font-size: .95rem; }
+  .badge { display: inline-block; padding: .2rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 700; background: #d8f6e5; color: #0d6b3a; }
+  .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .btn { margin-top: .7rem; padding: .65rem 1.2rem; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+  .btn.ghost { background: #eaf1ff; color: #0b3fa8; } .btn:disabled { opacity: .55; cursor: default; }
+  .banner { border-radius: 16px; padding: .8rem 1rem; margin: 0 0 1rem; font-size: .95rem; background: #1b2646; color: #cfe0ff; }
+  .stats { color: var(--ink) !important; font-weight: 600; }
+  .tabs { display: flex; gap: .5rem; margin: 0 0 .8rem; }
+  .tabs button { flex: 1; padding: .55rem; border-radius: 999px; border: 1px solid #2b3d6b; background: transparent; color: #cfe0ff; font: inherit; cursor: pointer; }
+  .tabs button[aria-pressed=true] { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .post { background: #fff; color: var(--ink); border-radius: 20px; overflow: hidden; margin: 0 0 1rem; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+  .post img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; background: #e8eefc; }
+  .post-shop { display: block; padding: .8rem 1.1rem 0; font-weight: 700; color: #0b3fa8; text-decoration: none; }
+  .post-body { margin: 0; padding: .8rem 1.1rem .2rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .post-date { margin: 0; padding: 0 1.1rem .9rem; color: var(--mute); font-size: .85rem; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 0 1rem; }
+  .tile { position: relative; aspect-ratio: 1; border: 0; padding: 0; overflow: hidden; border-radius: 6px; background: #14224a; color: #dbe6ff; cursor: pointer; font: inherit; text-align: left; }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile span { display: block; padding: .5rem; font-size: .82rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; }
+  dialog { border: 0; padding: 0; background: transparent; max-width: min(92vw, 560px); width: 100%; color: inherit; }
+  dialog::backdrop { background: rgba(0,4,16,.8); }
+  dialog .close { display: block; margin: 0 0 .5rem auto; }
+  .empty { text-align: center; color: #9db4e8; padding: 2rem 1rem; }
+  .err { color: #ffb4ab; min-height: 1.2em; }
+  .hidden { display: none !important; }
+  footer { margin-top: 2rem; font-size: .85rem; color: #7f93bd; }

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Fil d'actualité — Nooxel World</title>
+  <meta name="theme-color" content="#040b1c">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="shop.css">
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Retour à la carte</a>
+  <h1>Fil d'actualité</h1>
+  <p class="lead">Les publications des commerces que vous suivez, des plus récentes aux plus anciennes.</p>
+  <div id="app"><p class="empty">Chargement…</p></div>
+  <button class="btn ghost hidden" id="more" type="button">Voir plus</button>
+  <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="shop.js"></script>
+<script>
+  let before = null, shown = 0;
+  async function load() {
+    const more = $("more"); more.disabled = true;
+    const { data, error } = await sb.rpc("my_feed", { p_before: before, p_limit: 12 });
+    more.disabled = false;
+    const app = $("app");
+    if (error) { app.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
+    if (!shown) app.replaceChildren();
+    for (const p of data) app.append(postCard(p, true));
+    shown += data.length;
+    if (data.length) before = data[data.length - 1].created_at;
+    more.classList.toggle("hidden", data.length < 12);
+    if (!shown) app.replaceChildren(el("div", { class: "card", id: "feed-empty" }, el("h2", { text: "Votre fil est vide" }),
+      el("p", { text: "Vous ne suivez encore aucun commerce. Cherchez un commerce dans la barre de recherche de la carte, ouvrez sa page et touchez « Suivre » : ses publications apparaîtront ici." }),
+      el("a", { class: "btn", href: "/", text: "Chercher un commerce" })));
+  }
+  async function boot() {
+    if (!sb || !(await currentSession())) { $("app").replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir votre fil." }), el("a", { href: "/", text: "Aller à la connexion" }))); return; }
+    $("more").addEventListener("click", load); load();
+  }
+  boot();
+</script>
+</body>
+</html>

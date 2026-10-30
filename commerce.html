@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Commerce — Nooxel World</title>
+  <meta name="theme-color" content="#040b1c">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="shop.css">
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Retour à la carte</a>
+  <div id="app"><p class="empty">Chargement…</p></div>
+  <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
+</main>
+<dialog id="post-dialog" aria-label="Publication"></dialog>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="shop.js"></script>
+<script>
+  const id = new URLSearchParams(location.search).get("id") || "";
+  let shop = null, before = null, mode = "list";
+  try { mode = localStorage.getItem("nooxel_posts_view") === "grid" ? "grid" : "list"; } catch (e) {}
+
+  async function boot() {
+    const app = $("app");
+    if (!sb || !(await currentSession())) {
+      app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir cette page." }), el("a", { href: "/", text: "Aller à la connexion" })));
+      return;
+    }
+    const { data, error } = await sb.rpc("get_merchant_page", { p_id: id });
+    if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
+    shop = data; document.title = shop.business_name + " — Nooxel World";
+    render();
+  }
+
+  function render() {
+    const app = $("app"), s = shop;
+    const count = el("span", { class: "stats", id: "followers", text: plural(s.follower_count) });
+    const err = el("p", { class: "err", id: "follow-err" });
+    const fbtn = el("button", { class: "btn", id: "follow-btn", type: "button", "aria-pressed": String(s.is_following) });
+    const paint = () => { fbtn.textContent = s.is_following ? "Abonné ✓" : "Suivre"; fbtn.classList.toggle("ghost", s.is_following); fbtn.setAttribute("aria-pressed", String(s.is_following)); count.textContent = plural(s.follower_count); };
+    fbtn.addEventListener("click", async () => {
+      err.textContent = ""; fbtn.disabled = true;
+      const { data, error } = await sb.rpc(s.is_following ? "unfollow_merchant" : "follow_merchant", { p_merchant: s.id });
+      fbtn.disabled = false;
+      if (error) { err.textContent = fr(error); return; }
+      s.is_following = !s.is_following; s.follower_count = data; paint();
+    });
+    paint();
+    const head = el("div", { class: "card", id: "shop-head" },
+      el("div", { class: "row" }, el("h2", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { class: "badge", id: "shop-badge", text: "✓ " + s.badge }) : null),
+      el("p", { class: "stats" }, count),
+      s.description ? el("p", { id: "shop-desc", text: s.description }) : null,
+      s.address ? el("p", { id: "shop-address", text: "📍 " + s.address }) : null,
+      el("div", { class: "row", style: "justify-content:flex-start" },
+        s.is_owner ? null : fbtn,
+        s.lat != null ? el("a", { class: "btn ghost", id: "shop-map", href: "/?commerce=" + encodeURIComponent(s.id), text: "Voir sur la carte" }) : null,
+        s.social_url ? el("a", { class: "btn ghost", id: "shop-social", href: s.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: "Réseaux sociaux ↗" }) : null),
+      err);
+    const owner = s.is_owner ? el("div", { class: "banner", id: "owner-banner" }, s.verified ? "C'est votre page : voici ce que voient les autres. " : "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Gérer ma page" })) : null;
+    const tabs = el("div", { class: "tabs", role: "group", "aria-label": "Affichage des publications" },
+      ...[["list", "Liste"], ["grid", "Grille"]].map(([m, label]) => el("button", { type: "button", id: "view-" + m, "aria-pressed": String(mode === m), text: label, onclick: () => setMode(m) })));
+    app.replaceChildren(...[owner, head, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
+      el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() })].filter(Boolean));
+    before = null; loadPosts(true);
+  }
+  const plural = (n) => n + (n > 1 ? " abonnés" : " abonné");
+
+  function setMode(m) {
+    mode = m; try { localStorage.setItem("nooxel_posts_view", m); } catch (e) {}
+    for (const b of ["list", "grid"]) $("view-" + b).setAttribute("aria-pressed", String(mode === b));
+    $("posts").replaceChildren(); before = null; loadPosts(true);
+  }
+
+  async function loadPosts(first) {
+    const more = $("more"); more.disabled = true;
+    const { data, error } = await sb.rpc("list_merchant_posts", { p_merchant: shop.id, p_before: before, p_limit: 12 });
+    more.disabled = false;
+    if (error) { $("no-posts").textContent = fr(error); $("no-posts").classList.remove("hidden"); return; }
+    const box = $("posts");
+    if (mode === "grid" && !box.classList.contains("grid")) box.classList.add("grid");
+    if (mode === "list") box.classList.remove("grid");
+    for (const p of data) box.append(mode === "grid" ? tile(p) : postCard(p, false));
+    if (data.length) before = data[data.length - 1].created_at;
+    more.classList.toggle("hidden", data.length < 12);
+    if (first) $("no-posts").classList.toggle("hidden", data.length > 0);
+  }
+
+  function tile(p) {
+    return el("button", { class: "tile", type: "button", "data-post": p.id, "aria-label": "Ouvrir la publication", onclick: () => {
+      const dlg = $("post-dialog");
+      dlg.replaceChildren(el("button", { class: "btn ghost close", type: "button", text: "Fermer", onclick: () => dlg.close() }), postCard(p, false));
+      dlg.showModal();
+    } }, p.image_path ? el("img", { src: imgUrl(p.image_path), alt: "", loading: "lazy", decoding: "async" }) : el("span", { text: p.body }));
+  }
+  $("post-dialog").addEventListener("click", (e) => { if (e.target === $("post-dialog")) $("post-dialog").close(); });
+  boot();
+</script>
+</body>
+</html>

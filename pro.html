@@ -51,6 +51,13 @@
     .check { display: flex; gap: .6rem; align-items: flex-start; margin-top: .8rem; color: var(--ink); font-size: .9rem; }
     .check input { width: 20px; height: 20px; margin-top: .15rem; flex: none; accent-color: var(--blue); }
     .thumb { max-width: 120px; max-height: 90px; border-radius: 8px; margin-top: .4rem; border: 1px solid #dadce0; }
+    .sugg { list-style: none; margin: .3rem 0 0; padding: 0; }
+    .sugg li { padding: .55rem .7rem; border-radius: 10px; cursor: pointer; color: var(--ink); font-size: .92rem; }
+    .sugg li:hover { background: #eef3ff; }
+    .mypost { display: flex; gap: .8rem; padding: .7rem 0; border-top: 1px solid #eceff3; align-items: flex-start; }
+    .mypost img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; flex: none; background: #e8eefc; }
+    .mypost div { flex: 1; min-width: 0; color: var(--ink); font-size: .92rem; overflow-wrap: anywhere; }
+    .mypost small { display: block; color: var(--mute); }
     .hidden { display: none !important; }
     details summary { cursor: pointer; font-weight: 600; color: var(--blue); }
     .banner details summary { color: inherit; text-decoration: underline; }
@@ -105,6 +112,11 @@
     message_too_short: "Expliquez votre contestation (10 caractères minimum).",
     another_request_open: "Une autre demande est déjà ouverte.",
     no_profile: "Créez d'abord votre profil.",
+    not_verified: "Votre commerce doit d'abord être vérifié.",
+    invalid_body: "Écrivez un texte (2 000 caractères au maximum).",
+    too_many_posts: "Limite atteinte : 20 publications par 24 heures.",
+    image_not_found: "La photo n'a pas été reçue. Réessayez.",
+    invalid_image: "Photo invalide.",
   };
   const fr = (e) => { const m = String(e?.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
   async function fnMessage(error) {                      // message renvoyé par une fonction serveur
@@ -153,7 +165,8 @@
 
     app.append(profileCard());
     if (v === "pending" && req && ["pending", "contested"].includes(req.status)) app.append(pendingCard(req));
-    if (v === "verified") app.append(referralCard());
+    if (v === "verified") app.append(pageCard(), postsCard(), referralCard());
+    else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
     if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
   }
@@ -267,6 +280,99 @@
       el("label", {}, "Code de parrainage d'un professionnel vérifié (facultatif)", ref),
       el("label", { class: "check" }, cons, el("span", {}, "J'autorise Nooxel à examiner ces informations pour vérifier mon commerce, uniquement dans ce but. Le téléphone n'est pas vérifié par SMS ; il est effacé 30 jours après un refus. ", el("a", { href: "confidentialite.html", target: "_blank", rel: "noopener", text: "En savoir plus" }))),
       err, btn);
+  }
+
+  // ---- page publique : adresse sur la carte
+  function pageCard() {
+    const input = el("input", { type: "text", id: "a-input", placeholder: "Rechercher l'adresse du commerce", autocomplete: "off", maxlength: 200 });
+    const list = el("ul", { class: "sugg", id: "a-list" }), cur = el("p", { id: "a-current", text: "" }), err = el("p", { class: "err", id: "a-err" });
+    const paint = (a) => { cur.textContent = a ? "📍 " + a : "Aucune adresse : votre commerce n'apparaît pas sur la carte."; rm.classList.toggle("hidden", !a); };
+    const save = async (v) => {
+      err.textContent = "";
+      const { error } = await sb.from("merchant_profiles").update(v).eq("id", state.merchant_id);
+      if (error) { err.textContent = "Enregistrement impossible."; return false; } paint(v.address); return true;
+    };
+    const rm = el("button", { class: "btn danger small hidden", id: "a-remove", type: "button", text: "Retirer de la carte", onclick: () => save({ address: null, lat: null, lng: null }) });
+    let timer = null, ctl = null;
+    input.addEventListener("input", () => {
+      clearTimeout(timer); const q = input.value.trim(); list.replaceChildren();
+      if (q.length < 3) return;
+      timer = setTimeout(async () => {
+        if (ctl) ctl.abort(); ctl = new AbortController();
+        try {
+          const r = await fetch("https://photon.komoot.io/api/?limit=5&lang=fr&q=" + encodeURIComponent(q), { signal: ctl.signal });
+          const feats = ((await r.json()).features || []).filter((f) => f.geometry && f.geometry.coordinates);
+          list.replaceChildren(...feats.map((f) => {
+            const p = f.properties, label = [[p.housenumber, p.street || p.name].filter(Boolean).join(" "), [p.postcode, p.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || p.name || "Lieu";
+            return el("li", { role: "button", tabindex: "0", text: label, onclick: async () => {
+              if (await save({ address: label.slice(0, 200), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] })) { list.replaceChildren(); input.value = ""; }
+            } });
+          }));
+        } catch (e) { if (e.name !== "AbortError") err.textContent = "Recherche d'adresse indisponible pour le moment."; }
+      }, 350);
+    });
+    sb.from("merchant_profiles").select("address").eq("id", state.merchant_id).single().then(({ data }) => paint(data && data.address));
+    return el("div", { class: "card", id: "page-card" }, el("h2", { text: "Ma page publique" }),
+      el("p", { text: "Votre page est visible par tous les utilisateurs. L'adresse place votre commerce sur la carte." }),
+      el("a", { class: "btn ghost small", id: "view-page", href: "commerce.html?id=" + encodeURIComponent(state.merchant_id), text: "Voir ma page" }),
+      cur, el("label", {}, "Adresse du commerce", input), list, rm, err);
+  }
+
+  // ---- page publique : publier
+  async function shrink(file) {                         // ≤ 1080 px, JPEG : léger à envoyer et à afficher ; retire aussi les métadonnées (GPS…)
+    if (!file || !file.type.startsWith("image/")) throw new Error("Choisissez une photo (image).");
+    if (file.size > 30e6) throw new Error("Cette image est trop lourde.");
+    let src;
+    try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+    catch { src = await new Promise((ok, no) => { const u = URL.createObjectURL(file), i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("Impossible de lire cette image.")); i.src = u; }); }
+    const w = src.width || src.naturalWidth, h = src.height || src.naturalHeight, k = Math.min(1, 1080 / Math.max(w, h));
+    const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+    for (const q of [0.82, 0.7, 0.55]) { const b = await new Promise((r) => c.toBlob(r, "image/jpeg", q)); if (b && b.size <= 1.8e6) return b; }
+    throw new Error("Image trop lourde même réduite.");
+  }
+  const mediaUrl = (path) => sb.storage.from("merchant-media").getPublicUrl(path).data.publicUrl;
+
+  function postsCard() {
+    const body = el("textarea", { id: "p-body", maxlength: 2000, placeholder: "Quoi de neuf dans votre commerce ?" });
+    const photo = el("input", { type: "file", id: "p-photo", accept: "image/*" }), th = el("img", { class: "thumb hidden", alt: "" });
+    photo.addEventListener("change", () => { const f = photo.files[0]; if (f) { th.src = URL.createObjectURL(f); th.classList.remove("hidden"); } else th.classList.add("hidden"); });
+    const err = el("p", { class: "err", id: "p-err" }), ok = el("p", { class: "okmsg", id: "p-ok" });
+    const mine = el("div", { id: "my-posts" });
+    const btn = el("button", { class: "btn", id: "p-publish", type: "button", text: "Publier" });
+    const refresh = async () => {
+      const { data } = await sb.rpc("list_merchant_posts", { p_merchant: state.merchant_id, p_limit: 30 });
+      mine.replaceChildren(...(data || []).map((p) => el("div", { class: "mypost", "data-post": p.id },
+        p.image_path ? el("img", { src: mediaUrl(p.image_path), alt: "", loading: "lazy" }) : null,
+        el("div", {}, p.body.slice(0, 160) + (p.body.length > 160 ? "…" : ""), el("small", { text: fmtDT(p.created_at) })),
+        el("button", { class: "btn danger small", type: "button", "data-del": p.id, text: "Supprimer", onclick: async () => {
+          if (!confirm("Supprimer cette publication ?")) return;
+          const r = await sb.rpc("delete_post", { p_post: p.id });
+          if (r.error) { err.textContent = fr(r.error); return; }
+          if (r.data) await sb.storage.from("merchant-media").remove([r.data]);
+          refresh();
+        } }))));
+    };
+    btn.addEventListener("click", async () => {
+      err.textContent = ""; ok.textContent = "";
+      if (!body.value.trim()) { err.textContent = ERR.invalid_body; return; }
+      btn.disabled = true; btn.textContent = "Publication…"; let path = null;
+      try {
+        if (photo.files[0]) {
+          const blob = await shrink(photo.files[0]); path = `${state.merchant_id}/${crypto.randomUUID()}.jpg`;
+          const up = await sb.storage.from("merchant-media").upload(path, blob, { contentType: "image/jpeg", upsert: false }); if (up.error) throw up.error;
+        }
+        const r = await sb.rpc("create_post", { p_body: body.value, p_image_path: path });
+        if (r.error) { if (path) await sb.storage.from("merchant-media").remove([path]); throw r.error; }
+        body.value = ""; photo.value = ""; th.classList.add("hidden"); ok.textContent = "Publié !"; refresh();
+      } catch (e) { err.textContent = e instanceof Error && !e.message.includes("_") ? e.message : fr(e); }
+      btn.disabled = false; btn.textContent = "Publier";
+    });
+    refresh();
+    return el("div", { class: "card", id: "posts-card" }, el("h2", { text: "Publier sur ma page" }),
+      el("p", { text: "Une photo (facultative) et un texte. Vos abonnés les voient dans leur fil d'actualité." }),
+      el("label", {}, "Texte", body), el("label", {}, "Photo (facultative)", photo, th), err, ok, btn,
+      el("h2", { style: "margin-top:1.1rem", text: "Mes publications" }), mine);
   }
 
   // ---- code de parrainage

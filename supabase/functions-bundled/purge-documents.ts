@@ -1,7 +1,9 @@
 // Version « un seul fichier » de supabase/functions/purge-documents/index.ts, à coller telle quelle dans l'éditeur de fonctions de Supabase.
 // Ne pas modifier ici : régénérée à partir des sources.
+// supabase/functions/purge-documents/index.ts
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// supabase/functions/_shared/errors.ts
 var CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -14,6 +16,7 @@ function json(body, status = 200, extra = {}) {
   });
 }
 
+// supabase/functions/purge-documents/index.ts
 function sameSecret(a, b) {
   if (!a || a.length !== b.length) return false;
   let diff = 0;
@@ -49,5 +52,14 @@ Deno.serve(async (req) => {
       if (!del.error) orphans += Math.min(50, names.length - i);
     }
   }
-  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans });
+  let media = 0;
+  const mm = await admin.rpc("system_orphan_media");
+  if (!mm.error && Array.isArray(mm.data) && mm.data.length) {
+    const mediaBucket = admin.storage.from("merchant-media"), names = mm.data;
+    for (let i = 0; i < names.length; i += 50) {
+      const del = await mediaBucket.remove(names.slice(i, i + 50));
+      if (!del.error) media += Math.min(50, names.length - i);
+    }
+  }
+  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans, orphan_media_removed: media });
 });
