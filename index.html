@@ -243,7 +243,6 @@
     #q-list .s { font-size: .85rem; color: #5f6368; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #q-list li.note { cursor: default; color: #5f6368; font-size: .92rem; }
     #q-list li.note:hover { background: transparent; }
-    #brand { position: absolute; left: .9rem; bottom: calc(env(safe-area-inset-bottom, 0px) + 1.6rem); z-index: 5; margin: 0; padding: .35rem .8rem; border-radius: 999px; background: rgba(4,11,28,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #e6f0ff; font-size: .85rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 0 12px rgba(30,130,255,.6); pointer-events: none; user-select: none; }
 
     .maplibregl-ctrl-group.locate-ctrl { width: 52px; height: 52px; margin: 0 .8rem 1.9rem 0 !important; border-radius: 50% !important; background: #fff; box-shadow: 0 6px 22px rgba(0,0,0,.5), 0 0 0 1px rgba(26,107,255,.25) !important; overflow: hidden; }
     .locate-ctrl button { width: 52px !important; height: 52px !important; border-radius: 50% !important; transition: background .2s; }
@@ -255,7 +254,6 @@
     @keyframes locpulse { 50% { opacity: .35; transform: scale(.85); } }
     #home { --dock: 0px; }
     .maplibregl-ctrl-bottom-right { bottom: calc(env(safe-area-inset-bottom, 0px) + var(--dock)) !important; transition: bottom .25s ease; }
-    #brand { bottom: calc(env(safe-area-inset-bottom, 0px) + 1.6rem + var(--dock)) !important; transition: bottom .25s ease; }
     #dock { position: absolute; left: .8rem; right: .8rem; bottom: calc(env(safe-area-inset-bottom, 0px) + .8rem); z-index: 6; max-width: 460px; margin: 0 auto; }
     .dcard { position: relative; background: #fff; color: #1f1f1f; border-radius: 22px; padding: .95rem 1rem; box-shadow: 0 -2px 36px rgba(0,0,0,.5); text-align: left; animation: rise .3s ease both; }
     #place-card { display: flex; align-items: center; gap: .8rem; }
@@ -310,6 +308,18 @@
     .puck::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle, rgba(60,150,255,.55), rgba(60,150,255,0) 70%); animation: puckpulse 1.8s ease-out infinite; }
     .puck svg { position: absolute; inset: 0; filter: drop-shadow(0 5px 6px rgba(0,0,0,.55)); }
     @keyframes puckpulse { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+    /* Le compte passe dans la barre du bas : plus de pastille en haut. La recherche reprend le style de la barre. */
+    #me { display: none !important; }
+    #search { top: calc(env(safe-area-inset-top, 0px) + 1rem); left: .6rem; right: .6rem; margin: 0 auto; }
+    #search .sbox { height: 50px; padding: 0 .5rem 0 1rem; border-radius: 22px; background: #060c1c; border: 1px solid rgba(70,130,255,.4); box-shadow: 0 6px 22px rgba(0,50,255,.28); }
+    #search .sbox svg { stroke: #5e9bff; }
+    #q { color: #e8f0ff; } #q::placeholder { color: #8497c4; }
+    #q-clear { color: #8497c4; } #q-clear:hover { background: rgba(255,255,255,.08); }
+    #q-list { background: #060c1c; border: 1px solid rgba(70,130,255,.4); border-radius: 22px; box-shadow: 0 12px 34px rgba(0,30,160,.45); }
+    #q-list li { color: #e8f0ff; } #q-list li:hover, #q-list li.on { background: rgba(59,139,255,.16); }
+    #q-list .ico { background: rgba(59,139,255,.2); color: #6ea8ff; } #q-list .s { color: #8497c4; }
+    #q-list li.note { color: #8497c4; }
+    #menu { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 2rem + 66px); right: .6rem; }
   </style>
 </head>
 <body>
@@ -378,7 +388,6 @@
 
     <section id="home" class="hidden">
       <div id="map" aria-label="Carte"></div>
-      <p id="brand" aria-hidden="true">Nooxel World</p>
       <div id="nav-top" class="hidden" role="status" aria-live="assertive">
         <span id="nav-ico" aria-hidden="true">↑</span>
         <div class="nav-txt"><p id="nav-dist"></p><p id="nav-text"></p><p id="nav-then" class="hidden"></p></div>
