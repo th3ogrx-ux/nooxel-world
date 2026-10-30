@@ -22,7 +22,7 @@
     .card p { margin: .3rem 0 .6rem; color: var(--mute); font-size: .95rem; }
     .card .ink { color: var(--ink); }
     label { display: grid; gap: .25rem; margin: .7rem 0 0; font-size: .9rem; color: var(--mute); }
-    input[type=text], input[type=url], input[type=tel], textarea { font: inherit; font-size: 16px; padding: .7rem .8rem; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; width: 100%; }
+    input[type=text], input[type=url], input[type=tel], select, textarea { font: inherit; font-size: 16px; padding: .7rem .8rem; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; width: 100%; }
     input:focus, textarea:focus { outline: 2px solid rgba(26,107,255,.35); border-color: var(--blue); }
     textarea { min-height: 84px; resize: vertical; }
     button { font: inherit; cursor: pointer; }
@@ -58,6 +58,10 @@
     .mypost img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; flex: none; background: #e8eefc; }
     .mypost div { flex: 1; min-width: 0; color: var(--ink); font-size: .92rem; overflow-wrap: anywhere; }
     .mypost small { display: block; color: var(--mute); }
+    .kinds { border: 0; padding: 0; margin: .8rem 0 0; } .kinds legend { font-size: .9rem; color: var(--mute); padding: 0; }
+    .slot { display: flex; gap: .8rem; padding: .6rem 0; border-top: 1px solid #eceff3; align-items: flex-start; justify-content: space-between; color: var(--ink); font-size: .92rem; }
+    .slot small { display: block; color: var(--mute); }
+    input[type=datetime-local], input[type=number] { font: inherit; font-size: 16px; padding: .6rem .7rem; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; width: 100%; }
     .hidden { display: none !important; }
     details summary { cursor: pointer; font-weight: 600; color: var(--blue); }
     .banner details summary { color: inherit; text-decoration: underline; }
@@ -165,7 +169,7 @@
 
     app.append(profileCard());
     if (v === "pending" && req && ["pending", "contested"].includes(req.status)) app.append(pendingCard(req));
-    if (v === "verified") app.append(pageCard(), postsCard(), referralCard());
+    if (v === "verified") app.append(pageCard(), scheduleCard(), postsCard(), referralCard());
     else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
     if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
@@ -180,14 +184,19 @@
       e.preventDefault(); err.textContent = ""; btn.disabled = true;
       const n = name.value.trim();
       if (n.length < 2) { err.textContent = "Indiquez le nom de votre commerce (2 caractères minimum)."; btn.disabled = false; return; }
-      const { error } = await sb.from("merchant_profiles").insert({ owner_id: me.id, business_name: n, description: desc.value.trim() || null }).select().single();
+      const kind = document.querySelector("input[name=kind]:checked").value;
+      const { error } = await sb.from("merchant_profiles").insert({ owner_id: me.id, business_name: n, description: desc.value.trim() || null, profile_kind: kind }).select().single();
       btn.disabled = false;
       if (error) { err.textContent = /duplicate|unique/i.test(error.message) ? "Vous avez déjà un profil professionnel." : "Impossible de créer le profil."; return; }
       await load();
     } },
       el("h2", { text: "Créer mon profil professionnel" }),
       el("p", { text: "Aucun justificatif n'est demandé pour créer le profil. Sans vérification, la visibilité est réduite et les avis sont désactivés." }),
-      el("label", {}, "Nom du commerce", name), el("label", {}, "Description (facultatif)", desc), err, btn);
+      el("label", {}, "Nom du commerce", name), el("label", {}, "Description (facultatif)", desc),
+      el("fieldset", { class: "kinds" }, el("legend", { text: "Type de profil" }),
+        el("label", { class: "check" }, el("input", { type: "radio", name: "kind", id: "k-shop", value: "shop", checked: true }), el("span", { text: "Commerce avec une adresse (boutique, restaurant, atelier…)" })),
+        el("label", { class: "check" }, el("input", { type: "radio", name: "kind", id: "k-mobile", value: "mobile" }), el("span", { text: "Indépendant ou itinérant, sans boutique (coiffeur à domicile, food truck, artisan, freelance…) : vous indiquez une zone d'intervention, jamais une adresse personnelle." }))),
+      err, btn);
     return f;
   }
 
@@ -282,17 +291,8 @@
       err, btn);
   }
 
-  // ---- page publique : adresse sur la carte
-  function pageCard() {
-    const input = el("input", { type: "text", id: "a-input", placeholder: "Rechercher l'adresse du commerce", autocomplete: "off", maxlength: 200 });
-    const list = el("ul", { class: "sugg", id: "a-list" }), cur = el("p", { id: "a-current", text: "" }), err = el("p", { class: "err", id: "a-err" });
-    const paint = (a) => { cur.textContent = a ? "📍 " + a : "Aucune adresse : votre commerce n'apparaît pas sur la carte."; rm.classList.toggle("hidden", !a); };
-    const save = async (v) => {
-      err.textContent = "";
-      const { error } = await sb.from("merchant_profiles").update(v).eq("id", state.merchant_id);
-      if (error) { err.textContent = "Enregistrement impossible."; return false; } paint(v.address); return true;
-    };
-    const rm = el("button", { class: "btn danger small hidden", id: "a-remove", type: "button", text: "Retirer de la carte", onclick: () => save({ address: null, lat: null, lng: null }) });
+  // ---- page publique : adresse (boutique) ou zone d'intervention (indépendant)
+  function photonPick(input, list, err, onPick) {          // recherche de lieu (Photon / OpenStreetMap) avec suggestions
     let timer = null, ctl = null;
     input.addEventListener("input", () => {
       clearTimeout(timer); const q = input.value.trim(); list.replaceChildren();
@@ -302,20 +302,108 @@
         try {
           const r = await fetch("https://photon.komoot.io/api/?limit=5&lang=fr&q=" + encodeURIComponent(q), { signal: ctl.signal });
           const feats = ((await r.json()).features || []).filter((f) => f.geometry && f.geometry.coordinates);
-          list.replaceChildren(...feats.map((f) => {
-            const p = f.properties, label = [[p.housenumber, p.street || p.name].filter(Boolean).join(" "), [p.postcode, p.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || p.name || "Lieu";
-            return el("li", { role: "button", tabindex: "0", text: label, onclick: async () => {
-              if (await save({ address: label.slice(0, 200), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] })) { list.replaceChildren(); input.value = ""; }
-            } });
-          }));
-        } catch (e) { if (e.name !== "AbortError") err.textContent = "Recherche d'adresse indisponible pour le moment."; }
+          list.replaceChildren(...feats.map((f) => { const p = f.properties; const li = onPick(p, f.geometry.coordinates); return li; }).filter(Boolean));
+        } catch (e) { if (e.name !== "AbortError") err.textContent = "Recherche indisponible pour le moment."; }
       }, 350);
     });
-    sb.from("merchant_profiles").select("address").eq("id", state.merchant_id).single().then(({ data }) => paint(data && data.address));
-    return el("div", { class: "card", id: "page-card" }, el("h2", { text: "Ma page publique" }),
-      el("p", { text: "Votre page est visible par tous les utilisateurs. L'adresse place votre commerce sur la carte." }),
-      el("a", { class: "btn ghost small", id: "view-page", href: "commerce.html?id=" + encodeURIComponent(state.merchant_id), text: "Voir ma page" }),
-      cur, el("label", {}, "Adresse du commerce", input), list, rm, err);
+  }
+
+  function pageCard() {
+    const card = el("div", { class: "card", id: "page-card" }, el("h2", { text: "Ma page publique" }),
+      el("p", { text: "Votre page est visible par tous les utilisateurs." }),
+      el("a", { class: "btn ghost small", id: "view-page", href: "commerce.html?id=" + encodeURIComponent(state.merchant_id), text: "Voir ma page" }));
+    const body = el("div", { id: "page-body" }); card.append(body);
+    const load = async () => {
+      const { data } = await sb.from("merchant_profiles").select("address,profile_kind,zone_label,zone_radius_km").eq("id", state.merchant_id).single();
+      state.kind = (data && data.profile_kind) || "shop"; body.replaceChildren(typePicker(data || {}), state.kind === "mobile" ? zoneEditor(data) : addressEditor(data || {}));
+    };
+    const typePicker = (d) => {
+      const sel = el("select", { id: "kind-select" }, el("option", { value: "shop", text: "Commerce avec une adresse" }), el("option", { value: "mobile", text: "Indépendant ou itinérant (zone d'intervention)" }));
+      sel.value = d.profile_kind || "shop";
+      sel.addEventListener("change", async () => {
+        const upd = sel.value === "mobile" ? { profile_kind: "mobile", address: null, lat: null, lng: null } : { profile_kind: "shop", zone_label: null, zone_lat: null, zone_lng: null, zone_radius_km: null };
+        const { error } = await sb.from("merchant_profiles").update(upd).eq("id", state.merchant_id);
+        if (error) { sel.value = d.profile_kind || "shop"; return; }
+        await load(); render();
+      });
+      return el("label", {}, "Type de profil", sel);
+    };
+    const addressEditor = (d) => {
+      const input = el("input", { type: "text", id: "a-input", placeholder: "Rechercher l'adresse du commerce", autocomplete: "off", maxlength: 200 });
+      const list = el("ul", { class: "sugg", id: "a-list" }), cur = el("p", { id: "a-current", text: "" }), err = el("p", { class: "err", id: "a-err" });
+      const paint = (a) => { cur.textContent = a ? "📍 " + a : "Aucune adresse : votre commerce n'apparaît pas sur la carte."; rm.classList.toggle("hidden", !a); };
+      const save = async (v) => { err.textContent = ""; const { error } = await sb.from("merchant_profiles").update(v).eq("id", state.merchant_id); if (error) { err.textContent = "Enregistrement impossible."; return false; } paint(v.address); return true; };
+      const rm = el("button", { class: "btn danger small hidden", id: "a-remove", type: "button", text: "Retirer de la carte", onclick: () => save({ address: null, lat: null, lng: null }) });
+      photonPick(input, list, err, (p, c) => {
+        const label = [[p.housenumber, p.street || p.name].filter(Boolean).join(" "), [p.postcode, p.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || p.name || "Lieu";
+        return el("li", { role: "button", tabindex: "0", text: label, onclick: async () => { if (await save({ address: label.slice(0, 200), lat: c[1], lng: c[0] })) { list.replaceChildren(); input.value = ""; } } });
+      });
+      paint(d.address);
+      return el("div", {}, el("p", { text: "L'adresse place votre commerce sur la carte." }), cur, el("label", {}, "Adresse du commerce", input), list, rm, err);
+    };
+    const zoneEditor = (d) => {
+      const input = el("input", { type: "text", id: "z-input", placeholder: "Rechercher votre ville ou votre secteur", autocomplete: "off", maxlength: 100 });
+      const list = el("ul", { class: "sugg", id: "z-list" }), cur = el("p", { id: "z-current" }), err = el("p", { class: "err", id: "z-err" });
+      const radius = el("input", { type: "number", id: "z-radius", min: 2, max: 100, step: 1, value: d.zone_radius_km || 10 });
+      const paint = (label, km) => { cur.textContent = label ? `🚐 Zone d'intervention : ${label}, rayon ${km} km` : "Aucune zone : votre profil n'apparaît pas sur la carte."; rm.classList.toggle("hidden", !label); };
+      const rm = el("button", { class: "btn danger small hidden", id: "z-remove", type: "button", text: "Retirer de la carte", onclick: async () => { const { error } = await sb.from("merchant_profiles").update({ zone_label: null, zone_lat: null, zone_lng: null, zone_radius_km: null }).eq("id", state.merchant_id); if (!error) { state.zoneLabel = null; paint(null); } } });
+      const km = () => { const n = Number(radius.value); return radius.value !== "" && Number.isFinite(n) ? Math.min(100, Math.max(2, Math.round(n))) : 10; };
+      photonPick(input, list, err, (p, c) => {
+        const label = ([p.postcode, p.city].filter(Boolean).join(" ") || p.name || "").slice(0, 100);      // jamais la rue
+        if (label.length < 2) return null;
+        return el("li", { role: "button", tabindex: "0", text: label, onclick: async () => {
+          err.textContent = ""; const r = km();
+          const { error } = await sb.from("merchant_profiles").update({ zone_label: label, zone_lat: c[1], zone_lng: c[0], zone_radius_km: r }).eq("id", state.merchant_id);
+          if (error) { err.textContent = "Enregistrement impossible."; return; } list.replaceChildren(); input.value = ""; state.zoneLabel = label; paint(label, r);
+        } });
+      });
+      radius.addEventListener("change", async () => {
+        if (!d.zone_label && !state.zoneLabel) return; const r = km(); radius.value = r;
+        const { error } = await sb.from("merchant_profiles").update({ zone_radius_km: r }).eq("id", state.merchant_id);
+        if (error) { err.textContent = "Enregistrement impossible."; return; } paint(state.zoneLabel || d.zone_label, r);
+      });
+      paint(d.zone_label, d.zone_radius_km);
+      state.zoneLabel = d.zone_label;
+      return el("div", {}, el("p", { text: "Pas d'adresse : indiquez le secteur où vous intervenez. La position est arrondie à environ 1 km, jamais votre adresse personnelle." }), cur,
+        el("label", {}, "Ville ou secteur", input), list, el("label", {}, "Rayon d'intervention (km, de 2 à 100)", radius), rm, err);
+    };
+    load();
+    return card;
+  }
+
+  // ---- planning de passage (indépendants itinérants : food trucks, marchés…)
+  function scheduleCard() {
+    const wrap = el("div", { class: "card hidden", id: "schedule-card" });
+    (async () => {
+      const { data } = await sb.from("merchant_profiles").select("profile_kind").eq("id", state.merchant_id).single();
+      if (!data || data.profile_kind !== "mobile") return;
+      wrap.classList.remove("hidden");
+      const place = el("input", { type: "text", id: "s-place", maxlength: 120, placeholder: "Ex. Marché de la Halle, parking du stade…" });
+      const starts = el("input", { type: "datetime-local", id: "s-start" }), ends = el("input", { type: "datetime-local", id: "s-end" });
+      const note = el("input", { type: "text", id: "s-note", maxlength: 200, placeholder: "Facultatif (ex. près de la fontaine)" });
+      const err = el("p", { class: "err", id: "s-err" }), list = el("div", { id: "s-list" });
+      const SERR = { invalid_place: "Indiquez le lieu (2 caractères minimum).", invalid_slot: "Le créneau doit finir après son début et durer 24 h au plus.", slot_out_of_range: "Choisissez une date à venir, dans les 90 prochains jours.", too_many_slots: "Limite atteinte : 30 passages à venir.", not_mobile: "Réservé aux profils itinérants." };
+      const refresh = async () => {
+        const { data: rows } = await sb.rpc("list_schedule", { p_merchant: state.merchant_id });
+        list.replaceChildren(...(rows || []).map((r) => el("div", { class: "slot", "data-slot": r.id },
+          el("div", {}, r.place, el("small", { text: `${fmtDT(r.starts_at)} → ${fmtDT(r.ends_at)}${r.note ? " · " + r.note : ""}` })),
+          el("button", { class: "btn danger small", type: "button", "data-del-slot": r.id, text: "Supprimer", onclick: async () => {
+            if (!confirm("Supprimer ce passage ?")) return; await sb.rpc("delete_schedule_slot", { p_id: r.id }); refresh();
+          } }))));
+        if (!(rows || []).length) list.replaceChildren(el("p", { text: "Aucun passage prévu." }));
+      };
+      const add = el("button", { class: "btn small", id: "s-add", type: "button", text: "Ajouter ce passage", onclick: async () => {
+        err.textContent = "";
+        if (!starts.value || !ends.value) { err.textContent = "Indiquez le début et la fin."; return; }
+        const { error } = await sb.rpc("add_schedule_slot", { p_place: place.value, p_lat: null, p_lng: null, p_starts: new Date(starts.value).toISOString(), p_ends: new Date(ends.value).toISOString(), p_note: note.value || null });
+        if (error) { const k = Object.keys(SERR).find((c) => String(error.message).includes(c)); err.textContent = k ? SERR[k] : "Ajout impossible."; return; }
+        place.value = ""; note.value = ""; refresh();
+      } });
+      wrap.append(el("h2", { text: "Planning de passage" }), el("p", { text: "Indiquez où vous serez et quand : vos abonnés le voient sur votre page. Ne mettez pas une adresse privée. Les passages terminés depuis plus d'une semaine sont effacés automatiquement." }),
+        el("label", {}, "Lieu", place), el("label", {}, "Début", starts), el("label", {}, "Fin", ends), el("label", {}, "Précision", note), err, add, el("h2", { style: "margin-top:1rem", text: "Passages à venir" }), list);
+      refresh();
+    })();
+    return wrap;
   }
 
   // ---- page publique : publier

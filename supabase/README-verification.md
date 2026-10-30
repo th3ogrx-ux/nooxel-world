@@ -9,6 +9,9 @@ Supabase → **SQL Editor** → New query → coller → **Run**.
 3. `supabase/admin-mfa.sql` (double authentification obligatoire pour l'administrateur)
 4. `supabase/merchant-manual-review.sql` (étape 3 : validation manuelle **sans pièce d'identité**)
 5. `supabase/commerce-pages.sql` (phase 2, étape 1 : pages commerçants, posts, abonnés, fil d'actualité)
+6. `supabase/independents.sql` (phase 2, étape 2 : indépendants, zone d'intervention, planning de passage)
+7. `supabase/reviews.sql` (phase 2, étape 3 : pseudo public, avis, réponses des commerçants)
+8. `supabase/reports.sql` (phase 2, étape 4 : signalements)
 
 Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
 annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
@@ -114,3 +117,47 @@ abonnements, le fil d'actualité, la recherche de commerces et leurs épingles s
   devenues orphelines (post ou compte supprimé), pour respecter le droit à l'effacement.
 - **À surveiller** : stockage (photos ~150 Ko chacune) et trafic des photos sur l'offre gratuite de Supabase (5 Go
   de trafic par mois) ; voir la comparaison des offres avec le propriétaire du projet.
+
+## Indépendants et commerces itinérants (phase 2, étape 2)
+`independents.sql` ajoute un type de profil « mobile » (coiffeur à domicile, food truck, artisan, freelance…) :
+
+- **Pas d'adresse** : une zone d'intervention (ville + rayon de 2 à 100 km). La position est **arrondie à ~1 km par
+  la base de données elle-même** : même un navigateur modifié ne peut pas enregistrer une adresse personnelle précise.
+- **Planning de passage** (lieu + créneau, 24 h maximum, 30 passages à venir, dans les 90 jours), géré par le
+  commerçant. Les passages terminés depuis plus de 7 jours sont effacés chaque nuit (`purge_old_schedule`, pg_cron).
+- Sur la carte : épingle **verte** et cercle de la zone ; pas de bouton « Itinéraire » vers le centre d'une zone.
+
+## Avis (phase 2, étape 3)
+`reviews.sql` ajoute le pseudo public (3 à 20 caractères, sans accent, unique, modifiable une fois par mois), les avis
+(note de 1 à 5 + texte de 20 caractères minimum) et la réponse publique du commerçant. Tout est imposé par la base :
+
+- **Un compte = un avis par commerce** (contrainte unique) : un second envoi modifie l'avis existant. Pas d'avis sur
+  sa propre page ni sur un commerce non vérifié ; email confirmé obligatoire ; compte créé depuis plus d'une heure
+  (pour les nouveaux avis) ; 5 nouveaux avis par 24 h.
+- **Refus automatique avec explication :** trop court, uniquement des insultes, lien / email / numéro de téléphone,
+  texte répété. La liste de gros mots est dans `insult_words()` (modifiable) : elle réduit les abus sans les supprimer,
+  le bouton « Signaler » (étape 4) complète.
+- **« Preuve de passage » :** simple case déclarative, affichée comme « non vérifié ».
+- Seul le propriétaire d'un commerce vérifié répond à un avis ; la note moyenne est tenue à jour par la base.
+- Supprimer son compte supprime ses avis et son pseudo.
+
+## Signalements (phase 2, étape 4)
+`reports.sql` ajoute les signalements : d'une **page de commerce**, d'un **avis**, ou d'un **problème de l'application**
+(page `signaler.html`, lien « Signaler un problème » dans le menu du compte).
+
+- Visibles **uniquement** par l'administrateur (onglet « Signalements » de `/admin`, double authentification) ; le
+  commerçant ne sait jamais qui l'a signalé. Chaque traitement garde l'administrateur, la date et une note.
+- Depuis la fiche d'un avis signalé : « Masquer l'avis » (la note moyenne se met à jour) ; un avis masqué se remet en
+  ligne depuis l'historique.
+- Limites : 10 signalements par 24 h et par compte ; pas de doublon tant que le précédent est ouvert.
+- RGPD : si le compte du signalant est supprimé, son identité disparaît du signalement ; les signalements traités sont
+  effacés au bout d'un an (tâche `purge-old-reports`).
+
+### Accusé de réception par email (facultatif, gratuit)
+À l'envoi, la page affiche toujours un numéro de signalement. Pour envoyer **aussi un email** :
+1. Brevo → *SMTP et API* → onglet **Clés API** → créer une clé « Nooxel » (copiez-la).
+2. Supabase → Edge Functions → **Deploy a new function** nommée exactement `report-ack`, coller
+   `functions-bundled/report-ack.ts`, « Verify JWT » **activé**.
+3. Edge Functions → **Secrets** : `BREVO_API_KEY` (la clé) et `ACK_SENDER_EMAIL` (l'expéditeur déjà validé chez Brevo).
+
+Sans ces étapes, rien ne casse : seul l'email n'est pas envoyé. Le message ne contient jamais le détail du signalement.
