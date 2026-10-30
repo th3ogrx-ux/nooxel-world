@@ -119,6 +119,7 @@
   });
   (async function boot() {
     if (!sb || !(await currentSession())) { $("read-all").classList.add("hidden"); $("app").replaceChildren(el("p", { class: "empty" }, "Connectez-vous pour voir vos notifications. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return;
     load(true);
   })();
 </script>

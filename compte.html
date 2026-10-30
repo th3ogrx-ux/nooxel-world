@@ -39,6 +39,7 @@
       app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir votre profil." }), el("a", { href: "/", text: "Aller à la connexion" })));
       return;
     }
+    if (await gateProfile()) return;
     const st = await sb.rpc("my_verification_status");
     const pro = st.data || {};
     // Commerce vérifié : l'espace Compte devient la page du commerce (avec ses boutons de gestion).
@@ -48,6 +49,11 @@
     sum = data; render(pro);
   }
 
+  function avatarNode() {
+    if (!sum.avatar_path) { const s = silhouette(100); s.classList.add("avatar"); return s; }
+    return el("img", { class: "avatar-photo", id: "pf-photo", src: avatarUrl(sum.avatar_path), alt: "Votre photo de profil", width: 100, height: 100 });
+  }
+
   function render(pro) {
     const app = $("app");
     $("back").append(icon("back", 26)); $("gear").append(icon("gear", 24));
@@ -55,14 +61,13 @@
       pro.verification === "pending" ? "Votre demande de vérification est en cours. " : "Votre commerce n'est pas encore vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;
     const nameEl = el("h2", { id: "pf-name", text: sum.pseudo || "Choisissez un pseudo" });
     const star = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2l3 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.8 5.7 21.4l1.5-7.1L1.8 9.4 9 8.6z"/></svg>', "image/svg+xml").documentElement;
-    const head = el("div", { class: "profile", id: "profile" }, silhouette(100), nameEl,
+    const head = el("div", { class: "profile", id: "profile" }, avatarNode(), nameEl,
       sum.active_contributor ? el("span", { class: "pill", id: "pf-badge" }, document.importNode(star, true), "Contributeur actif") : null,
       el("div", { class: "metrics" },
         el("div", {}, el("b", { id: "pf-reviews", text: String(sum.reviews_count) }), el("span", { text: sum.reviews_count > 1 ? "avis laissés" : "avis laissé" })),
         el("div", {}, el("b", { id: "pf-following", text: String(sum.following_count) }), el("span", { text: sum.following_count > 1 ? "commerces suivis" : "commerce suivi" })),
         el("div", {}, el("b", { id: "pf-points", text: String(sum.points) }), el("span", { text: "points" }))),
       editor(nameEl));
-    head.querySelector(".silhouette").classList.add("avatar");
     const secs = el("div", { class: "utabs", role: "group", "aria-label": "Sections du profil" },
       ...[["reviews", "Avis"], ["fav", "Favoris"]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "reviews"), text: label, onclick: () => show(k) })));
     const rsec = el("div", { id: "section-reviews", class: "section" }, el("div", { id: "my-reviews" }), el("p", { class: "empty hidden", id: "no-reviews", text: "Vous n'avez pas encore laissé d'avis. Ouvrez la page d'un commerce pour donner le vôtre." }),

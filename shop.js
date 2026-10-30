@@ -109,6 +109,28 @@ const hhmm = (t) => t.replace(":", "h");
 const dateFr = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 const rateStr = (v) => Number(v).toFixed(1).replace(".", ",");
 
+// Recadre au centre une photo choisie, la réduit en JPEG w×h : léger à envoyer, et retire aussi les métadonnées (position GPS…).
+async function cropJpeg(file, w, h, maxBytes = 900000) {
+  if (!file || !file.type.startsWith("image/")) throw new Error("Choisissez une photo (image).");
+  if (file.size > 30e6) throw new Error("Cette image est trop lourde.");
+  let src;
+  try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch { src = await new Promise((ok, no) => { const u = URL.createObjectURL(file), i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("Impossible de lire cette image.")); i.src = u; }); }
+  const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight, k = Math.max(w / sw, h / sh);
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(src, (w - sw * k) / 2, (h - sh * k) / 2, sw * k, sh * k);
+  for (const q of [0.85, 0.72, 0.58]) { const b = await new Promise((r) => c.toBlob(r, "image/jpeg", q)); if (b && b.size <= maxBytes) return b; }
+  throw new Error("Image trop lourde même réduite.");
+}
+const avatarUrl = (path) => sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+// Écran « Configurez votre profil » : obligatoire tant qu'on n'a pas de pseudo. Renvoie true si on a été redirigé.
+async function gateProfile() {
+  try {
+    const { data } = await sb.rpc("my_profile_summary");
+    if (data && !data.pseudo) { location.replace("configurer-profil.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search)); return true; }
+  } catch (e) {}
+  return false;
+}
 // Une publication : photo (chargée à la demande, dimensions réservées) + texte + date.
 function postCard(p, withShop) {
   return el("article", { class: "post", "data-post": p.id },
