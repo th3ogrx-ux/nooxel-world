@@ -9,20 +9,15 @@
   <link rel="icon" href="assets/favicon.png">
   <link rel="stylesheet" href="shop.css">
   <link rel="stylesheet" href="light.css">
+  <link rel="stylesheet" href="tabbar.css">
 </head>
 <body>
 <main>
-  <div class="plainbar"><a id="back" href="/" aria-label="Retour à la carte"></a><a id="gear" href="/?menu=1" aria-label="Réglages"></a></div>
+  <div class="plainbar"><a id="back" href="/" aria-label="Retour à la carte"></a><a id="gear" href="parametres.html" aria-label="Paramètres"></a></div>
   <div id="app"><p class="empty">Chargement…</p></div>
   <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
 </main>
-<nav id="tabbar" aria-label="Navigation principale">
-  <a class="tab" id="tab-map" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>Carte</span></a>
-  <a class="tab" id="tab-search" href="/?search=1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Chercher</span></a>
-  <a id="tab-locate" href="/" aria-label="Ma position"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/></svg></a>
-  <a class="tab" id="tab-feed" href="fil.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Fil</span></a>
-  <a class="tab on" id="tab-account" href="compte.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0z"/></svg><span>Compte</span></a>
-</nav>
+<script src="tabbar.js" data-active="account"></script>
 <script src="assets/vendor/supabase.js"></script>
 <script src="shop.js"></script>
 <script>
@@ -77,6 +72,7 @@
       el("button", { class: "btn-outline hidden", id: "more-fav", type: "button", text: "Voir plus", onclick: () => loadFav() }));
     app.replaceChildren(...[banner, head, secs, rsec, fsec].filter(Boolean));
     rLoaded = true; loadReviews(true);
+    if (new URLSearchParams(location.search).get("tab") === "fav") show("fav");
   }
 
   function editor(nameEl) {

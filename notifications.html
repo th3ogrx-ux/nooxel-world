@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Notifications — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="tabbar.css">
+  <style>
+    :root { color-scheme: light; --navy: #0f2a5c; --mute: #6b7a99; --blue: #1a6bff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #fff; color: var(--navy); font: 16px/1.4 system-ui, -apple-system, sans-serif; }
+    main { max-width: 560px; margin: 0 auto; padding: 0 1rem 8rem; }
+    header { display: flex; align-items: center; gap: .8rem; padding: calc(env(safe-area-inset-top, 0px) + .8rem) 0 .6rem; }
+    #back { color: var(--navy); width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; margin-left: -.5rem; }
+    #back svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    h1 { margin: 0; font-size: 1.7rem; flex: 1; }
+    #read-all { border: 0; background: none; color: #1062d6; font: inherit; font-size: .82rem; white-space: nowrap; cursor: pointer; padding: .4rem 0; }
+    #read-all:disabled { color: #9db4e8; cursor: default; }
+    h2 { margin: 1.4rem .2rem .6rem; font-size: 1.1rem; font-weight: 500; color: var(--mute); }
+    .n { display: flex; gap: .9rem; align-items: flex-start; padding: .85rem; border-radius: 16px; margin: 0 0 .7rem; background: #fff; border: 1px solid #eef1f7; box-shadow: 0 2px 10px rgba(15,42,92,.06); position: relative; }
+    .n.unread { background: #eaf1fd; border-color: #dbe7fb; }
+    .av { position: relative; width: 56px; height: 56px; flex: none; }
+    .av .face { width: 56px; height: 56px; border-radius: 50%; background: #e3e6ea; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+    .av .face svg { width: 82%; height: 82%; fill: #9aa0a8; }
+    .av .face.shop { align-items: center; background: #dbe0ea; color: var(--navy); font-weight: 700; font-size: 1.5rem; }
+    .av .face.app { align-items: center; }
+    .av .face.app svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .face.app.green { background: #dff5e8; color: #1c9a57; } .face.app.blue { background: #dbe8ff; color: #1a6bff; }
+    .badge { position: absolute; right: -3px; bottom: -3px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; color: #fff; }
+    .badge svg { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .badge.plus, .badge.reply { background: #1a6bff; } .badge.star { background: #f5a623; } .badge.star svg { fill: #fff; stroke: none; }
+    .body { flex: 1; min-width: 0; padding-top: .25rem; font-size: .93rem; overflow-wrap: anywhere; }
+    .body b { font-weight: 700; }
+    .meta { display: flex; flex-direction: column; align-items: flex-end; gap: .6rem; flex: none; color: var(--mute); font-size: .78rem; white-space: nowrap; padding-top: .2rem; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+    .empty { text-align: center; color: var(--mute); padding: 3rem 1rem; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <a id="back" href="/" aria-label="Retour à la carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+    <h1>Notifications</h1>
+    <button type="button" id="read-all">Tout marquer comme lu</button>
+  </header>
+  <div id="app"></div>
+</main>
+<script src="notifications-test.js"></script>
+<script src="tabbar.js" data-active="notifications"></script>
+<script>
+  // Écran de test : les notifications viennent de notifications-test.js (fictives).
+  const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k)); return e; };
+  const svgEl = (inner, cls) => { const t = document.createElement("template"); t.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`; const s = t.content.firstChild; if (cls) s.setAttribute("class", cls); return s; };
+  const PERSON = '<circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/>';
+  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'],
+    reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
+  function avatar(n) {
+    const box = el("span", "av");
+    if (n.type === "report-done") box.append(el("span", "face app green", svgEl('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>')));
+    else if (n.type === "verified") box.append(el("span", "face app blue", svgEl('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>')));
+    else if (n.type === "post") box.append(el("span", "face shop", n.name.charAt(0).toUpperCase()));
+    else box.append(el("span", "face", svgEl(PERSON)));
+    const b = BADGES[n.type]; if (b) box.append(el("span", "badge " + b[0], svgEl(b[1])));
+    return box;
+  }
+  const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const whenOf = (n) => { const d = new Date(); d.setDate(d.getDate() - n.daysAgo); return d; };
+  const fmtDate = (d) => { const s = d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }); return s.charAt(0).toUpperCase() + s.slice(1); };
+  const GROUPS = [["Aujourd'hui", (n) => n.daysAgo === 0], ["Cette semaine", (n) => n.daysAgo > 0 && n.daysAgo < 7], ["Plus ancien", (n) => n.daysAgo >= 7]];
+  let read = notifReadSet();
+  const isUnread = (n) => !n.read && !read.has(n.id);
+
+  function render() {
+    const app = document.getElementById("app"); app.replaceChildren();
+    for (const [title, test] of GROUPS) {
+      const items = NOTIF_TEST.filter(test); if (!items.length) continue;
+      app.append(el("h2", "", title));
+      for (const n of items) {
+        const u = isUnread(n);
+        const row = el("article", "n" + (u ? " unread" : ""));
+        row.dataset.id = n.id; row.dataset.state = u ? "unread" : "read";
+        const body = el("div", "body", n.name ? el("b", "", n.name) : null, n.name ? " " : null, n.type === "report-done" || n.type === "verified" ? el("b", "", n.text) : n.text);
+        if (n.type === "verified") { body.replaceChildren(el("b", "", "Votre profil professionnel"), el("br"), "a été vérifié"); }
+        row.append(avatar(n), body, el("div", "meta", el("span", "when", n.daysAgo === 0 ? n.time : fmtDate(whenOf(n))), u ? el("span", "dot") : null));
+        app.append(row);
+      }
+    }
+    document.getElementById("read-all").disabled = !NOTIF_TEST.some(isUnread);
+  }
+  document.getElementById("read-all").addEventListener("click", () => {
+    notifMarkRead(NOTIF_TEST.map((n) => n.id)); read = notifReadSet(); render(); window.dispatchEvent(new Event("notifs-changed"));
+  });
+  render();
+</script>
+</body>
+</html>

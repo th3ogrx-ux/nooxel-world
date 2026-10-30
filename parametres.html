@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Paramètres — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#061330">
+  <link rel="icon" href="assets/favicon.png">
+  <style>
+    /* Écran sombre d'après la maquette « Paramètres » (version avec le bloc « Mon compte »). */
+    :root { color-scheme: dark; --bg: #061330; --card: #0d2150; --line: rgba(120,160,255,.14); --ink: #e8efff; --mute: #8ea3d0; --blue: #4a8bff; --red: #ff5a3c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(120% 80% at 50% 0%, #0c2152, var(--bg) 60%); color: var(--ink); font: 16px/1.4 system-ui, -apple-system, sans-serif; }
+    main { max-width: 560px; margin: 0 auto; padding: 0 1rem calc(env(safe-area-inset-bottom, 0px) + 2.5rem); }
+    header { display: flex; align-items: center; gap: .9rem; padding: calc(env(safe-area-inset-top, 0px) + .8rem) 0 .8rem; }
+    header a { color: var(--ink); width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; margin-left: -.5rem; }
+    h1 { margin: 0; font-size: 1.45rem; }
+    header svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    h2 { margin: 1.5rem .3rem .5rem; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--blue); font-weight: 700; }
+    .group { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+    .row { display: flex; align-items: center; gap: .9rem; width: 100%; padding: .8rem 1rem; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+    .row:first-child { border-top: 0; }
+    .row:active { background: rgba(120,160,255,.1); }
+    .row svg.i { width: 26px; height: 26px; color: var(--blue); fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    .row .t { flex: 1; min-width: 0; } .row .t small { display: block; color: var(--mute); font-size: .8rem; margin-top: .1rem; }
+    .row .chev { width: 18px; height: 18px; color: var(--mute); }
+    .account { padding: 1rem; margin-top: .3rem; } .account .av { width: 54px; height: 54px; border-radius: 50%; background: #2a5fc4; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+    .account .av svg.i { color: #fff; width: 28px; height: 28px; } .account .t { font-size: 1.1rem; } .account .t small { font-size: .85rem; }
+    .switch { width: 50px; height: 30px; border-radius: 999px; background: var(--blue); position: relative; flex: none; }
+    .switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; }
+    .danger { margin-top: .2rem; } .danger .row { color: var(--red); background: none; padding: .7rem .3rem; border-top: 0; } .danger .row svg.i, .danger .row .chev { color: var(--red); }
+    .ver { text-align: center; color: var(--mute); font-size: .8rem; margin: 1.3rem 0 0; }
+    #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem); transform: translateX(-50%); background: #fff; color: #0f2a5c; padding: .7rem 1.1rem; border-radius: 999px; font-size: .92rem; box-shadow: 0 8px 30px rgba(0,0,0,.5); max-width: 90vw; z-index: 20; }
+    #del-confirm { position: fixed; inset: 0; z-index: 30; background: rgba(0,4,16,.75); display: grid; place-items: center; padding: 1rem; }
+    #del-confirm > div { background: #fff; color: #1f1f1f; border-radius: 20px; padding: 1.3rem; max-width: 380px; width: 100%; }
+    #del-confirm h3 { margin: 0 0 .4rem; } #del-confirm p { margin: 0 0 1rem; color: #5f6368; }
+    #del-confirm button { width: 100%; padding: .75rem; border: 0; border-radius: 999px; font: inherit; font-weight: 600; cursor: pointer; margin-top: .5rem; }
+    #del-yes { background: #d93025; color: #fff; } #del-no { background: #eceff3; color: #1f1f1f; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header><a href="compte.html" id="back" aria-label="Retour"></a><h1>Paramètres</h1></header>
+  <div id="app"></div>
+  <p class="ver">Version 1.0.0</p>
+</main>
+<div id="del-confirm" class="hidden" role="alertdialog" aria-labelledby="del-title">
+  <div><h3 id="del-title">Supprimer votre compte ?</h3><p>Votre compte Nooxel et vos données seront effacés définitivement. Cette action est irréversible.</p>
+    <button type="button" id="del-yes">Supprimer définitivement</button><button type="button" id="del-no">Annuler</button></div>
+</div>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script>
+  // Les lignes dont la fonction n'existe pas encore mènent à un écran de test vide (bientot.html).
+  const soon = (name) => "bientot.html?page=" + encodeURIComponent(name);
+  const SECTIONS = [
+    { title: "Mon activité", rows: [["news", "Fil d'actualité", "fil.html"], ["heart", "Mes favoris", "compte.html?tab=fav"], ["star", "Mes avis laissés", "compte.html"]] },
+    { title: "Professionnel", rows: [["briefcase", "Espace professionnel", "pro.html", "Gérer ma page commerçant / Devenir professionnel"]] },
+    { title: "Paramètres du compte", rows: [["bell", "Notifications", "toggle"], ["lock", "Confidentialité", "confidentialite.html"]] },
+    { title: "Assistance", rows: [["alert", "Signaler un problème", "signaler.html"], ["help", "Centre d'aide", soon("Centre d'aide")]] },
+    { title: "Informations légales", rows: [["doc", "Mentions légales", "mentions-legales.html"], ["shield", "Politique de confidentialité", "confidentialite.html"], ["doc", "Conditions d'utilisation", "cgu.html"]] },
+  ];
+  const chev = () => icon("chev");
+  function row([ic, label, target, sub]) {
+    const kids = [icon(ic), el("span", { class: "t" }, label, sub ? el("small", { text: sub }) : null)];
+    if (target === "toggle") return el("button", { class: "row", type: "button", role: "switch", "aria-checked": "true", "data-row": label, onclick: () => toast(label + " : bientôt disponible.") }, ...kids, el("span", { class: "switch" }));
+    const c = chev(); c.classList.add("chev");
+    return el("a", { class: "row", href: target, "data-row": label }, ...kids, c);
+  }
+  let tt = null;
+  function toast(msg) { let t = $("toast"); if (!t) { t = el("p", { id: "toast", role: "status" }); document.body.append(t); } t.textContent = msg; clearTimeout(tt); tt = setTimeout(() => t.remove(), 2600); }
+
+  function boot() {
+    $("back").append(icon("back", 26));
+    const app = $("app");
+    const c = chev(); c.classList.add("chev");
+    app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "compte.html", "data-row": "Mon compte", style: "padding:0" },
+      el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
+    for (const s of SECTIONS) app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...s.rows.map(row)));
+    const out = el("button", { class: "row", type: "button", id: "logout", "data-row": "Se déconnecter" }, icon("logout"), el("span", { class: "t", text: "Se déconnecter" })); const c2 = chev(); c2.classList.add("chev"); out.append(c2);
+    const del = el("button", { class: "row", type: "button", id: "delete-account", "data-row": "Supprimer mon compte" }, icon("trash"), el("span", { class: "t", text: "Supprimer mon compte" }));
+    app.append(el("h2", { text: "Zone de danger" }), el("div", { class: "danger" }, out, del));
+    out.addEventListener("click", async () => { if (sb) await sb.auth.signOut().catch(() => {}); location.href = "/"; });
+    del.addEventListener("click", () => $("del-confirm").classList.remove("hidden"));
+    $("del-no").addEventListener("click", () => $("del-confirm").classList.add("hidden"));
+    $("del-yes").addEventListener("click", async () => {
+      if (!sb) return; $("del-yes").disabled = true;
+      const { error } = await sb.rpc("delete_my_account");
+      $("del-yes").disabled = false; $("del-confirm").classList.add("hidden");
+      if (error) return toast("La suppression n'a pas pu être faite pour le moment. Contactez-nous pour effacer votre compte.");
+      try { localStorage.removeItem("sb-smjbgjolteovcwkoxcar-auth-token"); localStorage.removeItem("nooxel_accounts"); } catch (e) {}
+      await sb.auth.signOut().catch(() => {}); location.href = "/";
+    });
+    currentSession().then((s) => { if (!s) location.replace("/"); });
+  }
+  boot();
+</script>
+</body>
+</html>

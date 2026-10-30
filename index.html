@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="tabbar.css">
   <title>Nooxel World</title>
   <link rel="icon" href="assets/favicon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -170,16 +171,7 @@
     #home { position: fixed; inset: 0; z-index: 5; background: #040b1c; }
     #map { position: absolute; inset: 0; }
     #me { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .8rem); right: .8rem; z-index: 6; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: inherit; font-weight: 700; font-size: 1.05rem; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
-    /* Barre de navigation du bas : fond uni (pas de flou), aucune animation permanente → légère même sur un petit téléphone */
-    #tabbar { position: absolute; left: .6rem; right: .6rem; max-width: 460px; margin: 0 auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 2rem); z-index: 6; height: 58px; display: grid; grid-template-columns: 1fr 1fr 74px 1fr 1fr; align-items: center; border-radius: 22px; background: #060c1c; border: 1px solid rgba(70,130,255,.4); box-shadow: 0 6px 22px rgba(0,50,255,.28); }
-    #tabbar .tab { display: grid; justify-items: center; gap: .08rem; padding: .3rem 0; border: 0; background: none; color: #8497c4; font: inherit; font-size: .68rem; font-weight: 600; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    #tabbar .tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    #tabbar .tab.on { color: #3b8bff; } #tabbar #tab-map.on svg { fill: currentColor; }
-    #tab-locate { justify-self: center; width: 58px; height: 58px; margin-top: -30px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; cursor: pointer; background: radial-gradient(circle at 50% 28%, #3b8bff, #0a4fe0 75%); box-shadow: 0 0 0 6px #060c1c, 0 0 16px 6px rgba(30,110,255,.55); -webkit-tap-highlight-color: transparent; }
-    #tab-locate svg { width: 28px; height: 28px; fill: #fff; stroke: #fff; stroke-width: 1.2; }
-    #tab-locate svg circle { fill: #0a4fe0; stroke: none; }
-    #tab-locate:active { transform: scale(.94); }
-    #home.has-bar .locate-ctrl { display: none; }          /* le bouton « Ma position » est au centre de la barre */
+        #home.has-bar .locate-ctrl { display: none; }          /* le bouton « Ma position » est au centre de la barre */
     .shop-marker { position: relative; width: 30px; height: 36px; padding: 0; border: 0; background: none; cursor: pointer; }
     .shop-pin { position: absolute; left: 2px; top: 1px; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #1a6bff; border: 2px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); display: grid; place-items: center; }
     .shop-pin svg { transform: rotate(45deg); }
@@ -425,13 +417,7 @@
         </div>
         <ul id="q-list" class="hidden" role="listbox"></ul>
       </div>
-      <nav id="tabbar" aria-label="Navigation principale">
-        <button type="button" class="tab on" id="tab-map" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>Carte</span></button>
-        <button type="button" class="tab" id="tab-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Chercher</span></button>
-        <button type="button" id="tab-locate" aria-label="Ma position"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/></svg></button>
-        <a class="tab" id="tab-feed" href="fil.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Fil</span></a>
-        <button type="button" class="tab" id="tab-account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0z"/></svg><span>Compte</span></button>
-      </nav>
+      <script src="tabbar.js" data-active="map"></script>
       <button type="button" id="me" aria-label="Mon compte"></button>
       <div id="menu" class="hidden" role="menu">
         <p id="who"></p>
@@ -951,10 +937,9 @@
     }
     $("pc-go").onclick = computeRoute;
     // ----- Barre du bas
-    $("tab-map").onclick = () => { clearSearch(); closeDock(); $("menu").classList.add("hidden"); };
-    $("tab-search").onclick = () => { $("menu").classList.add("hidden"); $("q").focus(); };
-    $("tab-locate").onclick = () => { if (geo) geo.trigger(); else startMap(); };
-    $("tab-account").onclick = () => { location.href = "compte.html"; };
+    $("tab-map").onclick = () => { clearSearch(); closeDock(); $("menu").classList.add("hidden"); return false; };
+    $("tab-search").onclick = () => { $("menu").classList.add("hidden"); $("q").focus(); return false; };
+    $("tab-locate").onclick = () => { if (geo) geo.trigger(); else startMap(); return false; };
     const tabState = () => { const menuOn = !$("menu").classList.contains("hidden"), searching = document.activeElement === $("q"); $("tab-account").classList.toggle("on", menuOn); $("tab-search").classList.toggle("on", searching && !menuOn); $("tab-map").classList.toggle("on", !menuOn && !searching); };
     new MutationObserver(tabState).observe($("menu"), { attributes: true, attributeFilter: ["class"] });
     $("q").addEventListener("focus", tabState); $("q").addEventListener("blur", () => setTimeout(tabState, 160));
