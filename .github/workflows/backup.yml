@@ -1,0 +1,40 @@
+# Sauvegarde automatique, gratuite et chiffrée de la base, chaque nuit (et à la demande : onglet Actions → Run workflow).
+# Voir supabase/README-sauvegarde.md. Secrets à créer dans GitHub → Settings → Secrets and variables → Actions :
+#   SUPABASE_DB_URL    adresse de connexion « Session pooler » de Supabase (Connect → Session pooler)
+#   BACKUP_PASSPHRASE  un long mot de passe aléatoire : gardez-le AILLEURS, sans lui rien n'est lisible.
+# Garde-fou : la sauvegarde est REFUSÉE si le dépôt est public.
+name: Sauvegarde de la base
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier que le dépôt est privé
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/require-private.sh
+      - name: Outils PostgreSQL 17 (le client doit être au moins aussi récent que la base)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+      - name: Sauvegarde chiffrée
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: scripts/backup.sh backup
+      - name: Conserver la sauvegarde chiffrée 30 jours (visible seulement par vous, dépôt privé)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-chiffree
+          path: backup/*.gpg
+          retention-days: 30
+          if-no-files-found: error
