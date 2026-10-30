@@ -37,6 +37,8 @@
     .meta { display: flex; flex-direction: column; align-items: flex-end; gap: .6rem; flex: none; color: var(--mute); font-size: .78rem; white-space: nowrap; padding-top: .2rem; }
     .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
     .empty { text-align: center; color: var(--mute); padding: 3rem 1rem; }
+    .more { display: block; margin: .5rem auto 1rem; padding: .6rem 1.4rem; border: 1px solid #c4cbe0; border-radius: 999px; background: #fff; color: var(--navy); font: inherit; cursor: pointer; }
+    a.n { color: inherit; text-decoration: none; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -49,52 +51,76 @@
   </header>
   <div id="app"></div>
 </main>
-<script src="notifications-test.js"></script>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
 <script src="tabbar.js" data-active="notifications"></script>
 <script>
-  // Écran de test : les notifications viennent de notifications-test.js (fictives).
-  const el = (tag, cls, ...kids) => { const e = document.createElement(tag); if (cls) e.className = cls; for (const k of kids) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k)); return e; };
-  const svgEl = (inner, cls) => { const t = document.createElement("template"); t.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`; const s = t.content.firstChild; if (cls) s.setAttribute("class", cls); return s; };
-  const PERSON = '<circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/>';
-  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'],
-    reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
+  const C = (cls, ...kids) => el("span", { class: cls }, ...kids);
+  const svgEl = (inner) => { const t = document.createElement("template"); t.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`; return t.content.firstChild; };
+  const PERSON = '<circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/>', SHIELD = '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>';
+  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'], reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
   function avatar(n) {
-    const box = el("span", "av");
-    if (n.type === "report-done") box.append(el("span", "face app green", svgEl('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>')));
-    else if (n.type === "verified") box.append(el("span", "face app blue", svgEl('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>')));
-    else if (n.type === "post") box.append(el("span", "face shop", n.name.charAt(0).toUpperCase()));
-    else box.append(el("span", "face", svgEl(PERSON)));
-    const b = BADGES[n.type]; if (b) box.append(el("span", "badge " + b[0], svgEl(b[1])));
+    const box = C("av");
+    if (n.kind === "report_done") box.append(C("face app green", svgEl(SHIELD)));
+    else if (n.kind === "verified") box.append(C("face app blue", svgEl(SHIELD)));
+    else if (n.kind === "post" || n.kind === "reply") box.append(C("face shop", (n.name || "?").charAt(0).toUpperCase()));
+    else box.append(C("face", svgEl(PERSON)));
+    const b = BADGES[n.kind]; if (b) box.append(C("badge " + b[0], svgEl(b[1])));
     return box;
   }
-  const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
-  const whenOf = (n) => { const d = new Date(); d.setDate(d.getDate() - n.daysAgo); return d; };
+  function textOf(n) {
+    const name = el("b", { text: n.name || "" });
+    switch (n.kind) {
+      case "follow": return [name, " s'est abonné(e) à votre page"];
+      case "review": return [name, ` a laissé un avis ${n.rating} étoile${n.rating > 1 ? "s" : ""} sur votre page : “${n.snippet || ""}”`];
+      case "reply": return [name, " a répondu à votre avis"];
+      case "post": return [name, " a fait une nouvelle publication"];
+      case "report_done": return [el("b", { text: "Votre signalement a été traité" })];
+      case "verified": return [el("b", { text: "Votre profil professionnel" }), el("br"), "a été vérifié"];
+    }
+    return [""];
+  }
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
   const fmtDate = (d) => { const s = d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }); return s.charAt(0).toUpperCase() + s.slice(1); };
-  const GROUPS = [["Aujourd'hui", (n) => n.daysAgo === 0], ["Cette semaine", (n) => n.daysAgo > 0 && n.daysAgo < 7], ["Plus ancien", (n) => n.daysAgo >= 7]];
-  let read = notifReadSet();
-  const isUnread = (n) => !n.read && !read.has(n.id);
+  const groupOf = (d) => { const days = (Date.now() - d.getTime()) / 864e5; return sameDay(d, new Date()) ? 0 : days < 7 ? 1 : 2; };
+  const TITLES = ["Aujourd'hui", "Cette semaine", "Plus ancien"];
+  let items = [], before = null;
+  const dest = (n) => ({ post: "commerce.html?id=" + n.merchant_id, reply: "commerce.html?id=" + n.merchant_id, review: "compte.html", follow: "compte.html", verified: "compte.html" })[n.kind] || null;
 
   function render() {
-    const app = document.getElementById("app"); app.replaceChildren();
-    for (const [title, test] of GROUPS) {
-      const items = NOTIF_TEST.filter(test); if (!items.length) continue;
-      app.append(el("h2", "", title));
-      for (const n of items) {
-        const u = isUnread(n);
-        const row = el("article", "n" + (u ? " unread" : ""));
-        row.dataset.id = n.id; row.dataset.state = u ? "unread" : "read";
-        const body = el("div", "body", n.name ? el("b", "", n.name) : null, n.name ? " " : null, n.type === "report-done" || n.type === "verified" ? el("b", "", n.text) : n.text);
-        if (n.type === "verified") { body.replaceChildren(el("b", "", "Votre profil professionnel"), el("br"), "a été vérifié"); }
-        row.append(avatar(n), body, el("div", "meta", el("span", "when", n.daysAgo === 0 ? n.time : fmtDate(whenOf(n))), u ? el("span", "dot") : null));
+    const app = $("app"); app.replaceChildren();
+    if (!items.length) { app.append(el("p", { class: "empty", id: "empty", text: "Aucune notification pour le moment. Vous serez prévenu ici des abonnements, des avis, des réponses et des publications des commerces que vous suivez." })); }
+    for (let g = 0; g < 3; g++) {
+      const part = items.filter((n) => groupOf(new Date(n.created_at)) === g); if (!part.length) continue;
+      app.append(el("h2", { text: TITLES[g] }));
+      for (const n of part) {
+        const d = new Date(n.created_at), u = !n.read, to = dest(n);
+        const row = el(to ? "a" : "article", { class: "n" + (u ? " unread" : ""), "data-id": n.id, "data-state": u ? "unread" : "read", href: to || false },
+          avatar(n), el("div", { class: "body" }, ...textOf(n)),
+          el("div", { class: "meta" }, el("span", { class: "when", text: g === 0 ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : fmtDate(d) }), u ? el("span", { class: "dot" }) : null));
+        if (u) row.addEventListener("click", () => { sb.rpc("mark_notifications_read", { p_ids: [n.id] }).then(() => window.dispatchEvent(new Event("notifs-changed"))); });
         app.append(row);
       }
     }
-    document.getElementById("read-all").disabled = !NOTIF_TEST.some(isUnread);
+    if (items.length >= 30) app.append(el("button", { class: "more", id: "more", type: "button", text: "Voir plus", onclick: () => load() }));
+    $("read-all").disabled = !items.some((n) => !n.read);
   }
-  document.getElementById("read-all").addEventListener("click", () => {
-    notifMarkRead(NOTIF_TEST.map((n) => n.id)); read = notifReadSet(); render(); window.dispatchEvent(new Event("notifs-changed"));
+  async function load(first) {
+    const { data, error } = await sb.rpc("my_notifications", { p_before: before, p_limit: 30 });
+    if (error) { $("app").replaceChildren(el("p", { class: "empty", id: "err", text: fr(error) })); return; }
+    items = first ? data : items.concat(data); if (data.length) before = data[data.length - 1].created_at; render();
+    if (window.setNotifBadge) window.dispatchEvent(new Event("notifs-changed"));
+  }
+  $("read-all").addEventListener("click", async () => {
+    $("read-all").disabled = true;
+    const { error } = await sb.rpc("mark_notifications_read", {});
+    if (error) { $("read-all").disabled = false; return; }
+    items.forEach((n) => { n.read = true; }); render(); window.setNotifBadge(0);
   });
-  render();
+  (async function boot() {
+    if (!sb || !(await currentSession())) { $("read-all").classList.add("hidden"); $("app").replaceChildren(el("p", { class: "empty" }, "Connectez-vous pour voir vos notifications. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    load(true);
+  })();
 </script>
 </body>
 </html>
