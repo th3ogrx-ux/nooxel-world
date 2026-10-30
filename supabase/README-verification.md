@@ -9,6 +9,7 @@ Supabase → **SQL Editor** → New query → coller → **Run**.
 3. `supabase/admin-mfa.sql` (double authentification obligatoire pour l'administrateur)
 4. `supabase/merchant-manual-review.sql` (étape 3 : validation manuelle **sans pièce d'identité**)
 5. `supabase/commerce-pages.sql` (phase 2, étape 1 : pages commerçants, posts, abonnés, fil d'actualité)
+6. `supabase/independents.sql` (phase 2, étape 2 : indépendants, zone d'intervention, planning de passage)
 
 Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
 annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
@@ -114,3 +115,12 @@ abonnements, le fil d'actualité, la recherche de commerces et leurs épingles s
   devenues orphelines (post ou compte supprimé), pour respecter le droit à l'effacement.
 - **À surveiller** : stockage (photos ~150 Ko chacune) et trafic des photos sur l'offre gratuite de Supabase (5 Go
   de trafic par mois) ; voir la comparaison des offres avec le propriétaire du projet.
+
+## Indépendants et commerces itinérants (phase 2, étape 2)
+`independents.sql` ajoute un type de profil « mobile » (coiffeur à domicile, food truck, artisan, freelance…) :
+
+- **Pas d'adresse** : une zone d'intervention (ville + rayon de 2 à 100 km). La position est **arrondie à ~1 km par
+  la base de données elle-même** : même un navigateur modifié ne peut pas enregistrer une adresse personnelle précise.
+- **Planning de passage** (lieu + créneau, 24 h maximum, 30 passages à venir, dans les 90 jours), géré par le
+  commerçant. Les passages terminés depuis plus de 7 jours sont effacés chaque nuit (`purge_old_schedule`, pg_cron).
+- Sur la carte : épingle **verte** et cercle de la zone ; pas de bouton « Itinéraire » vers le centre d'une zone.

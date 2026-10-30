@@ -174,6 +174,7 @@
     .shop-marker { position: relative; width: 30px; height: 36px; padding: 0; border: 0; background: none; cursor: pointer; }
     .shop-pin { position: absolute; left: 2px; top: 1px; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #1a6bff; border: 2px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); display: grid; place-items: center; }
     .shop-pin svg { transform: rotate(45deg); }
+    .shop-pin.mobile { background: #12a150; }
     #pc-page { display: inline-block; margin-top: .25rem; font-size: .9rem; color: #1a6bff; font-weight: 600; text-decoration: none; }
     #menu { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 3.6rem); right: .8rem; z-index: 6; box-sizing: border-box; width: min(280px, calc(100vw - 1.6rem)); padding: .9rem; border-radius: 18px; background: #fff; color: #1f1f1f; box-shadow: 0 12px 40px rgba(0,0,0,.4); text-align: left; animation: pop .2s ease both; }
     #menu #who { margin: 0 0 .7rem; font-size: .92rem; color: #5f6368; word-break: break-all; }
@@ -696,7 +697,7 @@
       $("q-list").innerHTML = ""; active = -1;
       if (!results.length) return showNote("Aucun résultat");
       results.forEach((f, i) => {
-        const { title, sub } = f.shop ? { title: f.shop.business_name, sub: "Commerce vérifié" + (f.shop.address ? " · " + f.shop.address : "") } : placeLabel(f.properties);
+        const { title, sub } = f.shop ? { title: f.shop.business_name, sub: shopSub(f.shop) } : placeLabel(f.properties);
         const li = document.createElement("li"); li.setAttribute("role", "option");
         const ico = document.createElement("span"); ico.className = "ico"; ico.innerHTML = f.shop ? SHOP_ICO : PIN;
         const txt = document.createElement("span"); txt.className = "txt";
@@ -738,14 +739,30 @@
     }
     // ----- Commerces vérifiés : épingles sur la carte, ouverture d'une fiche
     const shopMarkers = new Map(); let shopTimer = null;
-    function shopPlace(m) { return { title: m.business_name, sub: "Commerce vérifié" + (m.address ? " · " + m.address : ""), lng: m.lng, lat: m.lat, shop: m.id }; }
+    function shopSub(m) { return m.kind === "mobile" ? "Indépendant" + (m.zone_label ? " · " + m.zone_label : "") + (m.zone_radius_km ? " · rayon " + m.zone_radius_km + " km" : "") : "Commerce vérifié" + (m.address ? " · " + m.address : ""); }
+    function shopPlace(m) { return { title: m.business_name, sub: shopSub(m), lng: m.lng, lat: m.lat, shop: m.id, zone: m.kind === "mobile" && m.zone_radius_km ? { lng: m.lng, lat: m.lat, km: m.zone_radius_km } : null }; }
+    // Zone d'intervention d'un indépendant : cercle vert pointillé autour du point approximatif
+    function zoneBox(z) { const dLat = z.km / 110.574, dLng = z.km / (111.32 * Math.cos(z.lat * Math.PI / 180)); return { dLat, dLng }; }
+    function showZone(z) {
+      if (!map) return; const { dLat, dLng } = zoneBox(z), pts = [];
+      for (let i = 0; i <= 64; i++) { const a = 2 * Math.PI * i / 64; pts.push([z.lng + dLng * Math.cos(a), z.lat + dLat * Math.sin(a)]); }
+      const f = { type: "Feature", geometry: { type: "Polygon", coordinates: [pts] } };
+      if (map.getSource("zone")) map.getSource("zone").setData(f);
+      else {
+        map.addSource("zone", { type: "geojson", data: f });
+        map.addLayer({ id: "zone-fill", type: "fill", source: "zone", paint: { "fill-color": "#12a150", "fill-opacity": 0.16 } });
+        map.addLayer({ id: "zone-line", type: "line", source: "zone", paint: { "line-color": "#12a150", "line-width": 2, "line-dasharray": [2, 2] } });
+      }
+    }
+    function clearZone() { if (map && map.getSource("zone")) map.getSource("zone").setData({ type: "FeatureCollection", features: [] }); }
     function pickShop(m) {
       if (m.lat == null || m.lng == null) { location.href = "commerce.html?id=" + encodeURIComponent(m.id); return; }
       showPlace(shopPlace(m));
       $("q").value = m.business_name; $("q-clear").classList.remove("hidden"); setList(false); $("q").blur();
       if (marker) marker.remove();
       marker = new maplibregl.Marker({ color: "#1a6bff" }).setLngLat([m.lng, m.lat]).addTo(map);
-      map.flyTo({ center: [m.lng, m.lat], zoom: 17, duration: 1600, essential: true });
+      if (m.kind === "mobile" && m.zone_radius_km) { const { dLat, dLng } = zoneBox({ lat: m.lat, km: m.zone_radius_km }); map.fitBounds([[m.lng - dLng, m.lat - dLat], [m.lng + dLng, m.lat + dLat]], { padding: 60, maxZoom: 13, duration: 1600 }); }
+      else map.flyTo({ center: [m.lng, m.lat], zoom: 17, duration: 1600, essential: true });
     }
     async function loadShops() {
       if (!map || !sb || map.getZoom() < 11) { for (const [, mk] of shopMarkers) mk.remove(); shopMarkers.clear(); return; }
@@ -757,7 +774,7 @@
       for (const m of data) {
         if (shopMarkers.has(m.id)) continue;
         const el = document.createElement("button"); el.type = "button"; el.className = "shop-marker"; el.setAttribute("aria-label", m.business_name);
-        el.innerHTML = '<span class="shop-pin"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>';
+        el.innerHTML = '<span class="shop-pin' + (m.kind === "mobile" ? " mobile" : "") + '"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>';
         el.addEventListener("click", e => { e.stopPropagation(); showPlace(shopPlace(m)); });
         shopMarkers.set(m.id, new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([m.lng, m.lat]).addTo(map));
       }
@@ -765,7 +782,7 @@
     async function openShopFromUrl() {
       const id = new URLSearchParams(location.search).get("commerce"); if (!id || !sb) return;
       const { data } = await sb.rpc("get_merchant_page", { p_id: id }).then(r => r || {}, () => ({}));
-      if (data && data.lat != null) pickShop({ id: data.id, business_name: data.business_name, address: data.address, lat: data.lat, lng: data.lng });
+      if (data && data.lat != null) pickShop({ id: data.id, business_name: data.business_name, address: data.address, lat: data.lat, lng: data.lng, kind: data.kind, zone_label: data.zone_label, zone_radius_km: data.zone_radius_km });
       history.replaceState(null, "", location.pathname);
     }
 
@@ -809,11 +826,13 @@
       dest = d;
       $("pc-title").textContent = d.title; $("pc-sub").textContent = d.sub || "";
       $("pc-page").classList.toggle("hidden", !d.shop); if (d.shop) $("pc-page").href = "commerce.html?id=" + encodeURIComponent(d.shop);
+      $("pc-go").classList.toggle("hidden", !!d.zone);          // pas d'itinéraire vers le centre approximatif d'une zone
+      if (d.zone) showZone(d.zone); else clearZone();
       $("route-card").classList.add("hidden"); $("place-card").classList.remove("hidden"); dockEl.classList.remove("hidden");
     }
     function closeDock() {
       dockEl.classList.add("hidden"); $("place-card").classList.add("hidden"); $("route-card").classList.add("hidden");
-      clearRouteLine(); dest = null;
+      clearRouteLine(); clearZone(); dest = null;
     }
     function clearRouteLine() {
       if (map && map.getSource && map.getSource("route")) map.getSource("route").setData({ type: "FeatureCollection", features: [] });

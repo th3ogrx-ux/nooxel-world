@@ -52,7 +52,9 @@
       el("div", { class: "row" }, el("h2", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { class: "badge", id: "shop-badge", text: "✓ " + s.badge }) : null),
       el("p", { class: "stats" }, count),
       s.description ? el("p", { id: "shop-desc", text: s.description }) : null,
-      s.address ? el("p", { id: "shop-address", text: "📍 " + s.address }) : null,
+      s.kind === "mobile"
+        ? el("p", { id: "shop-zone", text: s.zone_label ? `🚐 Indépendant · zone d'intervention : ${s.zone_label}, rayon ${s.zone_radius_km} km` : "🚐 Indépendant" })
+        : (s.address ? el("p", { id: "shop-address", text: "📍 " + s.address }) : null),
       el("div", { class: "row", style: "justify-content:flex-start" },
         s.is_owner ? null : fbtn,
         s.lat != null ? el("a", { class: "btn ghost", id: "shop-map", href: "/?commerce=" + encodeURIComponent(s.id), text: "Voir sur la carte" }) : null,
@@ -61,11 +63,19 @@
     const owner = s.is_owner ? el("div", { class: "banner", id: "owner-banner" }, s.verified ? "C'est votre page : voici ce que voient les autres. " : "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Gérer ma page" })) : null;
     const tabs = el("div", { class: "tabs", role: "group", "aria-label": "Affichage des publications" },
       ...[["list", "Liste"], ["grid", "Grille"]].map(([m, label]) => el("button", { type: "button", id: "view-" + m, "aria-pressed": String(mode === m), text: label, onclick: () => setMode(m) })));
-    app.replaceChildren(...[owner, head, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
+    app.replaceChildren(...[owner, head, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
       el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() })].filter(Boolean));
-    before = null; loadPosts(true);
+    before = null; loadPosts(true); if (s.kind === "mobile") loadSchedule();
   }
   const plural = (n) => n + (n > 1 ? " abonnés" : " abonné");
+
+  const when = (d) => new Date(d).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  async function loadSchedule() {
+    const { data } = await sb.rpc("list_schedule", { p_merchant: shop.id }); const box = $("slots");
+    if (!data || !data.length) { box.replaceChildren(el("p", { text: "Aucun passage prévu pour le moment." })); return; }
+    box.replaceChildren(...data.map((r) => el("div", { class: "slot", "data-slot": r.id },
+      el("div", {}, el("b", { text: r.place }), r.now ? el("span", { class: "badge", style: "margin-left:.5rem", text: "En ce moment" }) : null, el("small", { text: `${when(r.starts_at)} → ${new Date(r.ends_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}${r.note ? " · " + r.note : ""}` })))));
+  }
 
   function setMode(m) {
     mode = m; try { localStorage.setItem("nooxel_posts_view", m); } catch (e) {}

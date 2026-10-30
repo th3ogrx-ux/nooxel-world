@@ -33,3 +33,6 @@
   .err { color: #ffb4ab; min-height: 1.2em; }
   .hidden { display: none !important; }
   footer { margin-top: 2rem; font-size: .85rem; color: #7f93bd; }
+
+  .slot { padding: .6rem 0; border-top: 1px solid #eceff3; color: var(--ink); }
+  .slot small { display: block; color: var(--mute); }
