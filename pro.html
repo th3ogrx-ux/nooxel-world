@@ -42,6 +42,7 @@
     .badge.ok { background: #d8f6e5; color: #0d6b3a; } .badge.pro { background: #dbe8ff; color: #0b3fa8; } .badge.none { background: #eceff3; color: #5f6368; } .badge.wait { background: #fff0d1; color: #8a5a00; }
     .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
     .err { color: #b3261e; font-size: .92rem; margin: .5rem 0 0; min-height: 1.2em; }
+    .hint { color: var(--mute); font-size: .85rem; margin: .3rem 0 0; min-height: 1.2em; }
     .okmsg { color: #0d6b3a; font-size: .92rem; margin: .5rem 0 0; }
     #siret-ok { color: #8ae6b0; }
     .code { font: 700 1.3rem ui-monospace, monospace; letter-spacing: .12em; background: #f1f5ff; padding: .3rem .7rem; border-radius: 10px; color: #0b3fa8; }
@@ -120,6 +121,11 @@
     invalid_body: "Écrivez un texte (2 000 caractères au maximum).",
     too_many_posts: "Limite atteinte : 20 publications par 24 heures.",
     image_not_found: "La photo n'a pas été reçue. Réessayez.",
+    invalid_duration: "La vidéo doit durer entre 1 et 30 secondes.",
+    too_many_videos: "Limite atteinte : 20 vidéos par commerce. Supprimez-en une.",
+    too_many_videos_today: "Limite atteinte : 5 nouvelles vidéos par 24 heures.",
+    file_not_found: "La vidéo n'a pas été reçue. Réessayez.",
+    invalid_file: "Fichier invalide.",
     invalid_image: "Photo invalide.",
   };
   const fr = (e) => { const m = String(e?.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
@@ -169,7 +175,7 @@
 
     app.append(profileCard());
     if (v === "pending" && req && ["pending", "contested"].includes(req.status)) app.append(pendingCard(req));
-    if (v === "verified") app.append(pageCard(), scheduleCard(), postsCard(), referralCard());
+    if (v === "verified") app.append(pageCard(), scheduleCard(), postsCard(), videosCard(), referralCard());
     else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
     if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
@@ -461,6 +467,99 @@
       el("p", { text: "Une photo (facultative) et un texte. Vos abonnés les voient dans leur fil d'actualité." }),
       el("label", {}, "Texte", body), el("label", {}, "Photo (facultative)", photo, th), err, ok, btn,
       el("h2", { style: "margin-top:1.1rem", text: "Mes publications" }), mine);
+  }
+
+  // ---- vidéos courtes : réduites dans le navigateur (480p, ~1 Mo pour 10 s) avant l'envoi, pour ménager les forfaits mobiles
+  const MAX_VIDEO_S = 30, MAX_VIDEO_BYTES = 5.9 * 1024 * 1024, SMALL_ENOUGH = 3.5 * 1024 * 1024;
+  const waitFor = (el, ok, no = "error") => new Promise((res, rej) => { el.addEventListener(ok, () => res(), { once: true }); el.addEventListener(no, () => rej(new Error("unreadable")), { once: true }); });
+  function recorderType() {
+    if (!window.MediaRecorder) return null;
+    return ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t)) || null;
+  }
+  // Renvoie { blob, ext, duration, poster }. force = true : réencode même un petit fichier.
+  async function optimizeVideo(file, onProgress, force = false) {
+    const url = URL.createObjectURL(file), v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+    try {
+      await waitFor(v, "loadedmetadata");
+      if (v.duration === Infinity) {      // vidéos enregistrées par un navigateur : durée absente du fichier, on la fait calculer
+        v.currentTime = 1e7; await Promise.race([waitFor(v, "timeupdate"), new Promise((r) => setTimeout(r, 4000))]);
+        v.currentTime = 0; await waitFor(v, "seeked").catch(() => {});
+      }
+      const dur = v.duration;
+      if (!isFinite(dur) || dur < 1) throw new Error("unreadable");
+      if (dur > MAX_VIDEO_S + 0.5) { const e = new Error("too_long"); e.seconds = Math.round(dur); throw e; }
+      // vignette : une image de la vidéo (petite, ~30 Ko)
+      v.currentTime = Math.min(0.5, dur / 2); await waitFor(v, "seeked");
+      const pk = Math.min(1, 480 / v.videoWidth), pc = document.createElement("canvas"); pc.width = Math.round(v.videoWidth * pk); pc.height = Math.round(v.videoHeight * pk);
+      pc.getContext("2d").drawImage(v, 0, 0, pc.width, pc.height);
+      const poster = await new Promise((r) => pc.toBlob(r, "image/jpeg", 0.72));
+      const ext0 = /mp4/.test(file.type) ? "mp4" : /webm/.test(file.type) ? "webm" : null;
+      if (!force && ext0 && file.size <= SMALL_ENOUGH) return { blob: file, ext: ext0, duration: Math.max(1, Math.round(dur)), poster, type: file.type.split(";")[0] };
+      const type = recorderType(); if (!type) throw new Error("unsupported");
+      const k = Math.min(1, 854 / Math.max(v.videoWidth, v.videoHeight), 480 / Math.min(v.videoWidth, v.videoHeight));
+      const w = Math.max(2, Math.round(v.videoWidth * k / 2) * 2), h = Math.max(2, Math.round(v.videoHeight * k / 2) * 2);
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const ctx = cv.getContext("2d");
+      const stream = cv.captureStream(24); let ac = null;
+      try { ac = new (window.AudioContext || window.webkitAudioContext)(); const src = ac.createMediaElementSource(v), dest = ac.createMediaStreamDestination(); src.connect(dest); dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t)); v.muted = false; } catch (e) { ac = null; }
+      const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 900000, audioBitsPerSecond: 64000 }), chunks = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise((r) => { rec.onstop = r; });
+      v.currentTime = 0; await waitFor(v, "seeked").catch(() => {});
+      rec.start(500); await v.play();
+      let raf; const draw = () => { ctx.drawImage(v, 0, 0, w, h); onProgress && onProgress(Math.min(1, v.currentTime / dur)); raf = requestAnimationFrame(draw); }; draw();
+      await Promise.race([waitFor(v, "ended"), new Promise((r) => setTimeout(r, (dur + 6) * 1000))]);
+      cancelAnimationFrame(raf); rec.stop(); await stopped; if (ac) ac.close().catch(() => {});
+      const blob = new Blob(chunks, { type: type.split(";")[0] });
+      return { blob, ext: /mp4/.test(type) ? "mp4" : "webm", duration: Math.max(1, Math.round(dur)), poster, type: type.split(";")[0] };
+    } finally { URL.revokeObjectURL(url); v.removeAttribute("src"); }
+  }
+
+  function videosCard() {
+    const file = el("input", { type: "file", id: "v-file", accept: "video/*" }), cap = el("input", { type: "text", id: "v-caption", maxlength: 300, placeholder: "Légende (facultatif)" });
+    const err = el("p", { class: "err", id: "v-err" }), ok = el("p", { class: "okmsg", id: "v-ok" }), prog = el("p", { class: "hint", id: "v-progress" });
+    const mine = el("div", { id: "my-videos" }), btn = el("button", { class: "btn", id: "v-publish", type: "button", text: "Publier la vidéo" });
+    const refresh = async () => {
+      const { data } = await sb.rpc("list_merchant_videos", { p_merchant: state.merchant_id, p_limit: 30 });
+      mine.replaceChildren(...(data || []).map((v) => el("div", { class: "mypost", "data-video": v.id },
+        el("img", { src: mediaUrl(v.poster_path), alt: "", loading: "lazy" }),
+        el("div", {}, (v.caption || "Vidéo") + " · " + v.duration_s + " s", el("small", { text: fmtDT(v.created_at) })),
+        el("button", { class: "btn danger small", type: "button", "data-del-video": v.id, text: "Supprimer", onclick: async () => {
+          if (!confirm("Supprimer cette vidéo ?")) return;
+          const r = await sb.rpc("delete_video", { p_video: v.id }); if (r.error) { err.textContent = fr(r.error); return; }
+          if (r.data) { await sb.storage.from("merchant-videos").remove([r.data.video_path]); await sb.storage.from("merchant-media").remove([r.data.poster_path]); }
+          refresh();
+        } }))));
+    };
+    btn.addEventListener("click", async () => {
+      err.textContent = ""; ok.textContent = ""; prog.textContent = "";
+      const f = file.files[0]; if (!f) { err.textContent = "Choisissez une vidéo."; return; }
+      btn.disabled = true; btn.textContent = "Préparation…"; let vp = null, pp = null;
+      try {
+        const out = await optimizeVideo(f, (p) => { prog.textContent = `Optimisation de la vidéo… ${Math.round(p * 100)} % (gardez cet écran ouvert)`; });
+        if (out.blob.size > MAX_VIDEO_BYTES) throw new Error("too_big");
+        prog.textContent = "Envoi…"; btn.textContent = "Envoi…";
+        const id = crypto.randomUUID(), base = `${state.merchant_id}/${id}`; vp = `${base}.${out.ext}`; pp = `${base}.jpg`;
+        let up = await sb.storage.from("merchant-videos").upload(vp, out.blob, { contentType: out.type, upsert: false }); if (up.error) throw up.error;
+        up = await sb.storage.from("merchant-media").upload(pp, out.poster, { contentType: "image/jpeg", upsert: false }); if (up.error) throw up.error;
+        const r = await sb.rpc("create_video", { p_caption: cap.value, p_video_path: vp, p_poster_path: pp, p_duration: out.duration });
+        if (r.error) throw r.error;
+        file.value = ""; cap.value = ""; prog.textContent = ""; ok.textContent = "Vidéo publiée !"; refresh();
+      } catch (e) {
+        if (vp) await sb.storage.from("merchant-videos").remove([vp]).catch(() => {}); if (pp) await sb.storage.from("merchant-media").remove([pp]).catch(() => {});
+        prog.textContent = ""; const m = String(e && e.message || e);
+        err.textContent = m === "too_long" ? `Cette vidéo dure ${e.seconds} s : 30 secondes au maximum. Raccourcissez-la puis réessayez.`
+          : m === "too_big" ? "Cette vidéo reste trop lourde (6 Mo maximum) même après réduction : raccourcissez-la."
+          : m === "unsupported" ? "Ce navigateur ne sait pas réduire les vidéos. Essayez avec Chrome, ou une vidéo déjà légère (moins de 3 Mo)."
+          : m === "unreadable" ? "Impossible de lire cette vidéo. Essayez un autre fichier (MP4 de préférence)." : fr(e);
+      }
+      btn.disabled = false; btn.textContent = "Publier la vidéo";
+    });
+    refresh();
+    return el("div", { class: "card", id: "videos-card" }, el("h2", { text: "Publier une vidéo" }),
+      el("p", { text: "30 secondes au maximum, au format vertical de préférence. La vidéo est réduite automatiquement (480p) pour rester légère : comptez la durée de la vidéo pour l'optimisation, sans quitter cet écran. 20 vidéos au maximum." }),
+      el("label", {}, "Vidéo", file), el("label", {}, "Légende", cap), prog, err, ok, btn,
+      el("h2", { style: "margin-top:1.1rem", text: "Mes vidéos" }), mine);
   }
 
   // ---- code de parrainage

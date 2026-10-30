@@ -65,11 +65,12 @@
     const tabs = el("div", { class: "tabs", role: "group", "aria-label": "Affichage des publications" },
       ...[["list", "Liste"], ["grid", "Grille"]].map(([m, label]) => el("button", { type: "button", id: "view-" + m, "aria-pressed": String(mode === m), text: label, onclick: () => setMode(m) })));
     const secs = el("div", { class: "tabs", role: "group", "aria-label": "Sections de la page" },
-      ...[["posts", "Publications"], ["reviews", `Avis (${s.review_count})`]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
+      ...[["posts", "Publications"], ["videos", "Vidéos"], ["reviews", `Avis (${s.review_count})`]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
     const postsSec = el("div", { id: "section-posts" }, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
       el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() }));
+    const videosSec = el("div", { id: "section-videos", class: "hidden" });
     const reviewsSec = el("div", { id: "section-reviews", class: "hidden" });
-    app.replaceChildren(...[owner, head, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, secs, postsSec, reviewsSec].filter(Boolean));
+    app.replaceChildren(...[owner, head, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, secs, postsSec, videosSec, reviewsSec].filter(Boolean));
     before = null; loadPosts(true); if (s.kind === "mobile") loadSchedule();
   }
 
@@ -97,11 +98,12 @@
   };
   const rfr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(RERR).find((c) => m.includes(c)); return k ? RERR[k] : fr(e); };
   const stars = (n) => el("span", { class: "stars", role: "img", "aria-label": `${n} sur 5`, text: "★".repeat(n) + "☆".repeat(5 - n) });
-  let rBefore = null, rLoaded = false;
+  let rBefore = null, rLoaded = false, vLoaded = false;
 
   function showSection(k) {
-    for (const x of ["posts", "reviews"]) { $("sec-" + x).setAttribute("aria-pressed", String(x === k)); $("section-" + x).classList.toggle("hidden", x !== k); }
+    for (const x of ["posts", "videos", "reviews"]) { $("sec-" + x).setAttribute("aria-pressed", String(x === k)); $("section-" + x).classList.toggle("hidden", x !== k); }
     if (k === "reviews" && !rLoaded) { rLoaded = true; initReviews(); }
+    if (k === "videos" && !vLoaded) { vLoaded = true; initVideos(); }
   }
 
   async function initReviews() {
@@ -188,6 +190,69 @@
     showReply(r.reply); card.append(replyBox);
     if (!r.mine) card.append(el("button", { class: "linkbtn", type: "button", "data-report-review": r.id, text: "⚑ Signaler cet avis", onclick: () => openReportDialog({ kind: "review", review: r.id, title: "Signaler cet avis" }) }));
     return card;
+  }
+
+
+  // ================= Vidéos (format vertical, une seule vidéo chargée à la fois) =================
+  let vBefore = null; const vids = [];
+  const dur = (n) => `0:${String(n).padStart(2, "0")}`;
+  async function initVideos() {
+    $("section-videos").replaceChildren(el("div", { class: "vgrid", id: "vgrid" }), el("p", { class: "empty hidden", id: "no-videos", text: "Aucune vidéo pour le moment." }),
+      el("button", { class: "btn ghost hidden", id: "more-videos", type: "button", text: "Voir plus", onclick: () => loadVideos() }));
+    loadVideos(true);
+  }
+  async function loadVideos(first) {
+    const more = $("more-videos"); more.disabled = true;
+    const { data, error } = await sb.rpc("list_merchant_videos", { p_merchant: shop.id, p_before: vBefore, p_limit: 12 });
+    more.disabled = false;
+    if (error) { $("no-videos").textContent = fr(error); $("no-videos").classList.remove("hidden"); return []; }
+    for (const v of data) { vids.push(v); $("vgrid").append(el("button", { class: "vtile", type: "button", "data-video": v.id, "aria-label": "Lire la vidéo" + (v.caption ? " : " + v.caption : ""), onclick: () => openReel(vids.indexOf(v)) },
+      el("img", { src: imgUrl(v.poster_path), alt: "", loading: "lazy", decoding: "async" }), el("span", { class: "vdur", text: dur(v.duration_s) }))); }
+    if (data.length) vBefore = data[data.length - 1].created_at;
+    more.classList.toggle("hidden", data.length < 12);
+    if (first) $("no-videos").classList.toggle("hidden", data.length > 0);
+    return data;
+  }
+
+  // Lecteur plein écran : défilement vertical (un « swipe » = la vidéo suivante). Seule la vidéo à l'écran est téléchargée.
+  const lowData = () => { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); };
+  let reelMuted = true, reelIO = null;
+  function openReel(start) {
+    closeReel();
+    const box = el("div", { id: "reel", role: "dialog", "aria-modal": "true", "aria-label": "Vidéos" });
+    const scroller = el("div", { class: "reel-scroll", id: "reel-scroll" });
+    const close = el("button", { class: "reel-btn", id: "reel-close", type: "button", "aria-label": "Fermer", text: "✕", onclick: closeReel });
+    const mute = el("button", { class: "reel-btn", id: "reel-mute", type: "button", "aria-label": "Son", text: reelMuted ? "🔇" : "🔊", onclick: () => { reelMuted = !reelMuted; mute.textContent = reelMuted ? "🔇" : "🔊"; box.querySelectorAll("video").forEach((v) => { v.muted = reelMuted; }); } });
+    const rep = el("button", { class: "reel-btn", id: "reel-report", type: "button", "aria-label": "Signaler", text: "⚑", onclick: () => { closeReel(); openReportDialog({ kind: "merchant", merchant: shop.id, title: "Signaler cette page" }); } });
+    box.append(scroller, el("div", { class: "reel-top" }, close, el("span", { class: "reel-name", text: shop.business_name }), mute, shop.is_owner ? null : rep));
+    document.body.append(box); document.body.classList.add("noscroll");
+    const addSlides = (list) => list.forEach((v) => {
+      const video = el("video", { playsinline: true, loop: true, preload: "none", poster: imgUrl(v.poster_path), "data-vid": v.id }); video.muted = reelMuted;
+      const playBtn = el("button", { class: "reel-play hidden", type: "button", "aria-label": "Lire", text: "▶" });
+      const slide = el("section", { class: "reel-slide", "data-slide": v.id }, video, playBtn, v.caption ? el("p", { class: "reel-cap", text: v.caption }) : null);
+      const toggle = () => { if (video.paused) { video.play().catch(() => {}); playBtn.classList.add("hidden"); } else { video.pause(); playBtn.classList.remove("hidden"); } };
+      video.addEventListener("click", toggle); playBtn.addEventListener("click", toggle);
+      video.addEventListener("ended", () => { if (!video.loop) return; video.currentTime = 0; video.play().catch(() => {}); });   // filet de sécurité si la boucle automatique échoue
+      scroller.append(slide); reelIO && reelIO.observe(slide);
+    });
+    reelIO = new IntersectionObserver((entries) => entries.forEach((e) => {
+      const video = e.target.querySelector("video"), btn = e.target.querySelector(".reel-play");
+      if (e.isIntersecting && e.intersectionRatio >= 0.7) {
+        if (!video.getAttribute("src")) { video.src = videoUrl(vids.find((x) => x.id === video.dataset.vid).video_path); }   // chargement à la demande
+        if (lowData()) { btn.classList.remove("hidden"); } else { btn.classList.add("hidden"); video.play().catch(() => btn.classList.remove("hidden")); }
+        const i = vids.findIndex((x) => x.id === video.dataset.vid);
+        if (i >= vids.length - 2 && !$("more-videos").classList.contains("hidden")) loadVideos().then((n) => n && n.length && addSlides(n));
+      } else { video.pause(); }
+    }), { root: scroller, threshold: [0.7] });
+    addSlides(vids); document.addEventListener("keydown", reelKey);
+    const target = scroller.children[start] || scroller.children[0]; if (target) target.scrollIntoView();
+  }
+  function reelKey(e) { if (e.key === "Escape") closeReel(); }
+  function closeReel() {
+    const box = $("reel"); if (!box) return;
+    if (reelIO) { reelIO.disconnect(); reelIO = null; }
+    box.querySelectorAll("video").forEach((v) => { v.pause(); v.removeAttribute("src"); v.load(); });
+    box.remove(); document.body.classList.remove("noscroll"); document.removeEventListener("keydown", reelKey);
   }
 
   const plural = (n) => n + (n > 1 ? " abonnés" : " abonné");

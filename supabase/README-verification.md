@@ -12,6 +12,7 @@ Supabase → **SQL Editor** → New query → coller → **Run**.
 6. `supabase/independents.sql` (phase 2, étape 2 : indépendants, zone d'intervention, planning de passage)
 7. `supabase/reviews.sql` (phase 2, étape 3 : pseudo public, avis, réponses des commerçants)
 8. `supabase/reports.sql` (phase 2, étape 4 : signalements)
+9. `supabase/videos.sql` (phase 2, étape 5 : vidéos courtes)
 
 Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
 annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
@@ -161,3 +162,17 @@ abonnements, le fil d'actualité, la recherche de commerces et leurs épingles s
 3. Edge Functions → **Secrets** : `BREVO_API_KEY` (la clé) et `ACK_SENDER_EMAIL` (l'expéditeur déjà validé chez Brevo).
 
 Sans ces étapes, rien ne casse : seul l'email n'est pas envoyé. Le message ne contient jamais le détail du signalement.
+
+## Vidéos courtes (phase 2, étape 5)
+`videos.sql` ajoute les vidéos sur la page d'un commerce **vérifié** : 30 secondes au maximum, 6 Mo au maximum,
+20 vidéos par commerce, 5 nouvelles par 24 h. La page réduit la vidéo **dans le navigateur** (480p, ~1 Mo pour 10 s)
+avant l'envoi, génère une vignette, et le lecteur plein écran (défilement vertical) ne télécharge que la vidéo
+à l'écran ; en mode « économie de données » du téléphone, il ne lance rien tout seul.
+
+- **Stockage : Supabase (gratuit, sans carte bancaire) pour démarrer** — 1 Go de stockage et 5 Go de trafic par mois,
+  soit environ 300 vidéos et 1 500 lectures complètes par mois. Pour dépasser cela sans frais de trafic : Cloudflare R2
+  (10 Go gratuits, trafic gratuit, moyen de paiement à enregistrer). Un seul réglage à changer : `VIDEO_BASE` dans `shop.js`
+  (la base ne garde que des chemins de fichiers).
+- Re-coller `functions-bundled/purge-documents.ts` : la tâche de nuit supprime aussi les vidéos orphelines.
+- Format : MP4 (Chrome récent, Safari) sinon WebM. Un navigateur sans enregistreur vidéo n'accepte que les vidéos déjà
+  légères (moins de 3,5 Mo). Je n'ai pas pu tester sur un vrai iPhone.

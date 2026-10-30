@@ -55,5 +55,16 @@ Deno.serve(async (req) => {
       if (!del.error) media += Math.min(50, names.length - i);
     }
   }
-  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans, orphan_media_removed: media });
+
+  // vidéos sans publication (vidéo ou compte supprimé, envoi abandonné)
+  let videos = 0;
+  const vv = await admin.rpc("system_orphan_videos");
+  if (!vv.error && Array.isArray(vv.data) && vv.data.length) {
+    const videoBucket = admin.storage.from("merchant-videos"), names = vv.data as string[];
+    for (let i = 0; i < names.length; i += 50) {
+      const del = await videoBucket.remove(names.slice(i, i + 50));
+      if (!del.error) videos += Math.min(50, names.length - i);
+    }
+  }
+  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans, orphan_media_removed: media, orphan_videos_removed: videos });
 });
