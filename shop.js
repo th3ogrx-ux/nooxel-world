@@ -24,6 +24,10 @@ function ago(d) {
   if (s < 7 * 86400) return `il y a ${Math.floor(s / 86400)} j`;
   return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
+// Les vidéos sont lues depuis ce seul endroit : pour passer plus tard à un stockage sans frais de trafic (Cloudflare R2),
+// il suffira d'indiquer ici son adresse publique (ex. "https://videos.mon-domaine.com") ; la base ne stocke que des chemins.
+const VIDEO_BASE = null;
+const videoUrl = (path) => VIDEO_BASE ? VIDEO_BASE.replace(/\/$/, "") + "/" + path : sb.storage.from("merchant-videos").getPublicUrl(path).data.publicUrl;
 const imgUrl = (path) => sb.storage.from("merchant-media").getPublicUrl(path).data.publicUrl;
 // Une publication : photo (chargée à la demande, dimensions réservées) + texte + date.
 function postCard(p, withShop) {
