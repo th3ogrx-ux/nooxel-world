@@ -1,24 +1,24 @@
 // Version « un seul fichier » de supabase/functions/verify-siret/index.ts, à coller telle quelle dans l'éditeur de fonctions de Supabase.
 // Ne pas modifier ici : régénérée à partir des sources.
+// supabase/functions/verify-siret/index.ts
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// supabase/functions/_shared/errors.ts
 var TABLE = {
   not_authenticated: [401, "Connexion requise."],
-  forbidden: [403, "Accès refusé."],
-  no_profile: [409, "Créez d'abord votre profil professionnel."],
+  forbidden: [403, "Acc\xE8s refus\xE9."],
+  no_profile: [409, "Cr\xE9ez d'abord votre profil professionnel."],
   email_not_confirmed: [403, "Confirmez d'abord votre adresse email."],
-  request_pending: [409, "Une demande de vérification est déjà en cours."],
-  already_verified: [409, "Votre entreprise est déjà vérifiée."],
-  too_many_attempts: [429, "Trop d'essais. Réessayez dans une heure."],
-  invalid_siret: [400, "Ce numéro SIRET n'est pas valide (14 chiffres)."],
-  siret_blocked: [403, "Ce SIRET ne peut pas être vérifié automatiquement. Utilisez la vérification manuelle."],
-  siret_already_claimed: [409, "Ce SIRET est déjà associé à un autre compte. Si c'est le vôtre, contactez-nous ou utilisez la vérification manuelle."],
-  siret_not_found: [404, "Aucune entreprise trouvée avec ce SIRET."],
-  siret_inactive: [422, "Cet établissement n'est plus actif."],
-  api_unavailable: [502, "Le service de vérification est indisponible. Réessayez plus tard."],
-  not_found: [404, "Élément introuvable."],
-  invalid_document: [400, "Document invalide."],
-  documents_deleted: [410, "Les pièces ont déjà été supprimées."]
+  request_pending: [409, "Une demande de v\xE9rification est d\xE9j\xE0 en cours."],
+  already_verified: [409, "Votre compte est d\xE9j\xE0 v\xE9rifi\xE9."],
+  too_many_attempts: [429, "Trop d'essais. R\xE9essayez dans une heure."],
+  invalid_siret: [400, "Ce num\xE9ro SIRET n'est pas valide (14 chiffres)."],
+  siret_blocked: [403, "Ce SIRET ne peut plus \xEAtre utilis\xE9 avec ce compte."],
+  siret_already_claimed: [409, "Ce SIRET est d\xE9j\xE0 associ\xE9 \xE0 un autre compte. Laissez le champ vide pour envoyer la demande sans SIRET."],
+  siret_not_found: [404, "Aucune entreprise trouv\xE9e avec ce SIRET."],
+  siret_inactive: [422, "Cet \xE9tablissement n'est plus actif."],
+  api_unavailable: [502, "Le service de v\xE9rification est indisponible. R\xE9essayez plus tard."],
+  not_found: [404, "\xC9l\xE9ment introuvable."]
 };
 function mapError(codeOrMessage) {
   const code = Object.keys(TABLE).find((c) => codeOrMessage?.includes(c)) ?? "internal";
@@ -37,6 +37,7 @@ function json(body, status = 200, extra = {}) {
   });
 }
 
+// supabase/functions/_shared/siret.ts
 function normalizeSiret(input) {
   return String(input ?? "").replace(/[\s.-]/g, "");
 }
@@ -84,6 +85,7 @@ function parseCompanySearch(json2, siret) {
   return { found: false };
 }
 
+// supabase/functions/verify-siret/index.ts
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, code: "method" }, 405);
@@ -121,5 +123,5 @@ Deno.serve(async (req) => {
   if (!lookup.active) return fail("siret_inactive");
   const done = await admin.rpc("system_set_company_verified", { p_user: user.id, p_siret: siret, p_check: lookup.check });
   if (done.error) return fail(done.error.message);
-  return json({ ok: true, badge: "entreprise vérifiée", referral_code: done.data, company: lookup.check.name ?? null });
+  return json({ ok: true, company: lookup.check.name ?? null });
 });

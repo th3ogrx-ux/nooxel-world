@@ -5,17 +5,15 @@ const TABLE: Record<string, [number, string]> = {
   no_profile: [409, "Créez d'abord votre profil professionnel."],
   email_not_confirmed: [403, "Confirmez d'abord votre adresse email."],
   request_pending: [409, "Une demande de vérification est déjà en cours."],
-  already_verified: [409, "Votre entreprise est déjà vérifiée."],
+  already_verified: [409, "Votre compte est déjà vérifié."],
   too_many_attempts: [429, "Trop d'essais. Réessayez dans une heure."],
   invalid_siret: [400, "Ce numéro SIRET n'est pas valide (14 chiffres)."],
-  siret_blocked: [403, "Ce SIRET ne peut pas être vérifié automatiquement. Utilisez la vérification manuelle."],
-  siret_already_claimed: [409, "Ce SIRET est déjà associé à un autre compte. Si c'est le vôtre, contactez-nous ou utilisez la vérification manuelle."],
+  siret_blocked: [403, "Ce SIRET ne peut plus être utilisé avec ce compte."],
+  siret_already_claimed: [409, "Ce SIRET est déjà associé à un autre compte. Laissez le champ vide pour envoyer la demande sans SIRET."],
   siret_not_found: [404, "Aucune entreprise trouvée avec ce SIRET."],
   siret_inactive: [422, "Cet établissement n'est plus actif."],
   api_unavailable: [502, "Le service de vérification est indisponible. Réessayez plus tard."],
   not_found: [404, "Élément introuvable."],
-  invalid_document: [400, "Document invalide."],
-  documents_deleted: [410, "Les pièces ont déjà été supprimées."],
 };
 
 export function mapError(codeOrMessage: string): { status: number; code: string; message: string } {

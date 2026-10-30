@@ -44,5 +44,16 @@ Deno.serve(async (req) => {
       if (!del.error) orphans += Math.min(50, names.length - i);
     }
   }
-  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans });
+
+  // photos de posts sans publication (suppression d'un compte ou d'un post, envoi abandonné) : droit à l'effacement
+  let media = 0;
+  const mm = await admin.rpc("system_orphan_media");
+  if (!mm.error && Array.isArray(mm.data) && mm.data.length) {
+    const mediaBucket = admin.storage.from("merchant-media"), names = mm.data as string[];
+    for (let i = 0; i < names.length; i += 50) {
+      const del = await mediaBucket.remove(names.slice(i, i + 50));
+      if (!del.error) media += Math.min(50, names.length - i);
+    }
+  }
+  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans, orphan_media_removed: media });
 });

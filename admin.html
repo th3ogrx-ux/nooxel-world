@@ -6,7 +6,7 @@
   <title>Administration — Nooxel World</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
   <link rel="icon" href="assets/favicon.png">
   <style>
     :root { color-scheme: light; --blue: #1a6bff; --ink: #1f1f1f; --mute: #5f6368; --line: #e3e6ea; }
@@ -36,12 +36,6 @@
     .err { color: #b3261e; margin: .4rem 0 0; min-height: 1.2em; }
     .empty { color: var(--mute); text-align: center; padding: 2rem 1rem; }
     .hidden { display: none !important; }
-    #viewer { position: fixed; inset: 0; background: rgb(4,11,28); z-index: 20; display: grid; place-items: center; padding: 1rem; }
-    #viewer .frame { position: relative; max-width: min(92vw, 900px); max-height: 88vh; }
-    #viewer img { max-width: 100%; max-height: 82vh; border-radius: 10px; display: block; user-select: none; -webkit-user-drag: none; }
-    #viewer .wm { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: difference; opacity: .5; background-repeat: repeat; }
-    #viewer .bar { color: #fff; display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; font-size: .9rem; }
-    #viewer button { background: #fff; color: var(--ink); border: 0; border-radius: 999px; padding: .35rem .9rem; }
     .gate { max-width: 440px; margin: 2rem auto; text-align: center; }
     .gate ol { text-align: left; padding-left: 1.2rem; color: var(--mute); font-size: .92rem; }
     .gate .qr { width: 210px; height: 210px; margin: .6rem auto; display: block; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
@@ -63,14 +57,6 @@
 </header>
 <main id="main"><p class="empty">Chargement…</p></main>
 
-<div id="viewer" class="hidden" role="dialog" aria-modal="true" aria-label="Pièce justificative">
-  <div class="frame">
-    <div class="bar"><span id="v-title"></span><span><span id="v-count"></span> <button id="v-close" type="button">Fermer</button></span></div>
-    <img id="v-img" alt="Pièce justificative" referrerpolicy="no-referrer" draggable="false">
-    <div class="wm" id="v-wm" aria-hidden="true"></div>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
   // Clé publique (anon). Le droit d'administrateur est vérifié CÔTÉ SERVEUR à chaque appel : cette page n'est qu'une façade.
@@ -91,12 +77,12 @@
   }
   const fmt = (d) => d ? new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   const STATUS = { pending: ["En attente", "warn"], contested: ["Contestée", "warn"], approved: ["Approuvée", "ok"], rejected: ["Refusée", "bad"], rejected_final: ["Refus définitif", "bad"], cancelled: ["Annulée", ""] };
-  const LEVEL = { none: ["Non vérifié", ""], pending: ["En attente", "warn"], company_verified: ["Entreprise vérifiée", "ok"], profile_confirmed: ["Profil confirmé", "blue"] };
+  const LEVEL = { none: ["Non vérifié", ""], pending: ["En attente", "warn"], verified: ["Professionnel vérifié", "ok"] };
   const ERR = {
     forbidden: "Accès refusé : ce compte n'est pas administrateur.", not_pending: "Cette demande a déjà été traitée.", not_contested: "Cette demande n'est pas en contestation.",
     reason_required: "Indiquez un motif (5 caractères minimum).", cannot_review_own_request: "Vous ne pouvez pas traiter votre propre demande.",
     another_admin_must_review: "Une contestation doit être jugée par un autre administrateur.", nothing_to_revoke: "Ce profil n'a aucun badge à retirer.",
-    documents_deleted: "Les pièces ont déjà été supprimées.", not_found: "Introuvable.",
+    siret_already_claimed: "Ce SIRET est déjà attribué à un autre commerçant : refusez la demande en le précisant.", siret_blocked: "Ce SIRET a été retiré à ce compte après une révocation.", not_found: "Introuvable.",
   };
   const fr = (e) => { const m = String(e?.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Erreur : " + m.slice(0, 120); };
 
@@ -183,16 +169,14 @@
         el("div", {}, el("span", { class: "pill " + st[1], text: st[0] }), " ", el("span", { class: "meta", text: fmt(r.created_at) }))),
       r.merchant.description ? el("p", { class: "meta", text: r.merchant.description }) : null,
       el("div", { class: "box" },
-        el("div", {}, "Profil social : ", r.social_url ? el("a", { href: r.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: r.social_url }) : "non renseigné"),
+        el("div", {}, "Page à examiner : ", r.social_url ? el("a", { href: r.social_url, target: "_blank", rel: "noopener noreferrer nofollow", "data-social": true, text: r.social_url }) : "non renseignée",
+          r.social_url ? el("div", { class: "meta", text: "Regardez : compte vide ? créé récemment ? aucun abonné ? photos volées ?" }) : null),
+        el("div", {}, "Téléphone : ", r.phone ? el("a", { href: "tel:" + r.phone, text: r.phone }) : "effacé", el("span", { class: "meta", text: r.phone ? " · NON vérifié par SMS" : "" })),
+        el("div", {}, "SIRET : ", r.siret ? `${r.siret} · ${r.siret_check?.name || "entreprise"} · ${r.siret_check?.active === false ? "INACTIF" : "actif"} (registre officiel)` : "non fourni"),
         el("div", {}, "Parrainage : ", r.referrer ? `recommandé par « ${r.referrer.business_name} » (${(LEVEL[r.referrer.verification] || [""])[0]})` : "aucun"),
-        el("div", {}, `Demandes précédentes : ${r.previous_requests}`)),
+        el("div", {}, `Compte créé le ${fmt(r.account_created_at)} · demandes précédentes : ${r.previous_requests}`)),
       r.status === "contested" || r.contest_message ? el("div", { class: "box contest" }, el("b", { text: "Contestation : " }), r.contest_message || "", r.decision_reason ? el("div", { class: "meta", text: "Refus initial : " + r.decision_reason }) : null) : null,
       !open && r.decision_reason ? el("div", { class: "box" }, "Motif de la décision : ", r.decision_reason) : null);
-    if (r.has_documents) {
-      c.append(el("div", { class: "actions" },
-        el("button", { class: "btn ghost", type: "button", "data-doc": "id", text: "Voir la pièce d'identité", onclick: () => viewDoc(r, "id", err) }),
-        el("button", { class: "btn ghost", type: "button", "data-doc": "selfie", text: "Voir la photo", onclick: () => viewDoc(r, "selfie", err) })));
-    } else if (r.docs_deleted_at) c.append(el("p", { class: "meta", text: `Pièces supprimées le ${fmt(r.docs_deleted_at)}.` }));
     if (open) c.append(decision(r, err));
     c.append(err);
     return c;
@@ -215,25 +199,6 @@
       el("button", { class: "btn red", type: "button", "data-act": "reject", text: contested ? "Rejeter définitivement" : "Refuser", onclick: () => run(false) })));
   }
 
-  // ---------- Visionneuse (lien de 60 s, journalisé côté serveur) ----------
-  let timer = null, tick = null;
-  async function viewDoc(r, which, err) {
-    err.textContent = "";
-    const { data, error } = await sb.functions.invoke("admin-document-url", { body: { request_id: r.id, which } });
-    if (error) { let m = "Impossible d'afficher la pièce."; try { m = (await error.context.json()).message || m; } catch {} err.textContent = m; return; }
-    // Filigrane répété sur toute l'image, avec l'email de l'administrateur : visible sur fond clair comme sombre.
-    const mark = ((me && me.email) || "administrateur").replace(/[<>&"']/g, "");
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><text x="150" y="75" text-anchor="middle" transform="rotate(-24 150 75)" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#fff">NOOXEL · VÉRIFICATION</text><text x="150" y="98" text-anchor="middle" transform="rotate(-24 150 75)" font-family="Arial,sans-serif" font-size="14" fill="#fff">${mark}</text></svg>`;
-    $("v-wm").style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-    $("v-title").textContent = `${r.merchant.business_name} — ${which === "id" ? "pièce d'identité" : "photo"}`;
-    $("v-img").src = data.url; $("viewer").classList.remove("hidden");
-    let left = data.expires_in || 60; $("v-count").textContent = `se ferme dans ${left} s`;
-    clearInterval(tick); tick = setInterval(() => { left--; $("v-count").textContent = `se ferme dans ${left} s`; if (left <= 0) closeViewer(); }, 1000);
-  }
-  function closeViewer() { clearInterval(tick); $("v-img").removeAttribute("src"); $("viewer").classList.add("hidden"); }
-  $("v-close").addEventListener("click", closeViewer);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeViewer(); });
-
   // ---------- Commerçants (recherche + révocation) ----------
   async function merchants(query = "") {
     const main = $("main");
@@ -245,7 +210,7 @@
     if (!data.length) { list.replaceChildren(el("p", { class: "empty", text: "Aucun commerçant." })); return; }
     list.replaceChildren(...data.map((m) => {
       const lv = LEVEL[m.verification] || [m.verification, ""], err = el("p", { class: "err" });
-      const canRevoke = ["company_verified", "profile_confirmed"].includes(m.verification);
+      const canRevoke = m.verification === "verified";
       const reason = el("input", { type: "text", class: "hidden", placeholder: "Motif de la révocation (obligatoire)", "data-reason": true });
       const go = el("button", { class: "btn red hidden", type: "button", "data-act": "revoke-confirm", text: "Confirmer la révocation", onclick: async () => {
         err.textContent = ""; if (reason.value.trim().length < 5) { err.textContent = ERR.reason_required; return; }
