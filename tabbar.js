@@ -43,10 +43,16 @@
   if (document.readyState === "complete") start(); else addEventListener("load", start, { once: true });
   new MutationObserver(() => sync(true)).observe(nav, { subtree: true, attributes: true, attributeFilter: ["class"] });     // la carte change d'onglet sans changer de page
   new ResizeObserver(() => { if (last) sync(false); }).observe(nav);
-  // Pastille du nombre de notifications non lues (données de test pour l'instant : voir notifications-test.js).
+  // Pastille du nombre de notifications non lues (la page peut aussi l'imposer : window.setNotifBadge(n)).
   const badge = document.createElement("span"); badge.id = "notif-badge"; badge.hidden = true; badge.setAttribute("aria-live", "polite");
   nav.querySelector("#tab-notifs").append(badge);
-  const paint = () => { const n = window.notifUnreadCount ? window.notifUnreadCount() : 0; badge.hidden = !n; badge.textContent = n > 9 ? "9+" : String(n); const l = nav.querySelector("#tab-notifs"); l.setAttribute("aria-label", n ? `Notifications, ${n} non lue${n > 1 ? "s" : ""}` : "Notifications"); };
-  window.addEventListener("notifs-changed", paint);
-  if (window.notifUnreadCount) paint(); else { const s = document.createElement("script"); s.src = "notifications-test.js"; s.onload = paint; document.head.append(s); }
+  window.setNotifBadge = (n) => { n = Math.max(0, n | 0); badge.hidden = !n; badge.textContent = n > 9 ? "9+" : String(n); nav.querySelector("#tab-notifs").setAttribute("aria-label", n ? `Notifications, ${n} non lue${n > 1 ? "s" : ""}` : "Notifications"); };
+  let busy = false;
+  const refresh = async () => {
+    if (busy || document.hidden) return; busy = true;
+    try { const c = typeof sb !== "undefined" ? sb : null; if (c) { const { data, error } = await c.rpc("my_unread_count"); if (!error && typeof data === "number") window.setNotifBadge(data); } } catch (e) {}
+    busy = false;
+  };
+  addEventListener("load", () => setTimeout(refresh, 400)); document.addEventListener("visibilitychange", refresh); setInterval(refresh, 60000);
+  window.addEventListener("notifs-changed", refresh);
 })();
