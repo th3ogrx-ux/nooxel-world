@@ -1,0 +1,14 @@
+/* Barre de navigation du bas : UNE seule définition, utilisée par la carte, le fil et le compte.
+   Position et taille identiques partout : fixe, 2 rem au-dessus de la zone de sécurité, 58 px + 1 px de bordure de chaque côté.
+   Fond uni, aucune animation permanente → légère même sur un petit téléphone. */
+#tabbar { position: fixed; left: .6rem; right: .6rem; max-width: 460px; margin: 0 auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 2rem); z-index: 6; box-sizing: content-box; height: 58px; display: grid; grid-template-columns: 1fr 1fr 74px 1fr 1fr; align-items: center; border-radius: 22px; background: #060c1c; border: 1px solid rgba(70,130,255,.4); box-shadow: 0 6px 22px rgba(0,50,255,.28); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+#tabbar, #tabbar * { -webkit-tap-highlight-color: transparent; }
+#tabbar *, #tabbar *::before, #tabbar *::after { box-sizing: border-box; }
+#tabbar.hidden { display: none; }
+#tabbar .tab { display: grid; justify-items: center; gap: .08rem; padding: .3rem 0; border: 0; background: none; color: #8497c4; font: inherit; font-size: .68rem; font-weight: 600; line-height: 1.5; text-decoration: none; cursor: pointer; }
+#tabbar .tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#tabbar .tab.on { color: #3b8bff; } #tabbar #tab-map.on svg { fill: currentColor; }
+#tab-locate { justify-self: center; width: 58px; height: 58px; margin-top: -30px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; cursor: pointer; text-decoration: none; background: radial-gradient(circle at 50% 28%, #3b8bff, #0a4fe0 75%); box-shadow: 0 0 0 6px #060c1c, 0 0 16px 6px rgba(30,110,255,.55); }
+#tab-locate svg { width: 28px; height: 28px; fill: #fff; stroke: #fff; stroke-width: 1.2; }
+#tab-locate svg circle { fill: #0a4fe0; stroke: none; }
+#tab-locate:active { transform: scale(.94); }
