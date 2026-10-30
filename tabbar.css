@@ -12,3 +12,6 @@
 #tab-locate svg { width: 28px; height: 28px; fill: #fff; stroke: #fff; stroke-width: 1.2; }
 #tab-locate svg circle { fill: #0a4fe0; stroke: none; }
 #tab-locate:active { transform: scale(.94); }
+#tabbar .tab { position: relative; }
+#tabbar #notif-badge { position: absolute; top: 1px; left: calc(50% + 4px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: #1a6bff; color: #fff; font-size: .62rem; font-weight: 700; line-height: 17px; text-align: center; box-shadow: 0 0 0 2px #060c1c; }
+#tabbar #notif-badge[hidden] { display: none; }
