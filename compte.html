@@ -12,7 +12,7 @@
 </head>
 <body>
 <main>
-  <div class="plainbar"><a id="back" href="/" aria-label="Retour à la carte"></a><a id="gear" href="/?menu=1" aria-label="Réglages"></a></div>
+  <div class="plainbar"><a id="back" href="/" aria-label="Retour à la carte"></a><a id="gear" href="parametres.html" aria-label="Paramètres"></a></div>
   <div id="app"><p class="empty">Chargement…</p></div>
   <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
 </main>
@@ -77,6 +77,7 @@
       el("button", { class: "btn-outline hidden", id: "more-fav", type: "button", text: "Voir plus", onclick: () => loadFav() }));
     app.replaceChildren(...[banner, head, secs, rsec, fsec].filter(Boolean));
     rLoaded = true; loadReviews(true);
+    if (new URLSearchParams(location.search).get("tab") === "fav") show("fav");
   }
 
   function editor(nameEl) {

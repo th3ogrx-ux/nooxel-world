@@ -58,7 +58,7 @@
     const items = s.is_owner ? [
       el("a", { id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }), el("a", { id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
       s.kind === "mobile" ? el("a", { id: "manage-plan", href: "pro.html#schedule-card", text: "Planning de passage" }) : null,
-      el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "/?menu=1", text: "Réglages du compte" })]
+      el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "parametres.html", text: "Paramètres" })]
       : [el("button", { type: "button", id: "report-btn", text: "⚑ Signaler cette page", onclick: () => { menu.classList.add("hidden"); openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }); } })];
     const menu = el("div", { id: "more-menu", class: "hidden", role: "menu" }, ...items.filter(Boolean));
     return menu;
