@@ -79,3 +79,4 @@
   .reel-top > * { pointer-events: auto; }
   .reel-name { flex: 1; color: #fff; font-weight: 700; text-shadow: 0 1px 6px rgba(0,0,0,.9); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .reel-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 1.1rem; cursor: pointer; }
+

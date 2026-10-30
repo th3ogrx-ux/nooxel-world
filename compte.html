@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mon compte — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="light.css">
+</head>
+<body>
+<main>
+  <div class="plainbar"><a id="back" href="/" aria-label="Retour à la carte"></a><a id="gear" href="/?menu=1" aria-label="Réglages"></a></div>
+  <div id="app"><p class="empty">Chargement…</p></div>
+  <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
+</main>
+<nav id="tabbar" aria-label="Navigation principale">
+  <a class="tab" id="tab-map" href="/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>Carte</span></a>
+  <a class="tab" id="tab-search" href="/?search=1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Chercher</span></a>
+  <a id="tab-locate" href="/" aria-label="Ma position"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/></svg></a>
+  <a class="tab" id="tab-feed" href="fil.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Fil</span></a>
+  <a class="tab on" id="tab-account" href="compte.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0z"/></svg><span>Compte</span></a>
+</nav>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script>
+  const PERR = {
+    invalid_pseudo: "Pseudo invalide : 3 à 20 caractères, lettres sans accent, chiffres, point, tiret ou souligné.",
+    reserved_pseudo: "Ce pseudo n'est pas autorisé. Choisissez-en un autre.",
+    bad_pseudo: "Ce pseudo n'est pas autorisé. Choisissez-en un autre.",
+    pseudo_taken: "Ce pseudo est déjà pris.",
+    pseudo_change_too_soon: "Vous pourrez changer de pseudo dans 30 jours.",
+  };
+  const perr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(PERR).find((c) => m.includes(c)); return k ? PERR[k] : fr(e); };
+  const stars = (n) => el("span", { class: "stars", role: "img", "aria-label": `${n} sur 5`, text: "★".repeat(n) + "☆".repeat(5 - n) });
+  let sum = null, rBefore = null, fBefore = null, rLoaded = false, fLoaded = false;
+
+  async function boot() {
+    const app = $("app");
+    if (!sb || !(await currentSession())) {
+      app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir votre profil." }), el("a", { href: "/", text: "Aller à la connexion" })));
+      return;
+    }
+    const st = await sb.rpc("my_verification_status");
+    const pro = st.data || {};
+    // Commerce vérifié : l'espace Compte devient la page du commerce (avec ses boutons de gestion).
+    if (pro.has_profile && pro.verification === "verified" && pro.merchant_id) { location.replace("commerce.html?id=" + encodeURIComponent(pro.merchant_id)); return; }
+    const { data, error } = await sb.rpc("my_profile_summary");
+    if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Profil indisponible" }), el("p", { text: fr(error) }))); return; }
+    sum = data; render(pro);
+  }
+
+  function render(pro) {
+    const app = $("app");
+    $("back").append(icon("back", 26)); $("gear").append(icon("gear", 24));
+    const banner = pro.has_profile ? el("div", { class: "banner", id: "pro-banner" },
+      pro.verification === "pending" ? "Votre demande de vérification est en cours. " : "Votre commerce n'est pas encore vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;
+    const nameEl = el("h2", { id: "pf-name", text: sum.pseudo || "Choisissez un pseudo" });
+    const star = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2l3 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.8 5.7 21.4l1.5-7.1L1.8 9.4 9 8.6z"/></svg>', "image/svg+xml").documentElement;
+    const head = el("div", { class: "profile", id: "profile" }, silhouette(100), nameEl,
+      sum.active_contributor ? el("span", { class: "pill", id: "pf-badge" }, document.importNode(star, true), "Contributeur actif") : null,
+      el("div", { class: "metrics" },
+        el("div", {}, el("b", { id: "pf-reviews", text: String(sum.reviews_count) }), el("span", { text: sum.reviews_count > 1 ? "avis laissés" : "avis laissé" })),
+        el("div", {}, el("b", { id: "pf-following", text: String(sum.following_count) }), el("span", { text: sum.following_count > 1 ? "commerces suivis" : "commerce suivi" })),
+        el("div", {}, el("b", { id: "pf-points", text: String(sum.points) }), el("span", { text: "points" }))),
+      editor(nameEl));
+    head.querySelector(".silhouette").classList.add("avatar");
+    const secs = el("div", { class: "utabs", role: "group", "aria-label": "Sections du profil" },
+      ...[["reviews", "Avis"], ["fav", "Favoris"]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "reviews"), text: label, onclick: () => show(k) })));
+    const rsec = el("div", { id: "section-reviews", class: "section" }, el("div", { id: "my-reviews" }), el("p", { class: "empty hidden", id: "no-reviews", text: "Vous n'avez pas encore laissé d'avis. Ouvrez la page d'un commerce pour donner le vôtre." }),
+      el("button", { class: "btn-outline hidden", id: "more-reviews", type: "button", text: "Voir plus", onclick: () => loadReviews() }));
+    const fsec = el("div", { id: "section-fav", class: "section hidden" },
+      el("div", { class: "favhead" }, el("b", { text: "Mes commerces favoris" }), el("span", { id: "fav-count", text: String(sum.following_count) })),
+      el("div", { class: "favgrid", id: "my-fav" }), el("p", { class: "empty hidden", id: "no-fav", text: "Vous ne suivez encore aucun commerce. Appuyez sur « Suivre » sur la page d'un commerce." }),
+      el("button", { class: "btn-outline hidden", id: "more-fav", type: "button", text: "Voir plus", onclick: () => loadFav() }));
+    app.replaceChildren(...[banner, head, secs, rsec, fsec].filter(Boolean));
+    rLoaded = true; loadReviews(true);
+  }
+
+  function editor(nameEl) {
+    const slot = el("div", { id: "pf-edit-slot" });
+    const open = el("button", { class: "btn-outline", id: "pf-edit", type: "button" }, icon("pencil", 18), "Modifier mon profil");
+    open.addEventListener("click", () => {
+      const input = el("input", { type: "text", id: "pf-pseudo", maxlength: 20, autocomplete: "nickname", placeholder: "Votre pseudo public" }); input.value = sum.pseudo || "";
+      const err = el("p", { class: "err", id: "pf-err" });
+      const save = el("button", { class: "btn-save", id: "pf-save", type: "button", text: "Enregistrer" });
+      const cancel = el("button", { class: "btn-cancel", type: "button", text: "Annuler", onclick: () => { slot.replaceChildren(); open.classList.remove("hidden"); } });
+      save.addEventListener("click", async () => {
+        err.textContent = ""; save.disabled = true;
+        if (input.value.trim() === (sum.pseudo || "")) { save.disabled = false; slot.replaceChildren(); open.classList.remove("hidden"); return; }
+        const { error } = await sb.rpc("set_pseudo", { p_pseudo: input.value });
+        save.disabled = false;
+        if (error) { err.textContent = perr(error); return; }
+        sum.pseudo = input.value.trim(); nameEl.textContent = sum.pseudo; slot.replaceChildren(); open.classList.remove("hidden");
+      });
+      slot.replaceChildren(el("div", { class: "editbox" }, el("label", {}, "Pseudo public (affiché avec vos avis, jamais votre email)", input),
+        el("p", { class: "hint", text: sum.pseudo ? "Vous pouvez changer de pseudo une fois tous les 30 jours." : "Lettres sans accent, chiffres, point, tiret ou souligné." }), err, save, cancel));
+      open.classList.add("hidden"); input.focus();
+    });
+    return el("div", {}, open, slot);
+  }
+
+  function show(k) {
+    for (const x of ["reviews", "fav"]) { $("sec-" + x).setAttribute("aria-pressed", String(x === k)); $("section-" + x).classList.toggle("hidden", x !== k); }
+    if (k === "fav" && !fLoaded) { fLoaded = true; loadFav(true); }
+  }
+
+  async function loadReviews(first) {
+    const more = $("more-reviews"); more.disabled = true;
+    const { data, error } = await sb.rpc("my_reviews", { p_before: rBefore, p_limit: 10 });
+    more.disabled = false;
+    if (error) { $("no-reviews").textContent = fr(error); $("no-reviews").classList.remove("hidden"); return; }
+    for (const r of data) $("my-reviews").append(el("a", { class: "rrow", href: "commerce.html?id=" + encodeURIComponent(r.merchant_id), "data-review": r.id },
+      el("span", { class: "thumb" }, r.logo_path ? el("img", { src: imgUrl(r.logo_path), alt: "", loading: "lazy" }) : null),
+      el("div", { class: "main" }, el("div", { class: "l1" }, el("b", { text: r.business_name }), el("span", { text: dateFr(r.created_at) })),
+        el("div", { class: "l2" }, catLabel(r.category), catLabel(r.category) && r.rating_avg != null ? " · " : "", r.rating_avg != null ? [el("b", { text: rateStr(r.rating_avg) }), " ", el("span", { class: "gold", text: "★" })] : null),
+        el("p", { class: "txt", text: r.body })),
+      el("span", { class: "chev", "aria-hidden": "true", text: "›" })));
+    if (data.length) rBefore = data[data.length - 1].created_at;
+    more.classList.toggle("hidden", data.length < 10);
+    if (first) $("no-reviews").classList.toggle("hidden", data.length > 0);
+  }
+
+  async function loadFav(first) {
+    const more = $("more-fav"); more.disabled = true;
+    const { data, error } = await sb.rpc("my_following", { p_before: fBefore, p_limit: 12 });
+    more.disabled = false;
+    if (error) { $("no-fav").textContent = fr(error); $("no-fav").classList.remove("hidden"); return; }
+    for (const m of data) $("my-fav").append(el("a", { class: "fav", href: "commerce.html?id=" + encodeURIComponent(m.merchant_id), "data-fav": m.merchant_id },
+      el("div", { class: "ph" }, m.cover_path || m.logo_path ? el("img", { src: imgUrl(m.cover_path || m.logo_path), alt: "", loading: "lazy" }) : null),
+      el("div", { class: "fb" }, el("b", { text: m.business_name }), el("small", { text: catLabel(m.category) || " " }),
+        m.review_count ? el("div", { class: "rt" }, rateStr(m.rating_avg), " ", el("span", { class: "gold", text: "★" })) : null)));
+    if (data.length) fBefore = data[data.length - 1].followed_at;
+    more.classList.toggle("hidden", data.length < 12);
+    if (first) $("no-fav").classList.toggle("hidden", data.length > 0);
+  }
+  boot();
+</script>
+</body>
+</html>

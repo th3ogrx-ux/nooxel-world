@@ -63,6 +63,10 @@
     .slot { display: flex; gap: .8rem; padding: .6rem 0; border-top: 1px solid #eceff3; align-items: flex-start; justify-content: space-between; color: var(--ink); font-size: .92rem; }
     .slot small { display: block; color: var(--mute); }
     input[type=datetime-local], input[type=number] { font: inherit; font-size: 16px; padding: .6rem .7rem; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; width: 100%; }
+    .thumb.round { border-radius: 50%; width: 96px; height: 96px; object-fit: cover; }
+    .hrow { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; padding: .45rem 0; border-top: 1px solid #eceff3; }
+    .hslots { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; color: var(--ink); }
+    .hslots input[type=time] { width: auto; padding: .4rem .5rem; font: inherit; font-size: 16px; border: 1px solid #c4c7c5; border-radius: 10px; color: var(--ink); background: #fff; }
     .hidden { display: none !important; }
     details summary { cursor: pointer; font-weight: 600; color: var(--blue); }
     .banner details summary { color: inherit; text-decoration: underline; }
@@ -179,6 +183,7 @@
     else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
     if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
+    if (location.hash.length > 1) setTimeout(() => { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }, 400);
   }
 
   // ---- création du profil
@@ -320,8 +325,8 @@
       el("a", { class: "btn ghost small", id: "view-page", href: "commerce.html?id=" + encodeURIComponent(state.merchant_id), text: "Voir ma page" }));
     const body = el("div", { id: "page-body" }); card.append(body);
     const load = async () => {
-      const { data } = await sb.from("merchant_profiles").select("address,profile_kind,zone_label,zone_radius_km").eq("id", state.merchant_id).single();
-      state.kind = (data && data.profile_kind) || "shop"; body.replaceChildren(typePicker(data || {}), state.kind === "mobile" ? zoneEditor(data) : addressEditor(data || {}));
+      const { data } = await sb.from("merchant_profiles").select("address,profile_kind,zone_label,zone_radius_km,category,logo_path,cover_path,website,contact_phone,opening_hours,timezone").eq("id", state.merchant_id).single();
+      state.kind = (data && data.profile_kind) || "shop"; body.replaceChildren(typePicker(data || {}), state.kind === "mobile" ? zoneEditor(data) : addressEditor(data || {}), identityEditor(data || {}));
     };
     const typePicker = (d) => {
       const sel = el("select", { id: "kind-select" }, el("option", { value: "shop", text: "Commerce avec une adresse" }), el("option", { value: "mobile", text: "Indépendant ou itinérant (zone d'intervention)" }));
@@ -375,6 +380,102 @@
     };
     load();
     return card;
+  }
+
+  // ---- identité de la page : catégorie, logo, couverture, site, téléphone, horaires (tout est vide au départ)
+  async function cropJpeg(file, w, h) {                  // recadre au centre, redimensionne, JPEG : retire aussi les métadonnées (GPS…)
+    if (!file || !file.type.startsWith("image/")) throw new Error("Choisissez une photo (image).");
+    if (file.size > 30e6) throw new Error("Cette image est trop lourde.");
+    let src;
+    try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+    catch { src = await new Promise((ok, no) => { const u = URL.createObjectURL(file), i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("Impossible de lire cette image.")); i.src = u; }); }
+    const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight, k = Math.max(w / sw, h / sh);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(src, (w - sw * k) / 2, (h - sh * k) / 2, sw * k, sh * k);
+    for (const q of [0.85, 0.72, 0.58]) { const b = await new Promise((r) => c.toBlob(r, "image/jpeg", q)); if (b && b.size <= 1.5e6) return b; }
+    throw new Error("Image trop lourde même réduite.");
+  }
+  const DAYS = [["mon", "Lundi"], ["tue", "Mardi"], ["wed", "Mercredi"], ["thu", "Jeudi"], ["fri", "Vendredi"], ["sat", "Samedi"], ["sun", "Dimanche"]];
+  const CATS = [["restaurant", "Restaurant"], ["cafe", "Café"], ["bar", "Bar"], ["boulangerie", "Boulangerie"], ["patisserie", "Pâtisserie"], ["boucherie", "Boucherie"], ["epicerie", "Épicerie"], ["vetements", "Vêtements"], ["beaute", "Beauté et coiffure"], ["sante", "Santé"], ["artisan", "Artisan"], ["services", "Services"], ["loisirs", "Loisirs"], ["hebergement", "Hébergement"], ["autre", "Autre"]];
+  const ZONES = [["Europe/Paris", "France métropolitaine"], ["America/Martinique", "Martinique, Guadeloupe"], ["America/Cayenne", "Guyane"], ["Indian/Reunion", "La Réunion"], ["Indian/Mayotte", "Mayotte"], ["Pacific/Noumea", "Nouvelle-Calédonie"], ["Pacific/Tahiti", "Polynésie française"], ["Pacific/Wallis_and_Futuna", "Wallis-et-Futuna"], ["America/Miquelon", "Saint-Pierre-et-Miquelon"]];
+
+  function identityEditor(d) {
+    const err = el("p", { class: "err", id: "id-err" }), ok = el("p", { class: "okmsg", id: "id-ok" });
+    const cur = { logo: d.logo_path || null, cover: d.cover_path || null };
+    const imgField = (kind, label, w, h, round) => {
+      const prev = el("img", { class: "thumb" + (round ? " round" : ""), id: kind + "-preview", alt: "", style: cur[kind] ? "" : "display:none" });
+      if (cur[kind]) prev.src = mediaUrl(cur[kind]);
+      const file = el("input", { type: "file", id: kind + "-file", accept: "image/*" });
+      const rm = el("button", { class: "btn danger small" + (cur[kind] ? "" : " hidden"), id: kind + "-remove", type: "button", text: "Retirer" });
+      const save = async (path) => {
+        const col = kind === "logo" ? "logo_path" : "cover_path", old = cur[kind];
+        const { error } = await sb.from("merchant_profiles").update({ [col]: path }).eq("id", state.merchant_id);
+        if (error) throw error;
+        cur[kind] = path; if (old && old !== path) await sb.storage.from("merchant-media").remove([old]);
+        if (path) { prev.src = mediaUrl(path); prev.style.display = ""; } else prev.style.display = "none";
+        rm.classList.toggle("hidden", !path);
+      };
+      file.addEventListener("change", async () => {
+        err.textContent = ""; ok.textContent = ""; if (!file.files[0]) return; file.disabled = true;
+        let path = null;
+        try {
+          const blob = await cropJpeg(file.files[0], w, h); path = `${state.merchant_id}/${kind}-${crypto.randomUUID()}.jpg`;
+          const up = await sb.storage.from("merchant-media").upload(path, blob, { contentType: "image/jpeg", upsert: false }); if (up.error) throw up.error;
+          await save(path); ok.textContent = kind === "logo" ? "Logo enregistré." : "Photo de couverture enregistrée.";
+        } catch (e) { if (path) await sb.storage.from("merchant-media").remove([path]); err.textContent = e instanceof Error && !e.message.includes("_") ? e.message : "Envoi impossible. Réessayez."; }
+        file.value = ""; file.disabled = false;
+      });
+      rm.addEventListener("click", async () => { err.textContent = ""; try { await save(null); ok.textContent = "Retiré."; } catch (e) { err.textContent = "Enregistrement impossible."; } });
+      return el("div", { id: kind + "-field" }, el("label", {}, label, file), prev, rm);
+    };
+    const cat = el("select", { id: "id-category" }, el("option", { value: "", text: "— Choisir —" }), ...CATS.map(([v, l]) => el("option", { value: v, text: l }))); cat.value = d.category || "";
+    const site = el("input", { type: "url", id: "id-website", maxlength: 200, placeholder: "https://…", autocomplete: "off" }); site.value = d.website || "";
+    const phone = el("input", { type: "tel", id: "id-phone", maxlength: 20, placeholder: "Ex. 04 12 34 56 78", autocomplete: "off" }); phone.value = d.contact_phone || "";
+    const tz = el("select", { id: "id-timezone" }, ...ZONES.map(([v, l]) => el("option", { value: v, text: l }))); tz.value = d.timezone || "Europe/Paris";
+    const oh = d.opening_hours || {};
+    const rows = DAYS.map(([k, label]) => {
+      const sl = oh[k] || [];
+      const on = el("input", { type: "checkbox", id: "h-" + k + "-on", "aria-label": label + " : ouvert" }); on.checked = sl.length > 0;
+      const t = (id, v) => { const i = el("input", { type: "time", id, step: 300 }); i.value = v || ""; return i; };
+      const f = [t("h-" + k + "-a1", sl[0] && sl[0][0]), t("h-" + k + "-b1", sl[0] && sl[0][1]), t("h-" + k + "-a2", sl[1] && sl[1][0]), t("h-" + k + "-b2", sl[1] && sl[1][1])];
+      const sync = () => f.forEach((i) => { i.disabled = !on.checked; }); on.addEventListener("change", () => { if (on.checked && !f[0].value) { f[0].value = "09:00"; f[1].value = "18:00"; } sync(); }); sync();
+      return { k, label, on, f, row: el("div", { class: "hrow" }, el("label", { class: "check", style: "margin:0;min-width:7.5rem" }, on, el("span", { text: label })), el("div", { class: "hslots" }, f[0], "–", f[1], el("span", { class: "hint", text: "et" }), f[2], "–", f[3])) };
+    });
+    const hours = () => {
+      const o = {}, any = rows.some((r) => r.on.checked); if (!any) return null;
+      for (const r of rows) {
+        o[r.k] = [];
+        if (!r.on.checked) continue;
+        for (const [a, b] of [[r.f[0], r.f[1]], [r.f[2], r.f[3]]]) {
+          if (!a.value && !b.value) continue;
+          if (!a.value || !b.value || a.value >= b.value) throw new Error(`${r.label} : l'heure d'ouverture doit être avant la fermeture.`);
+          o[r.k].push([a.value, b.value]);
+        }
+        if (!o[r.k].length) throw new Error(`${r.label} : indiquez les heures, ou décochez le jour.`);
+        if (o[r.k].length === 2 && o[r.k][0][1] > o[r.k][1][0]) throw new Error(`${r.label} : les deux plages ne doivent pas se chevaucher.`);
+      }
+      return o;
+    };
+    const save = el("button", { class: "btn", id: "id-save", type: "button", text: "Enregistrer ces informations" });
+    save.addEventListener("click", async () => {
+      err.textContent = ""; ok.textContent = ""; save.disabled = true;
+      try {
+        const ws = site.value.trim(), ph = phone.value.replace(/[\s.\-()]/g, "");
+        if (ws && !/^https:\/\/\S+$/i.test(ws)) throw new Error("Le site doit commencer par https://");
+        if (ph && !/^\+?[0-9]{8,15}$/.test(ph)) throw new Error("Numéro de téléphone invalide (8 à 15 chiffres).");
+        const upd = { category: cat.value || null, website: ws || null, contact_phone: ph || null, timezone: tz.value, opening_hours: hours() };
+        const { error } = await sb.from("merchant_profiles").update(upd).eq("id", state.merchant_id);
+        if (error) throw new Error("Enregistrement impossible. Vérifiez les champs.");
+        ok.textContent = "Enregistré.";
+      } catch (e) { err.textContent = e.message; }
+      save.disabled = false;
+    });
+    return el("div", { id: "identity" }, el("h2", { style: "margin-top:1.1rem", text: "Identité de la page" }),
+      el("p", { text: "Tout est facultatif. Ces informations s'affichent en haut de votre page publique." }),
+      imgField("logo", "Logo ou photo de profil (carré)", 512, 512, true), imgField("cover", "Photo de couverture (bandeau large)", 1280, 480, false),
+      el("label", {}, "Catégorie", cat), el("label", {}, "Site web", site), el("label", {}, "Téléphone public (affiché sur votre page, différent de celui de la vérification)", phone),
+      el("h2", { style: "margin-top:1.1rem", text: "Horaires d'ouverture" }), el("p", { text: "Cochez les jours d'ouverture (jusqu'à deux plages par jour, ex. midi et soir). Aucun jour coché : pas d'horaires affichés." }),
+      ...rows.map((r) => r.row), el("label", {}, "Fuseau horaire", tz), err, ok, save);
   }
 
   // ---- planning de passage (indépendants itinérants : food trucks, marchés…)
