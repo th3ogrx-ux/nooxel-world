@@ -7,7 +7,7 @@
 #tabbar.hidden { display: none; }
 #tabbar .tab { display: grid; justify-items: center; gap: .08rem; padding: .3rem 0; border: 0; background: none; color: #8497c4; font: inherit; font-size: .68rem; font-weight: 600; line-height: 1.5; text-decoration: none; cursor: pointer; }
 #tabbar .tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-#tabbar .tab.on { color: #3b8bff; } #tabbar #tab-map.on svg { fill: currentColor; }
+#tabbar .tab.on { color: #3b8bff; } 
 #tab-locate { justify-self: center; width: 58px; height: 58px; margin-top: -30px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; color: #fff; cursor: pointer; text-decoration: none; background: radial-gradient(circle at 50% 28%, #3b8bff, #0a4fe0 75%); box-shadow: 0 0 0 6px #060c1c, 0 0 16px 6px rgba(30,110,255,.55); }
 #tab-locate svg { width: 28px; height: 28px; fill: #fff; stroke: #fff; stroke-width: 1.2; }
 #tab-locate svg circle { fill: #0a4fe0; stroke: none; }
@@ -15,9 +15,14 @@
 #tabbar .tab { position: relative; }
 #tabbar #notif-badge { position: absolute; top: 1px; left: calc(50% + 4px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: #1a6bff; color: #fff; font-size: .62rem; font-weight: 700; line-height: 17px; text-align: center; box-shadow: 0 0 0 2px #060c1c; }
 #tabbar #notif-badge[hidden] { display: none; }
-#tabbar #tab-indicator { position: absolute; left: 0; top: 6px; height: 46px; border-radius: 16px; background: rgba(59,139,255,.17); pointer-events: none; z-index: 0; will-change: transform; transition: transform .34s cubic-bezier(.3,.85,.3,1); }
+#tabbar #tab-indicator { opacity: 1; position: absolute; left: 0; top: 6px; height: 46px; border-radius: 16px; background: rgba(59,139,255,.17); pointer-events: none; z-index: 0; will-change: transform; transition: transform .34s cubic-bezier(.3,.85,.3,1), opacity .25s ease; }
 #tabbar #tab-indicator[hidden] { display: none; }
 #tabbar .tab { z-index: 1; transition: color .25s ease; }
 #tabbar .tab svg { transition: transform .3s cubic-bezier(.3,.85,.3,1), fill .25s ease; }
 #tabbar .tab.on svg { transform: scale(1.12); }
 @media (prefers-reduced-motion: reduce) { #tabbar #tab-indicator, #tabbar .tab, #tabbar .tab svg { transition: none; } }
+/* Pages à barre du bas : le document ne défile pas (c'est la zone « .shell » qui défile), comme sur la carte.
+   Ainsi la barre d'adresse et la barre du navigateur ne bougent jamais et la barre du bas reste exactement au même endroit. */
+html:has(.shell), body:has(.shell) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+.shell { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+#tabbar button#tab-map { cursor: default; }

@@ -417,7 +417,7 @@
         </div>
         <ul id="q-list" class="hidden" role="listbox"></ul>
       </div>
-      <script src="tabbar.js" data-active="map"></script>
+      <script src="tabbar.js" data-active=""></script>
       <button type="button" id="me" aria-label="Mon compte"></button>
       <div id="menu" class="hidden" role="menu">
         <p id="who"></p>
@@ -937,10 +937,9 @@
     }
     $("pc-go").onclick = computeRoute;
     // ----- Barre du bas
-    $("tab-map").onclick = () => { clearSearch(); closeDock(); $("menu").classList.add("hidden"); return false; };
     $("tab-search").onclick = () => { $("menu").classList.add("hidden"); $("q").focus(); return false; };
-    $("tab-locate").onclick = () => { if (geo) geo.trigger(); else startMap(); return false; };
-    const tabState = () => { const menuOn = !$("menu").classList.contains("hidden"), searching = document.activeElement === $("q"); $("tab-account").classList.toggle("on", menuOn); $("tab-search").classList.toggle("on", searching && !menuOn); $("tab-map").classList.toggle("on", !menuOn && !searching); };
+    $("tab-locate").onclick = () => { clearSearch(); $("menu").classList.add("hidden"); if (geo) geo.trigger(); else startMap(); return false; };      // le bouton rond = retour à la carte, centrée sur ma position
+    const tabState = () => { const menuOn = !$("menu").classList.contains("hidden"), searching = document.activeElement === $("q"); $("tab-account").classList.toggle("on", menuOn); $("tab-search").classList.toggle("on", searching && !menuOn);  };
     new MutationObserver(tabState).observe($("menu"), { attributes: true, attributeFilter: ["class"] });
     $("q").addEventListener("focus", tabState); $("q").addEventListener("blur", () => setTimeout(tabState, 160));
     $("pc-x").onclick = () => { closeDock(); if (marker) { marker.remove(); marker = null; } };
