@@ -104,6 +104,7 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .fav .fb { padding: .55rem .7rem .7rem; } .fav b { display: block; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fav small { display: block; color: var(--mute); } .fav .rt { margin-top: .3rem; font-weight: 700; font-size: .92rem; } .fav .rt .gold { color: #f5b301; }
 .silhouette { display: inline-flex; flex: none; border-radius: 50%; background: #e3e6ea; overflow: hidden; align-items: flex-end; justify-content: center; }
+.avatar-photo { display: block; width: 100px; height: 100px; margin: .2rem auto 0; border-radius: 50%; object-fit: cover; background: #14285a; }
 .silhouette svg { width: 82%; height: 82%; fill: #9aa0a8; }
 
 footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--mute); }

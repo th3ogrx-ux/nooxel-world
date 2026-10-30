@@ -28,6 +28,7 @@
       app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir cette page." }), el("a", { href: "/", text: "Aller à la connexion" })));
       return;
     }
+    if (await gateProfile()) return;
     const { data, error } = await sb.rpc("get_merchant_page", { p_id: id });
     if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
     shop = data; document.title = shop.business_name + " — Nooxel World";

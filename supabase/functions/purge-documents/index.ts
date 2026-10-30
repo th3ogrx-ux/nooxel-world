@@ -66,5 +66,14 @@ Deno.serve(async (req) => {
       if (!del.error) videos += Math.min(50, names.length - i);
     }
   }
-  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans, orphan_media_removed: media, orphan_videos_removed: videos });
+  let avatars = 0;
+  const av = await admin.rpc("system_orphan_avatars");
+  if (!av.error && Array.isArray(av.data) && av.data.length) {
+    const avatarBucket = admin.storage.from("avatars"), names = av.data;
+    for (let i = 0; i < names.length; i += 50) {
+      const del = await avatarBucket.remove(names.slice(i, i + 50));
+      if (!del.error) avatars += Math.min(50, names.length - i);
+    }
+  }
+  return json({ ok: true, files_removed: removed, requests_marked: marked, orphan_files_removed: orphans, orphan_media_removed: media, orphan_videos_removed: videos, orphan_avatars_removed: avatars });
 });

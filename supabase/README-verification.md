@@ -176,3 +176,5 @@ avant l'envoi, génère une vignette, et le lecteur plein écran (défilement ve
 - Re-coller `functions-bundled/purge-documents.ts` : la tâche de nuit supprime aussi les vidéos orphelines.
 - Format : MP4 (Chrome récent, Safari) sinon WebM. Un navigateur sans enregistreur vidéo n'accepte que les vidéos déjà
   légères (moins de 3,5 Mo). Je n'ai pas pu tester sur un vrai iPhone.
+
+- Photo de profil (écran « Configurez votre profil ») : coller `profile-setup.sql`, et **re-coller `functions-bundled/purge-documents.ts`** : la tâche de nuit efface aussi les photos de profil orphelines.

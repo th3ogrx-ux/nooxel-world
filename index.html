@@ -66,6 +66,7 @@
     .loader p { margin: .9rem 0 0; color: #7fa8ff; font-size: .95rem; letter-spacing: .04em; }
     .btn-white { width: auto; max-width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .8rem; font: inherit; font-size: .95rem; font-weight: 600; color: #0b1636; background: #fff; border: 0; border-radius: 14px; padding: .65rem 1rem; cursor: pointer; box-shadow: 0 8px 30px rgba(20,110,255,.25); animation: rise .5s ease both; }
     .btn-white:active { transform: scale(.98); }
+    .link-create { margin: .9rem 0 0; padding: .3rem .5rem; border: 0; background: none; color: #9db4e8; font: inherit; font-size: .95rem; cursor: pointer; animation: rise .6s ease .1s both; } .link-create b { color: #fff; text-decoration: underline; }
     .btn-white img { width: 24px; height: 22px; object-fit: contain; }
     @keyframes float { 50% { transform: translateY(-9px); } }
     @keyframes pulse { 50% { opacity: .65; } }
@@ -343,10 +344,9 @@
           <p>Chargement…</p>
         </div>
         <button type="button" class="btn-white hidden" id="go-login">
-          <span>Se connecter à Nooxel</span>
-          <img src="assets/logo-n.webp" alt="">
+          <span>Connexion</span>
         </button>
-        <p class="req hidden" id="req">Un compte Nooxel est requis pour accéder à Nooxel World</p>
+        <button type="button" class="link-create hidden" id="go-create">Pas de compte ? <b>Créer un compte</b></button>
         <p class="legal-links foot"><a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></p>
       </div>
     </section>
@@ -615,6 +615,7 @@
         $("me").textContent = email[0];
         $("me").style.background = `hsl(${hue(email)} 65% 45%)`;
         startMap();
+        if (sb) sb.rpc("my_profile_summary").then(r => { if (r && r.data && !r.data.pseudo) location.replace("configurer-profil.html"); }, () => {});     // pseudo obligatoire avant l'accès à l'application
       } else { $("menu").classList.add("hidden"); }
     }
 
@@ -1278,7 +1279,7 @@
     function showButton() {
       $("welcome").classList.add("ready");
       $("loader").classList.add("out");
-      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); $("req").classList.remove("hidden"); if (navigator.vibrate) navigator.vibrate(15); }, 400);
+      setTimeout(() => { $("loader").classList.add("hidden"); $("go-login").classList.remove("hidden"); $("go-create").classList.remove("hidden"); if (navigator.vibrate) navigator.vibrate(15); }, 400);
     }
     const ready = () => setTimeout(showButton, Math.max(0, LOAD_MS - (Date.now() - t0)));
     if (document.readyState === "complete") ready(); else window.addEventListener("load", ready);
@@ -1287,6 +1288,7 @@
     $("go-login").onclick = () => {
       wantsLogin = true; render(); showChooser();
     };
+    $("go-create").onclick = () => { wantsLogin = true; render(); $("create").onclick(); };      // « Créer un compte » sous le bouton Connexion : directement le formulaire d'inscription
     const closeCard = () => { wantsLogin = false; setMode(false); $("email").value = ""; $("password").value = ""; render(); };
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
