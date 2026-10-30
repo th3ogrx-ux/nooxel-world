@@ -1,0 +1,24 @@
+/* Thème « bleu » de l'écran Paramètres, appliqué aux autres écrans (profil, commerce, notifications, fil, signaler).
+   À charger APRÈS shop.css. Les champs de saisie restent blancs, texte foncé (var(--ink)), pour la lisibilité. */
+:root { color-scheme: dark; --navy: #e8efff; --mute: #8ea3d0; --line: rgba(120,160,255,.16); --tint: #0d2150; --card: #0d2150; --accent: #4a8bff; --bg: #061330; --ph: #14285a; --soft: rgba(74,139,255,.16); --ink: #1f1f1f; --blue: #2a6fe8; }
+body { background: radial-gradient(120% 80% at 50% 0%, #0c2152, #061330 60%) no-repeat #061330; background-attachment: fixed; color: var(--navy); min-height: 100vh; }
+a { color: #7fb0ff; }
+h1 { color: #e8efff; } .lead, .empty, footer { color: var(--mute); }
+.card, .post, .review, .rcard { background: var(--card); color: var(--navy); border: 1px solid var(--line); box-shadow: none; }
+.card h2, .post-body, .card .stats { color: var(--navy) !important; } .card p, .post-date, .card label { color: var(--mute); }
+.card .err, .err { color: #ff8a72; }
+.okmsg { color: #6fe0a0; }
+.btn { background: var(--blue); color: #fff; } .btn.ghost { background: var(--soft); color: #a9c8ff; } .btn.danger { background: rgba(255,90,60,.16); color: #ff8a72; }
+.badge { background: rgba(40,180,100,.18); color: #6fe0a0; }
+.banner { background: rgba(255,200,80,.12); color: #ffd98a; } .banner a { color: #ffd98a; }
+.reply { background: rgba(255,255,255,.04); border: 1px solid var(--line); } .reply p { color: var(--navy); }
+.tile { background: var(--ph); color: var(--navy); }
+.tabs button { color: #a9c8ff; border-color: var(--line); }
+.linkbtn { color: var(--mute); }
+.star { color: #4a5a85; } .star.on { color: #f5b301; }
+dialog { color-scheme: dark; }
+.card input[type=text], .card input[type=url], .card input[type=tel], .card select, .card textarea, #review-form textarea, #review-form input[type=text], #report-form textarea { background: #fff; color: #1f1f1f; }
+.card .kinds legend, .hint { color: var(--mute); }
+.card label.check, .card .check { color: var(--navy); }
+.slot { border-top-color: var(--line); color: var(--navy); } .slot small { color: var(--mute); }
+.post-shop { color: #7fb0ff; }
