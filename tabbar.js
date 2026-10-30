@@ -18,6 +18,31 @@
     nav.append(a);
   }
   me.before(nav);
+  // Indicateur qui glisse sous l'onglet actif. Seule la propriété « transform » est animée (calculée par la carte graphique) : fluide même sur un petit téléphone.
+  const ind = document.createElement("span"); ind.id = "tab-indicator"; ind.setAttribute("aria-hidden", "true"); nav.prepend(ind);
+  const KEY = "nooxel_tab_prev", links = () => [...nav.querySelectorAll(".tab")];
+  const place = (a) => { const r = a.getBoundingClientRect(), n = nav.getBoundingClientRect(); if (!r.width) return false; ind.style.width = (r.width - 12) + "px"; ind.style.transform = `translate3d(${r.left - n.left - nav.clientLeft + 6}px,0,0)`; ind.hidden = false; return true; };
+  const current = () => nav.querySelector(".tab.on");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const jump = (a) => { ind.style.transition = "none"; place(a); void ind.offsetWidth; ind.style.transition = ""; };      // sans animation (démarrage, rotation)
+  let last = null;
+  const sync = (animate) => {
+    const cur = current(); if (!cur) return;
+    if (!animate || reduce || !last) jump(cur); else place(cur);
+    last = cur; try { sessionStorage.setItem(KEY, cur.id); } catch (e) {}
+  };
+  // D'une page à l'autre : l'indicateur repart de l'onglet quitté puis glisse vers le nouveau.
+  let prevId = null; try { prevId = sessionStorage.getItem(KEY); } catch (e) {}
+  const prev = prevId && nav.querySelector("#" + prevId + ".tab");
+  ind.hidden = true;
+  const start = () => {
+    const cur = current(); if (!cur) return;
+    if (prev && prev !== cur && !reduce && place(prev)) { ind.dataset.from = prev.id; last = prev; void ind.offsetWidth; requestAnimationFrame(() => requestAnimationFrame(() => sync(true))); }
+    else sync(false);
+  };
+  if (document.readyState === "complete") start(); else addEventListener("load", start, { once: true });
+  new MutationObserver(() => sync(true)).observe(nav, { subtree: true, attributes: true, attributeFilter: ["class"] });     // la carte change d'onglet sans changer de page
+  new ResizeObserver(() => { if (last) sync(false); }).observe(nav);
   // Pastille du nombre de notifications non lues (données de test pour l'instant : voir notifications-test.js).
   const badge = document.createElement("span"); badge.id = "notif-badge"; badge.hidden = true; badge.setAttribute("aria-live", "polite");
   nav.querySelector("#tab-notifs").append(badge);
