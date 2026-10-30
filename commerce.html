@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Commerce — Nooxel World</title>
-  <meta name="theme-color" content="#040b1c">
+  <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="assets/favicon.png">
   <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="light.css">
 </head>
 <body>
 <main>
-  <div class="topbar"><a class="back" href="/">← Retour à la carte</a><a class="iconbtn hidden" id="gear" href="/?menu=1" aria-label="Réglages">⚙</a></div>
   <div id="app"><p class="empty">Chargement…</p></div>
   <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
 </main>
@@ -19,8 +19,7 @@
 <script src="shop.js"></script>
 <script>
   const id = new URLSearchParams(location.search).get("id") || "";
-  let shop = null, before = null, mode = "list";
-  try { mode = localStorage.getItem("nooxel_posts_view") === "grid" ? "grid" : "list"; } catch (e) {}
+  let shop = null, before = null; const mode = "grid";
 
   async function boot() {
     const app = $("app");
@@ -31,34 +30,46 @@
     const { data, error } = await sb.rpc("get_merchant_page", { p_id: id });
     if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
     shop = data; document.title = shop.business_name + " — Nooxel World";
-    render(); if (shop.is_owner) $("gear").classList.remove("hidden");
+    render();
   }
 
-  const ratingText = () => shop.review_count ? `★ ${Number(shop.rating_avg).toFixed(1).replace(".", ",")} (${shop.review_count} avis)` : "Aucun avis";
+  const ratingText = () => shop.review_count ? `${rateStr(shop.rating_avg)} ★ (${shop.review_count} avis)` : "Aucun avis";
+  const rateNode = () => shop.review_count ? [el("b", { text: rateStr(shop.rating_avg) }), " ", el("span", { class: "gold", text: "★" }), ` (${shop.review_count} avis)`] : ["Aucun avis"];
+  const paintRating = () => $("shop-rating").replaceChildren(...rateNode());
 
+  function hoursRow(s) {
+    const st = openStatus(s.opening_hours, s.timezone); if (!st) return null;
+    const slots = s.opening_hours[nowIn(s.timezone || "Europe/Paris").day] || [];
+    const label = slots.length ? "Ouvert aujourd'hui · " + slots.map((x) => hhmm(x[0]) + " – " + hhmm(x[1])).join(" · ") : "Fermé aujourd'hui";
+    return el("li", { id: "shop-hours" }, icon("clock"), el("span", { text: label }), slots.length ? el("span", { id: "shop-open", class: st.open ? "pill-open" : "pill-closed", text: st.open ? "Ouvert maintenant" : "Fermé" }) : null);
+  }
   function infoCard(s) {
     const rows = [];
-    if (s.kind === "mobile") rows.push(el("li", { id: "shop-zone" }, el("span", { class: "ico", text: "🚐" }), el("span", { text: s.zone_label ? `Indépendant · zone d'intervention : ${s.zone_label}, rayon ${s.zone_radius_km} km` : "Indépendant" })));
-    else if (s.address) rows.push(el("li", { id: "shop-address" }, el("span", { class: "ico", text: "📍" }), el("span", { text: s.address })));
-    const st = openStatus(s.opening_hours, s.timezone);
-    if (st) {
-      const today = nowIn(s.timezone || "Europe/Paris").day;
-      const table = el("table", { class: "hours" }, ...DAYS.map(([k, label]) => el("tr", { class: k === today ? "today" : "" }, el("td", { text: label }),
-        el("td", { text: (s.opening_hours[k] || []).length ? s.opening_hours[k].map((x) => x[0] + " – " + x[1]).join(" · ") : "Fermé" }))));
-      rows.push(el("li", { id: "shop-hours" }, el("span", { class: "ico", text: "🕒" }), el("div", {}, el("span", { id: "shop-open", class: st.open ? "open" : "closed", text: st.text }), el("details", {}, el("summary", { text: "Voir les horaires" }), table))));
-    }
-    if (s.website) rows.push(el("li", { id: "shop-site" }, el("span", { class: "ico", text: "🌐" }), el("a", { href: s.website, target: "_blank", rel: "noopener noreferrer nofollow", text: s.website.replace(/^https:\/\//, "").replace(/\/$/, "") })));
-    if (s.contact_phone) rows.push(el("li", { id: "shop-phone" }, el("span", { class: "ico", text: "📞" }), el("a", { href: "tel:" + s.contact_phone, text: s.contact_phone })));
-    if (s.social_url) rows.push(el("li", { id: "shop-social-row" }, el("span", { class: "ico", text: "🔗" }), el("a", { id: "shop-social", href: s.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: "Réseaux sociaux ↗" })));
-    return rows.length ? el("div", { class: "card", id: "shop-info" }, el("ul", { class: "info" }, ...rows)) : null;
+    if (s.kind === "mobile") rows.push(el("li", { id: "shop-zone" }, icon("pin"), el("span", { text: s.zone_label ? `Zone d'intervention : ${s.zone_label}, rayon ${s.zone_radius_km} km` : "Indépendant" })));
+    else if (s.address) rows.push(el("li", { id: "shop-address" }, icon("pin"), el("span", { text: s.address })));
+    rows.push(hoursRow(s));
+    if (s.website) rows.push(el("li", { id: "shop-site" }, icon("globe"), el("a", { href: s.website, target: "_blank", rel: "noopener noreferrer nofollow", text: s.website.replace(/^https:\/\//, "").replace(/\/$/, "") })));
+    if (s.social_url) rows.push(el("li", { id: "shop-social-row" }, icon("link"), el("a", { id: "shop-social", href: s.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: "Réseaux sociaux" })));
+    const list = rows.filter(Boolean);
+    return list.length ? el("ul", { class: "info", id: "shop-info" }, ...list) : null;
+  }
+
+  function moreMenu(s) {
+    const items = s.is_owner ? [
+      el("a", { id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }), el("a", { id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
+      s.kind === "mobile" ? el("a", { id: "manage-plan", href: "pro.html#schedule-card", text: "Planning de passage" }) : null,
+      el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "/?menu=1", text: "Réglages du compte" })]
+      : [el("button", { type: "button", id: "report-btn", text: "⚑ Signaler cette page", onclick: () => { menu.classList.add("hidden"); openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }); } })];
+    const menu = el("div", { id: "more-menu", class: "hidden", role: "menu" }, ...items.filter(Boolean));
+    return menu;
   }
 
   function render() {
     const app = $("app"), s = shop;
-    const count = el("b", { id: "followers", text: String(s.follower_count) }), countLabel = el("span", { text: plural(s.follower_count) });
+    const count = el("b", { id: "followers", text: compact(s.follower_count) }), countLabel = el("span", { text: plural(s.follower_count) });
     const err = el("p", { class: "err", id: "follow-err" });
-    const fbtn = el("button", { class: "btn", id: "follow-btn", type: "button", "aria-pressed": String(s.is_following) });
-    const paint = () => { fbtn.textContent = s.is_following ? "Abonné ✓" : "Suivre"; fbtn.classList.toggle("ghost", s.is_following); fbtn.setAttribute("aria-pressed", String(s.is_following)); count.textContent = String(s.follower_count); countLabel.textContent = plural(s.follower_count); };
+    const fbtn = el("button", { class: "btn-main", id: "follow-btn", type: "button", "aria-pressed": String(s.is_following) });
+    const paint = () => { fbtn.textContent = s.is_following ? "Abonné ✓" : "Suivre"; fbtn.classList.toggle("on", s.is_following); fbtn.setAttribute("aria-pressed", String(s.is_following)); count.textContent = compact(s.follower_count); countLabel.textContent = plural(s.follower_count); };
     fbtn.addEventListener("click", async () => {
       err.textContent = ""; fbtn.disabled = true;
       const { data, error } = await sb.rpc(s.is_following ? "unfollow_merchant" : "follow_merchant", { p_merchant: s.id });
@@ -68,40 +79,29 @@
     });
     paint();
     const mobile = s.kind === "mobile", hasPlace = !mobile && s.lat != null;
-    const tel = s.contact_phone ? s.contact_phone : null;
-    const head = el("div", { class: "card shophead", id: "shop-head" },
-      el("div", { class: "cover", id: "shop-cover" }, s.cover_path ? el("img", { src: imgUrl(s.cover_path), alt: "" }) : null),
-      el("div", { class: "shophead-body" },
-        el("span", { id: "shop-logo" }, logoBadge(s.logo_path, s.business_name, 88)),
-        el("div", { class: "row", style: "justify-content:flex-start" }, el("h2", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { class: "badge", id: "shop-badge", text: "✓ " + s.badge }) : null),
-        el("p", { class: "cat" }, s.category ? el("span", { id: "shop-cat", text: catLabel(s.category) }) : null, s.category ? " · " : null, el("span", { id: "shop-rating", text: ratingText() })),
-        el("div", { class: "metrics" }, el("div", {}, count, countLabel), el("div", {}, el("b", { id: "shop-posts", text: String(s.posts_count || 0) }), el("span", { text: (s.posts_count || 0) > 1 ? "publications" : "publication" })), el("div", { id: "shop-dist-box", class: "hidden" }, el("b", { id: "shop-dist" }), el("span", { text: "de vous" }))),
-        s.description ? el("p", { id: "shop-desc", text: s.description }) : null,
-        el("div", { class: "actions" },
-          s.is_owner ? null : fbtn,
-          hasPlace ? el("a", { class: "btn ghost", id: "shop-route", href: "/?commerce=" + encodeURIComponent(s.id) + "&go=1", text: "Itinéraire" }) : null,
-          tel ? el("a", { class: "btn ghost", id: "shop-call", href: "tel:" + tel, text: "Appeler" }) : null,
-          s.website ? el("a", { class: "btn ghost", id: "shop-web", href: s.website, target: "_blank", rel: "noopener noreferrer nofollow", text: "Site web" }) : null,
-          s.lat != null ? el("a", { class: "btn ghost", id: "shop-map", href: "/?commerce=" + encodeURIComponent(s.id), text: "Voir sur la carte" }) : null,
-          s.is_owner ? null : el("button", { class: "btn ghost", id: "report-btn", type: "button", text: "⚑ Signaler", onclick: () => openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }) })),
-        s.is_owner ? el("div", { class: "manage", id: "manage" },
-          el("a", { class: "btn", id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }),
-          el("a", { class: "btn ghost", id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
-          el("a", { class: "btn ghost", id: "manage-video", href: "pro.html#videos-card", text: "Vidéo" }),
-          mobile ? el("a", { class: "btn ghost", id: "manage-plan", href: "pro.html#schedule-card", text: "Planning" }) : el("a", { class: "btn ghost", id: "manage-pro", href: "pro.html", text: "Espace professionnel" })) : null,
-        err));
-    const info = infoCard(s);
-    const owner = s.is_owner ? el("div", { class: "banner", id: "owner-banner" }, s.verified ? "C'est votre page : voici ce que voient les autres. " : "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Gérer ma page" })) : null;
-    const tabs = el("div", { class: "tabs", role: "group", "aria-label": "Affichage des publications" },
-      ...[["list", "Liste"], ["grid", "Grille"]].map(([m, label]) => el("button", { type: "button", id: "view-" + m, "aria-pressed": String(mode === m), text: label, onclick: () => setMode(m) })));
-    const secs = el("div", { class: "tabs", role: "group", "aria-label": "Sections de la page" },
-      ...[["posts", "Publications"], ["videos", "Vidéos"], ["reviews", `Avis (${s.review_count})`]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
-    const postsSec = el("div", { id: "section-posts" }, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
-      el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() }));
-    const videosSec = el("div", { id: "section-videos", class: "hidden" });
-    const reviewsSec = el("div", { id: "section-reviews", class: "hidden" });
-    app.replaceChildren(...[owner, head, info, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, secs, postsSec, videosSec, reviewsSec].filter(Boolean));
-    before = null; loadPosts(true); if (s.kind === "mobile") loadSchedule();
+    const menu = moreMenu(s);
+    const moreBtn = el("button", { class: "round", id: "more-btn", type: "button", "aria-label": "Plus d'options", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); } }, icon("more"));
+    document.addEventListener("click", () => menu.classList.add("hidden"));
+    const hero = el("div", { class: "hero", id: "shop-cover" }, s.cover_path ? el("img", { src: imgUrl(s.cover_path), alt: "" }) : null,
+      el("div", { class: "bar" }, el("a", { class: "round", id: "back", href: "/", "aria-label": "Retour à la carte" }, icon("back")), moreBtn), menu);
+    const idrow = el("div", { class: "idrow" }, el("span", { id: "shop-logo" }, logoBadge(s.logo_path, s.business_name, 100)),
+      el("div", { class: "idinfo" }, el("h2", {}, el("span", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { id: "shop-badge", title: s.badge }, verifiedMark()) : null),
+        s.category ? el("p", { class: "cat", id: "shop-cat", text: catLabel(s.category) }) : null, el("p", { class: "rate", id: "shop-rating" }, ...rateNode())));
+    const metrics = el("div", { class: "metrics" }, el("div", {}, count, countLabel), el("div", {}, el("b", { id: "shop-posts", text: compact(s.posts_count || 0) }), el("span", { text: "posts" })),
+      el("div", { id: "shop-dist-box", class: "hidden" }, el("b", { id: "shop-dist" }), el("span", { text: "de vous" })));
+    const circ = (id, href, ic, label) => el("a", { class: "circ", id, href }, el("span", { class: "disc" }, icon(ic)), el("span", { text: label }));
+    const actions = el("div", { class: "actions" }, s.is_owner ? null : fbtn,
+      hasPlace ? circ("shop-route", "/?commerce=" + encodeURIComponent(s.id) + "&go=1", "route", "Itinéraire") : null,
+      s.contact_phone ? circ("shop-call", "tel:" + s.contact_phone, "phone", "Téléphone") : null);
+    const owner = s.is_owner && !s.verified ? el("div", { class: "banner", id: "owner-banner" }, "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;
+    const secs = el("div", { class: "utabs", role: "group", "aria-label": "Sections de la page" },
+      ...[["posts", "Posts"], ["reviews", "Avis"]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
+    const postsSec = el("div", { id: "section-posts", class: "section" }, el("div", { id: "posts", class: "grid" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucun post pour le moment." }),
+      el("button", { class: "btn-outline hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() }));
+    const reviewsSec = el("div", { id: "section-reviews", class: "section hidden" });
+    const plan = mobile ? el("div", { class: "card", id: "schedule", style: "margin:1rem 1.1rem 0" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null;
+    app.replaceChildren(...[hero, idrow, metrics, actions, err, owner, infoCard(s), plan, secs, postsSec, reviewsSec].filter(Boolean));
+    before = null; loadPosts(true); if (mobile) loadSchedule();
     if (hasPlace) geoIfGranted().then((me) => { if (me) { $("shop-dist").textContent = fmtKm(distKm(me, { lat: s.lat, lng: s.lng })); $("shop-dist-box").classList.remove("hidden"); } });
   }
 
@@ -132,7 +132,7 @@
   let rBefore = null, rLoaded = false, vLoaded = false;
 
   function showSection(k) {
-    for (const x of ["posts", "videos", "reviews"]) { $("sec-" + x).setAttribute("aria-pressed", String(x === k)); $("section-" + x).classList.toggle("hidden", x !== k); }
+    for (const x of ["posts", "videos", "reviews"]) { if (!$("sec-" + x)) continue; $("sec-" + x).setAttribute("aria-pressed", String(x === k)); $("section-" + x).classList.toggle("hidden", x !== k); }   // « videos » : onglet retiré pour l'instant, le code reste prêt
     if (k === "reviews" && !rLoaded) { rLoaded = true; initReviews(); }
     if (k === "videos" && !vLoaded) { vLoaded = true; initVideos(); }
   }
@@ -167,7 +167,7 @@
       try {
         if (pseudo) { const p = await sb.rpc("set_pseudo", { p_pseudo: pseudo.value }); if (p.error) throw p.error; }
         const r = await sb.rpc("submit_review", { p_merchant: shop.id, p_rating: rating, p_body: body.value, p_visited: visited.checked }); if (r.error) throw r.error;
-        okm.textContent = "Merci, votre avis est publié."; const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = ratingText(); $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
+        okm.textContent = "Merci, votre avis est publié."; const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; paintRating(); }
         rBefore = null; $("reviews").replaceChildren(); await reviewForm(); loadReviews(true);
       } catch (e) { err.textContent = rfr(e); }
       submit.disabled = false;
@@ -175,7 +175,7 @@
     const del = cx.review ? el("button", { class: "btn danger small", id: "r-delete", type: "button", text: "Supprimer mon avis", onclick: async () => {
       if (!confirm("Supprimer définitivement votre avis ?")) return;
       const r = await sb.rpc("delete_my_review", { p_merchant: shop.id }); if (r.error) { err.textContent = rfr(r.error); return; }
-      const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = ratingText(); $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
+      const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; paintRating(); }
       rBefore = null; $("reviews").replaceChildren(); await reviewForm(); loadReviews(true);
     } }) : null;
     slot.replaceChildren(el("div", { class: "card", id: "review-form" }, el("h2", { text: cx.review ? "Votre avis" : "Donner mon avis" }),
@@ -198,11 +198,11 @@
   }
 
   function reviewCard(r) {
-    const card = el("article", { class: "review", "data-review": r.id },
-      el("div", { class: "row" }, el("b", { class: "rv-pseudo", text: r.pseudo || "Utilisateur" }), stars(r.rating)),
-      el("p", { class: "post-date", style: "padding:0", text: ago(r.created_at) + (r.mine ? " · Votre avis" : "") }),
-      r.visited ? el("p", { class: "tag", text: "✓ A déclaré y être allé(e) (non vérifié)" }) : null,
-      el("p", { class: "post-body", style: "padding:.4rem 0", text: r.body }));
+    const card = el("article", { class: "rcard", "data-review": r.id },
+      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, el("b", { class: "rv-pseudo", text: r.pseudo || "Utilisateur" }),
+        el("span", { class: "stars-line" }, stars(r.rating), el("span", { class: "score", text: rateStr(r.rating) }))), el("span", { class: "date", text: dateFr(r.created_at) })),
+      r.visited ? el("p", { class: "tag", style: "margin:.4rem 0 0;color:#0d6b3a;font-size:.85rem", text: "✓ A déclaré y être allé(e) (non vérifié)" }) : null,
+      el("p", { class: "txt", text: r.body }));
     const replyBox = el("div", { class: "reply-slot" });
     const showReply = (rep) => {
       replyBox.replaceChildren();
@@ -294,12 +294,6 @@
     if (!data || !data.length) { box.replaceChildren(el("p", { text: "Aucun passage prévu pour le moment." })); return; }
     box.replaceChildren(...data.map((r) => el("div", { class: "slot", "data-slot": r.id },
       el("div", {}, el("b", { text: r.place }), r.now ? el("span", { class: "badge", style: "margin-left:.5rem", text: "En ce moment" }) : null, el("small", { text: `${when(r.starts_at)} → ${new Date(r.ends_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}${r.note ? " · " + r.note : ""}` })))));
-  }
-
-  function setMode(m) {
-    mode = m; try { localStorage.setItem("nooxel_posts_view", m); } catch (e) {}
-    for (const b of ["list", "grid"]) $("view-" + b).setAttribute("aria-pressed", String(mode === b));
-    $("posts").replaceChildren(); before = null; loadPosts(true);
   }
 
   async function loadPosts(first) {

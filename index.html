@@ -807,6 +807,7 @@
     }
     async function openShopFromUrl() {
       const qs = new URLSearchParams(location.search), id = qs.get("commerce");
+      if (qs.get("search") === "1") setTimeout(() => $("q").focus(), 300);          // onglet « Chercher » depuis la page Compte
       if (qs.get("menu") === "1") $("menu").classList.remove("hidden");       // roue crantée de la page Compte : ouvre les réglages
       if (!id || !sb) { history.replaceState(null, "", location.pathname); return; }
       const { data } = await sb.rpc("get_merchant_page", { p_id: id }).then(r => r || {}, () => ({}));
