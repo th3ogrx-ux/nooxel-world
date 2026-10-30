@@ -29,6 +29,54 @@ function ago(d) {
 const VIDEO_BASE = null;
 const videoUrl = (path) => VIDEO_BASE ? VIDEO_BASE.replace(/\/$/, "") + "/" + path : sb.storage.from("merchant-videos").getPublicUrl(path).data.publicUrl;
 const imgUrl = (path) => sb.storage.from("merchant-media").getPublicUrl(path).data.publicUrl;
+// ---------- Page d'un commerce : catégories, horaires, distance
+const CATEGORIES = [["restaurant", "Restaurant"], ["cafe", "Café"], ["bar", "Bar"], ["boulangerie", "Boulangerie"], ["patisserie", "Pâtisserie"], ["boucherie", "Boucherie"],
+  ["epicerie", "Épicerie"], ["vetements", "Vêtements"], ["beaute", "Beauté et coiffure"], ["sante", "Santé"], ["artisan", "Artisan"], ["services", "Services"],
+  ["loisirs", "Loisirs"], ["hebergement", "Hébergement"], ["autre", "Autre"]];
+const catLabel = (v) => { const c = CATEGORIES.find((x) => x[0] === v); return c ? c[1] : ""; };
+const DAYS = [["mon", "Lundi"], ["tue", "Mardi"], ["wed", "Mercredi"], ["thu", "Jeudi"], ["fri", "Vendredi"], ["sat", "Samedi"], ["sun", "Dimanche"]];
+const TIMEZONES = [["Europe/Paris", "France métropolitaine"], ["America/Martinique", "Martinique, Guadeloupe"], ["America/Cayenne", "Guyane"], ["Indian/Reunion", "La Réunion"],
+  ["Indian/Mayotte", "Mayotte"], ["Pacific/Noumea", "Nouvelle-Calédonie"], ["Pacific/Tahiti", "Polynésie française"], ["Pacific/Wallis_and_Futuna", "Wallis-et-Futuna"], ["America/Miquelon", "Saint-Pierre-et-Miquelon"]];
+// Jour et heure « maintenant » dans le fuseau du commerce (et non celui du visiteur).
+function nowIn(tz, at = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at).map((x) => [x.type, x.value]));
+  return { day: DAYS[["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(p.weekday)][0], time: `${p.hour}:${p.minute}` };
+}
+// → null si le commerçant n'a rien indiqué ; sinon { open, text } (« Ouvert · ferme à 19:00 », « Fermé · ouvre à 14:00 », « Fermé aujourd'hui »).
+function openStatus(hours, tz, at = new Date()) {
+  if (!hours || !Object.keys(hours).length) return null;
+  const { day, time } = nowIn(tz || "Europe/Paris", at), slots = hours[day] || [];
+  const cur = slots.find((s) => s[0] <= time && time < s[1]);
+  if (cur) return { open: true, text: `Ouvert · ferme à ${cur[1]}` };
+  const next = slots.find((s) => s[0] > time);
+  return { open: false, text: next ? `Fermé · ouvre à ${next[0]}` : "Fermé aujourd'hui" };
+}
+function distKm(a, b) {
+  const r = (x) => x * Math.PI / 180, dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+const fmtKm = (k) => k < 1 ? `${Math.max(1, Math.round(k * 10)) * 100} m` : (k < 10 ? k.toFixed(1).replace(".", ",") : String(Math.round(k))) + " km";
+// Position du visiteur SEULEMENT si l'autorisation a déjà été donnée : on ne la redemande jamais ici.
+async function geoIfGranted() {
+  try {
+    if (!navigator.geolocation || !navigator.permissions) return null;
+    const st = await navigator.permissions.query({ name: "geolocation" }); if (st.state !== "granted") return null;
+    return await new Promise((ok) => navigator.geolocation.getCurrentPosition((p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude }), () => ok(null), { maximumAge: 300000, timeout: 6000 }));
+  } catch (e) { return null; }
+}
+// Photo de profil par défaut : petit bonhomme gris (contenu fixe, aucune donnée venant d'un utilisateur).
+function silhouette(size) {
+  const w = document.createElement("span"); w.className = "silhouette"; w.style.width = w.style.height = size + "px";
+  w.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>';
+  return w;
+}
+// Logo rond d'un commerce, ou son initiale s'il n'en a pas.
+function logoBadge(path, name, size) {
+  const box = el("span", { class: "logo", style: `width:${size}px;height:${size}px;font-size:${Math.round(size * .42)}px` });
+  if (path) box.append(el("img", { src: imgUrl(path), alt: "", loading: "lazy", decoding: "async" })); else box.textContent = (name || "?").trim().charAt(0).toUpperCase();
+  return box;
+}
 // Une publication : photo (chargée à la demande, dimensions réservées) + texte + date.
 function postCard(p, withShop) {
   return el("article", { class: "post", "data-post": p.id },

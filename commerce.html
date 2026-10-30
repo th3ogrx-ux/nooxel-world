@@ -10,7 +10,7 @@
 </head>
 <body>
 <main>
-  <a class="back" href="/">← Retour à la carte</a>
+  <div class="topbar"><a class="back" href="/">← Retour à la carte</a><a class="iconbtn hidden" id="gear" href="/?menu=1" aria-label="Réglages">⚙</a></div>
   <div id="app"><p class="empty">Chargement…</p></div>
   <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
 </main>
@@ -31,15 +31,34 @@
     const { data, error } = await sb.rpc("get_merchant_page", { p_id: id });
     if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
     shop = data; document.title = shop.business_name + " — Nooxel World";
-    render();
+    render(); if (shop.is_owner) $("gear").classList.remove("hidden");
+  }
+
+  const ratingText = () => shop.review_count ? `★ ${Number(shop.rating_avg).toFixed(1).replace(".", ",")} (${shop.review_count} avis)` : "Aucun avis";
+
+  function infoCard(s) {
+    const rows = [];
+    if (s.kind === "mobile") rows.push(el("li", { id: "shop-zone" }, el("span", { class: "ico", text: "🚐" }), el("span", { text: s.zone_label ? `Indépendant · zone d'intervention : ${s.zone_label}, rayon ${s.zone_radius_km} km` : "Indépendant" })));
+    else if (s.address) rows.push(el("li", { id: "shop-address" }, el("span", { class: "ico", text: "📍" }), el("span", { text: s.address })));
+    const st = openStatus(s.opening_hours, s.timezone);
+    if (st) {
+      const today = nowIn(s.timezone || "Europe/Paris").day;
+      const table = el("table", { class: "hours" }, ...DAYS.map(([k, label]) => el("tr", { class: k === today ? "today" : "" }, el("td", { text: label }),
+        el("td", { text: (s.opening_hours[k] || []).length ? s.opening_hours[k].map((x) => x[0] + " – " + x[1]).join(" · ") : "Fermé" }))));
+      rows.push(el("li", { id: "shop-hours" }, el("span", { class: "ico", text: "🕒" }), el("div", {}, el("span", { id: "shop-open", class: st.open ? "open" : "closed", text: st.text }), el("details", {}, el("summary", { text: "Voir les horaires" }), table))));
+    }
+    if (s.website) rows.push(el("li", { id: "shop-site" }, el("span", { class: "ico", text: "🌐" }), el("a", { href: s.website, target: "_blank", rel: "noopener noreferrer nofollow", text: s.website.replace(/^https:\/\//, "").replace(/\/$/, "") })));
+    if (s.contact_phone) rows.push(el("li", { id: "shop-phone" }, el("span", { class: "ico", text: "📞" }), el("a", { href: "tel:" + s.contact_phone, text: s.contact_phone })));
+    if (s.social_url) rows.push(el("li", { id: "shop-social-row" }, el("span", { class: "ico", text: "🔗" }), el("a", { id: "shop-social", href: s.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: "Réseaux sociaux ↗" })));
+    return rows.length ? el("div", { class: "card", id: "shop-info" }, el("ul", { class: "info" }, ...rows)) : null;
   }
 
   function render() {
     const app = $("app"), s = shop;
-    const count = el("span", { class: "stats", id: "followers", text: plural(s.follower_count) });
+    const count = el("b", { id: "followers", text: String(s.follower_count) }), countLabel = el("span", { text: plural(s.follower_count) });
     const err = el("p", { class: "err", id: "follow-err" });
     const fbtn = el("button", { class: "btn", id: "follow-btn", type: "button", "aria-pressed": String(s.is_following) });
-    const paint = () => { fbtn.textContent = s.is_following ? "Abonné ✓" : "Suivre"; fbtn.classList.toggle("ghost", s.is_following); fbtn.setAttribute("aria-pressed", String(s.is_following)); count.textContent = plural(s.follower_count); };
+    const paint = () => { fbtn.textContent = s.is_following ? "Abonné ✓" : "Suivre"; fbtn.classList.toggle("ghost", s.is_following); fbtn.setAttribute("aria-pressed", String(s.is_following)); count.textContent = String(s.follower_count); countLabel.textContent = plural(s.follower_count); };
     fbtn.addEventListener("click", async () => {
       err.textContent = ""; fbtn.disabled = true;
       const { data, error } = await sb.rpc(s.is_following ? "unfollow_merchant" : "follow_merchant", { p_merchant: s.id });
@@ -48,19 +67,30 @@
       s.is_following = !s.is_following; s.follower_count = data; paint();
     });
     paint();
-    const head = el("div", { class: "card", id: "shop-head" },
-      el("div", { class: "row" }, el("h2", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { class: "badge", id: "shop-badge", text: "✓ " + s.badge }) : null),
-      el("p", { class: "stats" }, count, " · ", el("span", { id: "shop-rating", text: s.review_count ? `★ ${Number(s.rating_avg).toFixed(1).replace(".", ",")} (${s.review_count} avis)` : "Aucun avis" })),
-      s.description ? el("p", { id: "shop-desc", text: s.description }) : null,
-      s.kind === "mobile"
-        ? el("p", { id: "shop-zone", text: s.zone_label ? `🚐 Indépendant · zone d'intervention : ${s.zone_label}, rayon ${s.zone_radius_km} km` : "🚐 Indépendant" })
-        : (s.address ? el("p", { id: "shop-address", text: "📍 " + s.address }) : null),
-      el("div", { class: "row", style: "justify-content:flex-start" },
-        s.is_owner ? null : fbtn,
-        s.lat != null ? el("a", { class: "btn ghost", id: "shop-map", href: "/?commerce=" + encodeURIComponent(s.id), text: "Voir sur la carte" }) : null,
-        s.is_owner ? null : el("button", { class: "btn ghost", id: "report-btn", type: "button", text: "⚑ Signaler", onclick: () => openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }) }),
-        s.social_url ? el("a", { class: "btn ghost", id: "shop-social", href: s.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: "Réseaux sociaux ↗" }) : null),
-      err);
+    const mobile = s.kind === "mobile", hasPlace = !mobile && s.lat != null;
+    const tel = s.contact_phone ? s.contact_phone : null;
+    const head = el("div", { class: "card shophead", id: "shop-head" },
+      el("div", { class: "cover", id: "shop-cover" }, s.cover_path ? el("img", { src: imgUrl(s.cover_path), alt: "" }) : null),
+      el("div", { class: "shophead-body" },
+        el("span", { id: "shop-logo" }, logoBadge(s.logo_path, s.business_name, 88)),
+        el("div", { class: "row", style: "justify-content:flex-start" }, el("h2", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { class: "badge", id: "shop-badge", text: "✓ " + s.badge }) : null),
+        el("p", { class: "cat" }, s.category ? el("span", { id: "shop-cat", text: catLabel(s.category) }) : null, s.category ? " · " : null, el("span", { id: "shop-rating", text: ratingText() })),
+        el("div", { class: "metrics" }, el("div", {}, count, countLabel), el("div", {}, el("b", { id: "shop-posts", text: String(s.posts_count || 0) }), el("span", { text: (s.posts_count || 0) > 1 ? "publications" : "publication" })), el("div", { id: "shop-dist-box", class: "hidden" }, el("b", { id: "shop-dist" }), el("span", { text: "de vous" }))),
+        s.description ? el("p", { id: "shop-desc", text: s.description }) : null,
+        el("div", { class: "actions" },
+          s.is_owner ? null : fbtn,
+          hasPlace ? el("a", { class: "btn ghost", id: "shop-route", href: "/?commerce=" + encodeURIComponent(s.id) + "&go=1", text: "Itinéraire" }) : null,
+          tel ? el("a", { class: "btn ghost", id: "shop-call", href: "tel:" + tel, text: "Appeler" }) : null,
+          s.website ? el("a", { class: "btn ghost", id: "shop-web", href: s.website, target: "_blank", rel: "noopener noreferrer nofollow", text: "Site web" }) : null,
+          s.lat != null ? el("a", { class: "btn ghost", id: "shop-map", href: "/?commerce=" + encodeURIComponent(s.id), text: "Voir sur la carte" }) : null,
+          s.is_owner ? null : el("button", { class: "btn ghost", id: "report-btn", type: "button", text: "⚑ Signaler", onclick: () => openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }) })),
+        s.is_owner ? el("div", { class: "manage", id: "manage" },
+          el("a", { class: "btn", id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }),
+          el("a", { class: "btn ghost", id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
+          el("a", { class: "btn ghost", id: "manage-video", href: "pro.html#videos-card", text: "Vidéo" }),
+          mobile ? el("a", { class: "btn ghost", id: "manage-plan", href: "pro.html#schedule-card", text: "Planning" }) : el("a", { class: "btn ghost", id: "manage-pro", href: "pro.html", text: "Espace professionnel" })) : null,
+        err));
+    const info = infoCard(s);
     const owner = s.is_owner ? el("div", { class: "banner", id: "owner-banner" }, s.verified ? "C'est votre page : voici ce que voient les autres. " : "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Gérer ma page" })) : null;
     const tabs = el("div", { class: "tabs", role: "group", "aria-label": "Affichage des publications" },
       ...[["list", "Liste"], ["grid", "Grille"]].map(([m, label]) => el("button", { type: "button", id: "view-" + m, "aria-pressed": String(mode === m), text: label, onclick: () => setMode(m) })));
@@ -70,8 +100,9 @@
       el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() }));
     const videosSec = el("div", { id: "section-videos", class: "hidden" });
     const reviewsSec = el("div", { id: "section-reviews", class: "hidden" });
-    app.replaceChildren(...[owner, head, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, secs, postsSec, videosSec, reviewsSec].filter(Boolean));
+    app.replaceChildren(...[owner, head, info, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, secs, postsSec, videosSec, reviewsSec].filter(Boolean));
     before = null; loadPosts(true); if (s.kind === "mobile") loadSchedule();
+    if (hasPlace) geoIfGranted().then((me) => { if (me) { $("shop-dist").textContent = fmtKm(distKm(me, { lat: s.lat, lng: s.lng })); $("shop-dist-box").classList.remove("hidden"); } });
   }
 
   // ================= Avis =================
@@ -136,7 +167,7 @@
       try {
         if (pseudo) { const p = await sb.rpc("set_pseudo", { p_pseudo: pseudo.value }); if (p.error) throw p.error; }
         const r = await sb.rpc("submit_review", { p_merchant: shop.id, p_rating: rating, p_body: body.value, p_visited: visited.checked }); if (r.error) throw r.error;
-        okm.textContent = "Merci, votre avis est publié."; const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = `★ ${Number(shop.rating_avg).toFixed(1).replace(".", ",")} (${shop.review_count} avis)`; $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
+        okm.textContent = "Merci, votre avis est publié."; const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = ratingText(); $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
         rBefore = null; $("reviews").replaceChildren(); await reviewForm(); loadReviews(true);
       } catch (e) { err.textContent = rfr(e); }
       submit.disabled = false;
@@ -144,7 +175,7 @@
     const del = cx.review ? el("button", { class: "btn danger small", id: "r-delete", type: "button", text: "Supprimer mon avis", onclick: async () => {
       if (!confirm("Supprimer définitivement votre avis ?")) return;
       const r = await sb.rpc("delete_my_review", { p_merchant: shop.id }); if (r.error) { err.textContent = rfr(r.error); return; }
-      const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = shop.review_count ? `★ ${Number(shop.rating_avg).toFixed(1).replace(".", ",")} (${shop.review_count} avis)` : "Aucun avis"; $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
+      const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = ratingText(); $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
       rBefore = null; $("reviews").replaceChildren(); await reviewForm(); loadReviews(true);
     } }) : null;
     slot.replaceChildren(el("div", { class: "card", id: "review-form" }, el("h2", { text: cx.review ? "Votre avis" : "Donner mon avis" }),
@@ -255,7 +286,7 @@
     box.remove(); document.body.classList.remove("noscroll"); document.removeEventListener("keydown", reelKey);
   }
 
-  const plural = (n) => n + (n > 1 ? " abonnés" : " abonné");
+  const plural = (n) => (n > 1 ? "abonnés" : "abonné");
 
   const when = (d) => new Date(d).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   async function loadSchedule() {
