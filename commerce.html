@@ -50,7 +50,7 @@
     paint();
     const head = el("div", { class: "card", id: "shop-head" },
       el("div", { class: "row" }, el("h2", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { class: "badge", id: "shop-badge", text: "✓ " + s.badge }) : null),
-      el("p", { class: "stats" }, count),
+      el("p", { class: "stats" }, count, " · ", el("span", { id: "shop-rating", text: s.review_count ? `★ ${Number(s.rating_avg).toFixed(1).replace(".", ",")} (${s.review_count} avis)` : "Aucun avis" })),
       s.description ? el("p", { id: "shop-desc", text: s.description }) : null,
       s.kind === "mobile"
         ? el("p", { id: "shop-zone", text: s.zone_label ? `🚐 Indépendant · zone d'intervention : ${s.zone_label}, rayon ${s.zone_radius_km} km` : "🚐 Indépendant" })
@@ -63,10 +63,130 @@
     const owner = s.is_owner ? el("div", { class: "banner", id: "owner-banner" }, s.verified ? "C'est votre page : voici ce que voient les autres. " : "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Gérer ma page" })) : null;
     const tabs = el("div", { class: "tabs", role: "group", "aria-label": "Affichage des publications" },
       ...[["list", "Liste"], ["grid", "Grille"]].map(([m, label]) => el("button", { type: "button", id: "view-" + m, "aria-pressed": String(mode === m), text: label, onclick: () => setMode(m) })));
-    app.replaceChildren(...[owner, head, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
-      el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() })].filter(Boolean));
+    const secs = el("div", { class: "tabs", role: "group", "aria-label": "Sections de la page" },
+      ...[["posts", "Publications"], ["reviews", `Avis (${s.review_count})`]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
+    const postsSec = el("div", { id: "section-posts" }, tabs, el("div", { id: "posts" }), el("p", { class: "empty hidden", id: "no-posts", text: "Aucune publication pour le moment." }),
+      el("button", { class: "btn ghost hidden", id: "more", type: "button", text: "Voir plus", onclick: () => loadPosts() }));
+    const reviewsSec = el("div", { id: "section-reviews", class: "hidden" });
+    app.replaceChildren(...[owner, head, s.kind === "mobile" ? el("div", { class: "card", id: "schedule" }, el("h2", { text: "Planning de passage" }), el("div", { id: "slots" })) : null, secs, postsSec, reviewsSec].filter(Boolean));
     before = null; loadPosts(true); if (s.kind === "mobile") loadSchedule();
   }
+
+  // ================= Avis =================
+  const RERR = {
+    review_too_short: "Votre avis est trop court : écrivez au moins 20 caractères pour aider les autres utilisateurs.",
+    review_only_insults: "Votre avis n'est pas publié : il ne contient que des insultes. Racontez ce qui s'est passé, de façon factuelle.",
+    review_contains_link: "Les liens, adresses email et numéros de téléphone ne sont pas autorisés dans un avis.",
+    review_gibberish: "Votre avis semble être un texte répété sans sens. Écrivez quelques phrases sur votre expérience.",
+    reply_too_short: "Réponse trop courte (5 caractères minimum).",
+    reply_only_insults: "Votre réponse ne peut pas être uniquement composée d'insultes.",
+    reply_contains_link: "Les liens, adresses email et numéros de téléphone ne sont pas autorisés dans une réponse.",
+    reply_gibberish: "Votre réponse semble être un texte répété sans sens.",
+    invalid_rating: "Choisissez une note de 1 à 5 étoiles.",
+    invalid_pseudo: "Pseudo invalide : 3 à 20 caractères, lettres sans accent, chiffres, point, tiret ou souligné.",
+    reserved_pseudo: "Ce pseudo n'est pas autorisé. Choisissez-en un autre.",
+    bad_pseudo: "Ce pseudo n'est pas autorisé. Choisissez-en un autre.",
+    pseudo_taken: "Ce pseudo est déjà pris.",
+    pseudo_change_too_soon: "Vous pourrez changer de pseudo dans 30 jours.",
+    pseudo_required: "Choisissez d'abord un pseudo.",
+    account_too_new: "Votre compte est trop récent pour publier un avis : réessayez dans une heure.",
+    too_many_reviews: "Vous avez atteint la limite de 5 nouveaux avis par jour.",
+    email_not_confirmed: "Confirmez d'abord votre adresse email.",
+    own_page: "Vous ne pouvez pas noter votre propre page.",
+  };
+  const rfr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(RERR).find((c) => m.includes(c)); return k ? RERR[k] : fr(e); };
+  const stars = (n) => el("span", { class: "stars", role: "img", "aria-label": `${n} sur 5`, text: "★".repeat(n) + "☆".repeat(5 - n) });
+  let rBefore = null, rLoaded = false;
+
+  function showSection(k) {
+    for (const x of ["posts", "reviews"]) { $("sec-" + x).setAttribute("aria-pressed", String(x === k)); $("section-" + x).classList.toggle("hidden", x !== k); }
+    if (k === "reviews" && !rLoaded) { rLoaded = true; initReviews(); }
+  }
+
+  async function initReviews() {
+    const box = $("section-reviews");
+    box.replaceChildren(el("div", { id: "review-form-slot" }), el("div", { id: "reviews" }), el("p", { class: "empty hidden", id: "no-reviews", text: "Aucun avis pour le moment." }),
+      el("button", { class: "btn ghost hidden", id: "more-reviews", type: "button", text: "Voir plus d'avis", onclick: () => loadReviews() }));
+    if (!shop.is_owner) await reviewForm();
+    rBefore = null; loadReviews(true);
+  }
+
+  async function reviewForm() {
+    const slot = $("review-form-slot"); const { data: cx } = await sb.rpc("my_review_context", { p_merchant: shop.id });
+    if (!cx) return;
+    if (!cx.can_review) {
+      const why = { not_verified: "Ce commerce n'est pas encore vérifié : il ne peut pas recevoir d'avis.", email_not_confirmed: "Confirmez votre adresse email pour donner votre avis.", account_too_new: "Votre compte est trop récent : vous pourrez donner votre avis dans moins d'une heure." }[cx.reason];
+      if (why) slot.replaceChildren(el("div", { class: "card", id: "review-blocked" }, el("p", { text: why }))); return;
+    }
+    let rating = cx.review ? cx.review.rating : 0;
+    const err = el("p", { class: "err", id: "r-err" }), okm = el("p", { class: "okmsg", id: "r-ok" });
+    const starBtns = [1, 2, 3, 4, 5].map((n) => el("button", { type: "button", class: "star", "data-star": n, "aria-label": `${n} étoile${n > 1 ? "s" : ""}`, "aria-pressed": String(rating === n), text: "★", onclick: () => { rating = n; paint(); } }));
+    const paint = () => starBtns.forEach((b, i) => { b.classList.toggle("on", i < rating); b.setAttribute("aria-pressed", String(rating === i + 1)); });
+    paint();
+    const body = el("textarea", { id: "r-body", maxlength: 2000, placeholder: "Racontez votre expérience : accueil, qualité, prix…" }); body.value = cx.review ? cx.review.body : "";
+    const count = el("p", { class: "hint", id: "r-count" }); const upd = () => { const n = body.value.trim().length; count.textContent = n < 20 ? `${n}/20 caractères minimum` : `${n} caractères`; }; body.addEventListener("input", upd); upd();
+    const visited = el("input", { type: "checkbox", id: "r-visited" }); visited.checked = !!(cx.review && cx.review.visited);
+    const pseudo = cx.pseudo ? null : el("input", { type: "text", id: "r-pseudo", maxlength: 20, placeholder: "Votre pseudo public", autocomplete: "nickname" });
+    const submit = el("button", { class: "btn", id: "r-submit", type: "button", text: cx.review ? "Modifier mon avis" : "Publier mon avis" });
+    submit.addEventListener("click", async () => {
+      err.textContent = ""; okm.textContent = ""; submit.disabled = true;
+      try {
+        if (pseudo) { const p = await sb.rpc("set_pseudo", { p_pseudo: pseudo.value }); if (p.error) throw p.error; }
+        const r = await sb.rpc("submit_review", { p_merchant: shop.id, p_rating: rating, p_body: body.value, p_visited: visited.checked }); if (r.error) throw r.error;
+        okm.textContent = "Merci, votre avis est publié."; const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = `★ ${Number(shop.rating_avg).toFixed(1).replace(".", ",")} (${shop.review_count} avis)`; $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
+        rBefore = null; $("reviews").replaceChildren(); await reviewForm(); loadReviews(true);
+      } catch (e) { err.textContent = rfr(e); }
+      submit.disabled = false;
+    });
+    const del = cx.review ? el("button", { class: "btn danger small", id: "r-delete", type: "button", text: "Supprimer mon avis", onclick: async () => {
+      if (!confirm("Supprimer définitivement votre avis ?")) return;
+      const r = await sb.rpc("delete_my_review", { p_merchant: shop.id }); if (r.error) { err.textContent = rfr(r.error); return; }
+      const g = await sb.rpc("get_merchant_page", { p_id: shop.id }); if (g.data) { shop = g.data; $("shop-rating").textContent = shop.review_count ? `★ ${Number(shop.rating_avg).toFixed(1).replace(".", ",")} (${shop.review_count} avis)` : "Aucun avis"; $("sec-reviews").textContent = `Avis (${shop.review_count})`; }
+      rBefore = null; $("reviews").replaceChildren(); await reviewForm(); loadReviews(true);
+    } }) : null;
+    slot.replaceChildren(el("div", { class: "card", id: "review-form" }, el("h2", { text: cx.review ? "Votre avis" : "Donner mon avis" }),
+      el("div", { class: "starrow", role: "group", "aria-label": "Note" }, ...starBtns),
+      el("label", {}, "Votre avis", body), count,
+      el("label", { class: "check" }, visited, el("span", { text: "J'y suis allé ou j'y ai acheté (déclaratif : nous ne le vérifions pas encore)" })),
+      pseudo ? el("label", {}, "Pseudo public (affiché avec votre avis, jamais votre email ; lettres sans accent, chiffres, . _ -)", pseudo) : el("p", { class: "hint", text: "Publié sous le pseudo : " + cx.pseudo }),
+      err, okm, submit, del));
+  }
+
+  async function loadReviews(first) {
+    const more = $("more-reviews"); more.disabled = true;
+    const { data, error } = await sb.rpc("list_reviews", { p_merchant: shop.id, p_before: rBefore, p_limit: 10 });
+    more.disabled = false;
+    if (error) { $("no-reviews").textContent = fr(error); $("no-reviews").classList.remove("hidden"); return; }
+    const box = $("reviews"); for (const r of data) box.append(reviewCard(r));
+    if (data.length) rBefore = data[data.length - 1].created_at;
+    more.classList.toggle("hidden", data.length < 10);
+    if (first) $("no-reviews").classList.toggle("hidden", data.length > 0);
+  }
+
+  function reviewCard(r) {
+    const card = el("article", { class: "review", "data-review": r.id },
+      el("div", { class: "row" }, el("b", { class: "rv-pseudo", text: r.pseudo || "Utilisateur" }), stars(r.rating)),
+      el("p", { class: "post-date", style: "padding:0", text: ago(r.created_at) + (r.mine ? " · Votre avis" : "") }),
+      r.visited ? el("p", { class: "tag", text: "✓ A déclaré y être allé(e) (non vérifié)" }) : null,
+      el("p", { class: "post-body", style: "padding:.4rem 0", text: r.body }));
+    const replyBox = el("div", { class: "reply-slot" });
+    const showReply = (rep) => {
+      replyBox.replaceChildren();
+      if (rep) replyBox.append(el("div", { class: "reply" }, el("b", { text: "Réponse du commerçant" }), el("p", { class: "reply-body", text: rep.body }), el("p", { class: "post-date", style: "padding:0", text: ago(rep.at) })));
+      if (shop.is_owner) {
+        const err = el("p", { class: "err" }); const ta = el("textarea", { maxlength: 1000, "data-reply-input": r.id, placeholder: "Votre réponse publique…" }); ta.value = rep ? rep.body : "";
+        const form = el("div", { class: "hidden", "data-reply-form": r.id }, ta, err,
+          el("button", { class: "btn small", type: "button", "data-reply-send": r.id, text: "Publier la réponse", onclick: async () => {
+            err.textContent = ""; const x = await sb.rpc("reply_to_review", { p_review: r.id, p_text: ta.value }); if (x.error) { err.textContent = rfr(x.error); return; }
+            r.reply = { body: ta.value.trim(), at: new Date().toISOString() }; showReply(r.reply);
+          } }));
+        replyBox.append(el("button", { class: "btn ghost small", type: "button", "data-reply-open": r.id, text: rep ? "Modifier ma réponse" : "Répondre", onclick: () => form.classList.toggle("hidden") }), form);
+        if (rep) replyBox.append(el("button", { class: "btn danger small", type: "button", "data-reply-del": r.id, text: "Supprimer ma réponse", onclick: async () => { if (!confirm("Supprimer votre réponse ?")) return; await sb.rpc("delete_reply", { p_review: r.id }); r.reply = null; showReply(null); } }));
+      }
+    };
+    showReply(r.reply); card.append(replyBox); return card;
+  }
+
   const plural = (n) => n + (n > 1 ? " abonnés" : " abonné");
 
   const when = (d) => new Date(d).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });

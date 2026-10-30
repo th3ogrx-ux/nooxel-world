@@ -10,6 +10,7 @@ Supabase → **SQL Editor** → New query → coller → **Run**.
 4. `supabase/merchant-manual-review.sql` (étape 3 : validation manuelle **sans pièce d'identité**)
 5. `supabase/commerce-pages.sql` (phase 2, étape 1 : pages commerçants, posts, abonnés, fil d'actualité)
 6. `supabase/independents.sql` (phase 2, étape 2 : indépendants, zone d'intervention, planning de passage)
+7. `supabase/reviews.sql` (phase 2, étape 3 : pseudo public, avis, réponses des commerçants)
 
 Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
 annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
@@ -124,3 +125,17 @@ abonnements, le fil d'actualité, la recherche de commerces et leurs épingles s
 - **Planning de passage** (lieu + créneau, 24 h maximum, 30 passages à venir, dans les 90 jours), géré par le
   commerçant. Les passages terminés depuis plus de 7 jours sont effacés chaque nuit (`purge_old_schedule`, pg_cron).
 - Sur la carte : épingle **verte** et cercle de la zone ; pas de bouton « Itinéraire » vers le centre d'une zone.
+
+## Avis (phase 2, étape 3)
+`reviews.sql` ajoute le pseudo public (3 à 20 caractères, sans accent, unique, modifiable une fois par mois), les avis
+(note de 1 à 5 + texte de 20 caractères minimum) et la réponse publique du commerçant. Tout est imposé par la base :
+
+- **Un compte = un avis par commerce** (contrainte unique) : un second envoi modifie l'avis existant. Pas d'avis sur
+  sa propre page ni sur un commerce non vérifié ; email confirmé obligatoire ; compte créé depuis plus d'une heure
+  (pour les nouveaux avis) ; 5 nouveaux avis par 24 h.
+- **Refus automatique avec explication :** trop court, uniquement des insultes, lien / email / numéro de téléphone,
+  texte répété. La liste de gros mots est dans `insult_words()` (modifiable) : elle réduit les abus sans les supprimer,
+  le bouton « Signaler » (étape 4) complète.
+- **« Preuve de passage » :** simple case déclarative, affichée comme « non vérifié ».
+- Seul le propriétaire d'un commerce vérifié répond à un avis ; la note moyenne est tenue à jour par la base.
+- Supprimer son compte supprime ses avis et son pseudo.
