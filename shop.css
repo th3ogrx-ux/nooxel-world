@@ -57,3 +57,8 @@
   .review textarea, #review-form textarea, #review-form input[type=text] { background: #fff; color: var(--ink); }
   .btn.small { padding: .45rem .9rem; margin-top: .4rem; font-size: .9rem; }
   .btn.danger { background: #fdecea; color: #b3261e; }
+
+  .kinds { border: 0; padding: 0; margin: .8rem 0 0; } .kinds legend { font-size: .9rem; color: var(--mute); padding: 0; }
+  #report-form textarea { width: 100%; min-height: 84px; font: inherit; font-size: 16px; padding: .6rem; border: 1px solid #c4c7c5; border-radius: 10px; background: #fff; color: var(--ink); }
+  .linkbtn { border: 0; background: none; padding: .2rem 0; color: #5f6368; font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; }
+  .report-top { float: right; }

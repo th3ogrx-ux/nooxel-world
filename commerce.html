@@ -58,6 +58,7 @@
       el("div", { class: "row", style: "justify-content:flex-start" },
         s.is_owner ? null : fbtn,
         s.lat != null ? el("a", { class: "btn ghost", id: "shop-map", href: "/?commerce=" + encodeURIComponent(s.id), text: "Voir sur la carte" }) : null,
+        s.is_owner ? null : el("button", { class: "btn ghost", id: "report-btn", type: "button", text: "⚑ Signaler", onclick: () => openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }) }),
         s.social_url ? el("a", { class: "btn ghost", id: "shop-social", href: s.social_url, target: "_blank", rel: "noopener noreferrer nofollow", text: "Réseaux sociaux ↗" }) : null),
       err);
     const owner = s.is_owner ? el("div", { class: "banner", id: "owner-banner" }, s.verified ? "C'est votre page : voici ce que voient les autres. " : "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Gérer ma page" })) : null;
@@ -184,7 +185,9 @@
         if (rep) replyBox.append(el("button", { class: "btn danger small", type: "button", "data-reply-del": r.id, text: "Supprimer ma réponse", onclick: async () => { if (!confirm("Supprimer votre réponse ?")) return; await sb.rpc("delete_reply", { p_review: r.id }); r.reply = null; showReply(null); } }));
       }
     };
-    showReply(r.reply); card.append(replyBox); return card;
+    showReply(r.reply); card.append(replyBox);
+    if (!r.mine) card.append(el("button", { class: "linkbtn", type: "button", "data-report-review": r.id, text: "⚑ Signaler cet avis", onclick: () => openReportDialog({ kind: "review", review: r.id, title: "Signaler cet avis" }) }));
+    return card;
   }
 
   const plural = (n) => n + (n > 1 ? " abonnés" : " abonné");

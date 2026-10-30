@@ -52,6 +52,7 @@
     <button id="tab-review" class="on">À examiner</button>
     <button id="tab-history">Historique</button>
     <button id="tab-merchants">Commerçants</button>
+    <button id="tab-reports">Signalements</button>
   </nav>
   <span id="who"></span>
 </header>
@@ -82,7 +83,7 @@
     forbidden: "Accès refusé : ce compte n'est pas administrateur.", not_pending: "Cette demande a déjà été traitée.", not_contested: "Cette demande n'est pas en contestation.",
     reason_required: "Indiquez un motif (5 caractères minimum).", cannot_review_own_request: "Vous ne pouvez pas traiter votre propre demande.",
     another_admin_must_review: "Une contestation doit être jugée par un autre administrateur.", nothing_to_revoke: "Ce profil n'a aucun badge à retirer.",
-    siret_already_claimed: "Ce SIRET est déjà attribué à un autre commerçant : refusez la demande en le précisant.", siret_blocked: "Ce SIRET a été retiré à ce compte après une révocation.", not_found: "Introuvable.",
+    siret_already_claimed: "Ce SIRET est déjà attribué à un autre commerçant : refusez la demande en le précisant.", siret_blocked: "Ce SIRET a été retiré à ce compte après une révocation.", not_found: "Introuvable.", not_open: "Ce signalement a déjà été traité.", no_review: "Ce signalement ne vise pas un avis.",
   };
   const fr = (e) => { const m = String(e?.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Erreur : " + m.slice(0, 120); };
 
@@ -149,7 +150,7 @@
   function show(t) {
     tab = t;
     document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.id === "tab-" + t));
-    if (t === "merchants") return merchants(); return requests(t === "review" ? "to_review" : "all");
+    if (t === "merchants") return merchants(); if (t === "reports") return reports("open"); return requests(t === "review" ? "to_review" : "all");
   }
 
   // ---------- Demandes ----------
@@ -222,6 +223,54 @@
         canRevoke ? el("div", { class: "actions" }, el("button", { class: "btn light", type: "button", "data-act": "revoke", text: "Révoquer le badge", onclick: () => { reason.classList.remove("hidden"); go.classList.remove("hidden"); reason.focus(); } })) : null,
         reason, go, err);
     }));
+  }
+
+  // ---------- Signalements (commerces, avis, application) ----------
+  const KIND = { merchant: "Page de commerce", review: "Avis", app: "Application" };
+  const REASON = { false_info: "Informations fausses", scam: "Arnaque", inappropriate: "Contenu inapproprié", other: "Autre", bug: "Bug" };
+  const RSTATUS = { open: ["À traiter", "warn"], resolved: ["Traité", "ok"], dismissed: ["Sans suite", ""] };
+  async function reports(filter) {
+    const main = $("main"); main.replaceChildren(el("p", { class: "empty", text: "Chargement…" }));
+    const { data, error } = await sb.rpc("admin_list_reports", { p_status: filter });
+    if (error) { main.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
+    const bar = el("div", { class: "actions", style: "margin:0 0 .8rem" },
+      el("button", { class: "btn " + (filter === "open" ? "" : "light"), id: "rp-open", type: "button", text: "À traiter", onclick: () => reports("open") }),
+      el("button", { class: "btn " + (filter === "all" ? "" : "light"), id: "rp-all", type: "button", text: "Historique", onclick: () => reports("all") }));
+    $("tab-reports").textContent = "Signalements";
+    main.replaceChildren(bar, ...(data.length ? data.map(reportCard) : [el("p", { class: "empty", text: filter === "open" ? "Aucun signalement à traiter. 🎉" : "Aucun signalement." })]));
+  }
+  function reportCard(r) {
+    const st = RSTATUS[r.status] || [r.status, ""], err = el("p", { class: "err" }), open = r.status === "open";
+    const target = r.kind === "app" ? "Problème dans l'application" : (r.merchant_id ? null : "Élément supprimé");
+    const c = el("div", { class: "card", "data-report": r.id },
+      el("div", { class: "top" }, el("div", {}, el("h2", { text: `n° ${r.ref} · ${KIND[r.kind] || r.kind}` }),
+        el("p", { class: "meta", text: `Motif : ${REASON[r.reason] || r.reason} · signalé par ${r.reporter_email || "compte supprimé"}` })),
+        el("div", {}, el("span", { class: "pill " + st[1], text: st[0] }), " ", el("span", { class: "meta", text: fmt(r.created_at) }))),
+      el("div", { class: "box" },
+        target ? el("div", { text: target }) : el("div", {}, "Page : ", el("a", { href: "commerce.html?id=" + encodeURIComponent(r.merchant_id), target: "_blank", rel: "noopener noreferrer", "data-open-page": true, text: r.merchant_name || r.target_label || "Voir la page" }),
+          r.merchant_verification ? el("span", { class: "meta", text: " · " + (LEVEL[r.merchant_verification] || [""])[0] }) : null),
+        r.details ? el("div", {}, "Détails : ", el("span", { class: "rp-details", text: r.details })) : null,
+        r.page ? el("div", { class: "meta", text: "Page de l'application : " + r.page }) : null,
+        r.reports_on_same_target ? el("div", { class: "meta", text: `${r.reports_on_same_target} autre(s) signalement(s) sur le même élément` }) : null));
+    if (r.review) c.append(el("div", { class: "box contest" }, el("b", { text: `Avis de ${r.review.pseudo || "?"} (${r.review.rating}/5)${r.review.status === "hidden" ? " — MASQUÉ" : ""} : ` }), el("span", { class: "rv-body", text: r.review.body })));
+    if (!open) {
+      c.append(el("div", { class: "box" }, `Traité le ${fmt(r.handled_at)} : `, r.handled_note || ""));
+      if (r.review && r.review.status === "hidden") c.append(el("div", { class: "actions" }, el("button", { class: "btn light", type: "button", "data-act": "restore", text: "Remettre l'avis en ligne", onclick: async () => {
+        if (!confirm("Remettre cet avis en ligne ?")) return; const x = await sb.rpc("admin_restore_review", { p_review: r.review.id }); if (x.error) { err.textContent = fr(x.error); return; } reports("all");
+      } })));
+      c.append(err); return c;
+    }
+    const note = el("textarea", { rows: 2, "data-reason": true, placeholder: "Note de traitement (obligatoire, gardée dans l'historique)" });
+    const run = async (outcome, hide) => {
+      err.textContent = ""; if (note.value.trim().length < 5) { err.textContent = ERR.reason_required; return; }
+      if (!confirm(hide ? "Masquer cet avis et clore le signalement ?" : (outcome === "resolved" ? "Marquer comme traité ?" : "Classer sans suite ?"))) return;
+      const x = await sb.rpc("admin_handle_report", { p_id: r.id, p_outcome: outcome, p_note: note.value, p_hide_review: !!hide }); if (x.error) { err.textContent = fr(x.error); return; } reports("open");
+    };
+    c.append(note, el("div", { class: "actions" },
+      r.review && r.review.status === "published" ? el("button", { class: "btn red", type: "button", "data-act": "hide", text: "Masquer l'avis", onclick: () => run("resolved", true) }) : null,
+      el("button", { class: "btn green", type: "button", "data-act": "resolve", text: "Traité", onclick: () => run("resolved", false) }),
+      el("button", { class: "btn light", type: "button", "data-act": "dismiss", text: "Sans suite", onclick: () => run("dismissed", false) })), err);
+    return c;
   }
 
   boot();

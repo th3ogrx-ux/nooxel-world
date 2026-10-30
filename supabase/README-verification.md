@@ -11,6 +11,7 @@ Supabase → **SQL Editor** → New query → coller → **Run**.
 5. `supabase/commerce-pages.sql` (phase 2, étape 1 : pages commerçants, posts, abonnés, fil d'actualité)
 6. `supabase/independents.sql` (phase 2, étape 2 : indépendants, zone d'intervention, planning de passage)
 7. `supabase/reviews.sql` (phase 2, étape 3 : pseudo public, avis, réponses des commerçants)
+8. `supabase/reports.sql` (phase 2, étape 4 : signalements)
 
 Tous se relancent sans danger. L'étape 3 convertit les anciens badges en un seul badge « professionnel vérifié »,
 annule les anciennes demandes encore ouvertes (les commerçants peuvent redéposer) et programme la suppression des
@@ -139,3 +140,24 @@ abonnements, le fil d'actualité, la recherche de commerces et leurs épingles s
 - **« Preuve de passage » :** simple case déclarative, affichée comme « non vérifié ».
 - Seul le propriétaire d'un commerce vérifié répond à un avis ; la note moyenne est tenue à jour par la base.
 - Supprimer son compte supprime ses avis et son pseudo.
+
+## Signalements (phase 2, étape 4)
+`reports.sql` ajoute les signalements : d'une **page de commerce**, d'un **avis**, ou d'un **problème de l'application**
+(page `signaler.html`, lien « Signaler un problème » dans le menu du compte).
+
+- Visibles **uniquement** par l'administrateur (onglet « Signalements » de `/admin`, double authentification) ; le
+  commerçant ne sait jamais qui l'a signalé. Chaque traitement garde l'administrateur, la date et une note.
+- Depuis la fiche d'un avis signalé : « Masquer l'avis » (la note moyenne se met à jour) ; un avis masqué se remet en
+  ligne depuis l'historique.
+- Limites : 10 signalements par 24 h et par compte ; pas de doublon tant que le précédent est ouvert.
+- RGPD : si le compte du signalant est supprimé, son identité disparaît du signalement ; les signalements traités sont
+  effacés au bout d'un an (tâche `purge-old-reports`).
+
+### Accusé de réception par email (facultatif, gratuit)
+À l'envoi, la page affiche toujours un numéro de signalement. Pour envoyer **aussi un email** :
+1. Brevo → *SMTP et API* → onglet **Clés API** → créer une clé « Nooxel » (copiez-la).
+2. Supabase → Edge Functions → **Deploy a new function** nommée exactement `report-ack`, coller
+   `functions-bundled/report-ack.ts`, « Verify JWT » **activé**.
+3. Edge Functions → **Secrets** : `BREVO_API_KEY` (la clé) et `ACK_SENDER_EMAIL` (l'expéditeur déjà validé chez Brevo).
+
+Sans ces étapes, rien ne casse : seul l'email n'est pas envoyé. Le message ne contient jamais le détail du signalement.

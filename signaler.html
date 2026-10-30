@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Signaler un problème — Nooxel World</title>
+  <meta name="theme-color" content="#040b1c">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="stylesheet" href="shop.css">
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Retour à la carte</a>
+  <h1>Signaler un problème</h1>
+  <p class="lead">Un bug, un souci avec l'application ? Dites-nous ce qui ne va pas. Pour signaler un commerce ou un avis, utilisez le bouton « Signaler » de sa page.</p>
+  <div id="app"><p class="empty">Chargement…</p></div>
+  <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
+</main>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script>
+  (async () => {
+    const app = $("app");
+    if (!sb || !(await currentSession())) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour envoyer un signalement." }), el("a", { href: "/", text: "Aller à la connexion" }))); return; }
+    const from = new URLSearchParams(location.search).get("from") || "";
+    app.replaceChildren(el("div", { class: "card" }, reportForm({ kind: "app", title: "Décrire le problème", page: (from || (() => { try { return new URL(document.referrer).pathname; } catch (e) { return ""; } })()).slice(0, 190) || null })));
+  })();
+</script>
+</body>
+</html>
