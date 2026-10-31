@@ -358,6 +358,7 @@
           <p id="terms" class="terms hidden">En créant un compte, vous acceptez les <a href="cgu.html">conditions d'utilisation</a> et la <a href="confidentialite.html">politique de confidentialité</a>.</p>
         <label id="age-row" class="check hidden"><input type="checkbox" id="age"><span>J'ai 15 ans ou plus</span></label>
         <p id="msg" role="alert"></p>
+        <button type="button" class="link hidden" id="resend">Renvoyer l'email de confirmation</button>
           <div class="actions">
             <button type="button" class="link" id="toggle">← Retour</button>
             <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
@@ -502,7 +503,9 @@
       if (t.includes("not confirmed")) return "Email non confirmé : ouvrez le message de confirmation reçu par email.";
       if (t.includes("invalid login")) return "Email ou mot de passe incorrect.";
       if (t.includes("already registered")) return "Un compte existe déjà avec cet email.";
+      if (t.includes("email rate limit") || t.includes("over_email_send_rate_limit")) return "Trop d'emails envoyés pour le moment : réessayez dans une heure.";
       if (t.includes("rate limit") || t.includes("too many")) return "Trop de tentatives, réessayez dans quelques minutes.";
+      if (t.includes("sending") && t.includes("email")) return "L'email n'a pas pu être envoyé. Réessayez dans un instant.";
       if (t.includes("password")) return "Mot de passe trop court ou invalide (6 caractères minimum).";
       return m;
     }
@@ -526,7 +529,7 @@
       $("age").checked = false;
       $("password2").required = signup;
       $("password2").value = "";
-      say("");
+      say(""); $("resend").classList.add("hidden");
       if (animate) {
         const f = $("login");
         f.classList.remove("swap"); void f.offsetWidth;
@@ -1283,6 +1286,16 @@
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
     $("toggle").onclick = () => { setMode(false, true); showChooser(); };
+    let resendTo = "", resendAt = 0;
+    $("resend").onclick = async () => {
+      const wait = 60000 - (Date.now() - resendAt);
+      if (wait > 0) return say("Patientez encore " + Math.ceil(wait / 1000) + " s avant de renvoyer l'email.", true);
+      $("resend").disabled = true;
+      const { error } = await sb.auth.resend({ type: "signup", email: resendTo });
+      $("resend").disabled = false; resendAt = Date.now();
+      if (error) return say(frError(error.message));
+      say("Email renvoyé à " + resendTo + ". Regardez aussi dans vos courriers indésirables.", true);
+    };
     $("login").onsubmit = async e => {
       e.preventDefault();
       if (!sb) return say("Service indisponible. Rechargez la page.");
@@ -1295,8 +1308,10 @@
       if (error) return say(frError(error.message));
       if (signupMode && !data.session) {
         // Confirmation par email activée côté Supabase : on reste sur l'inscription et on explique.
-        saveAccount(creds.email);
-        return say("Compte créé. Un email de confirmation a été envoyé à " + creds.email + ". Ouvrez-le pour activer votre compte.", true);
+        // Un email déjà inscrit ne renvoie aucune erreur (protection contre le repérage des comptes) mais aucun email n'est envoyé.
+        if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return say("Un compte existe déjà avec cet email. Connectez-vous avec votre mot de passe (« ← Retour » puis « J'ai déjà un compte »).");
+        saveAccount(creds.email); resendTo = creds.email; $("resend").classList.remove("hidden");
+        return say("Compte créé. Un email de confirmation a été envoyé à " + creds.email + ". Ouvrez-le pour activer votre compte (regardez aussi dans vos courriers indésirables).", true);
       }
       saveAccount(creds.email); render();
     };
