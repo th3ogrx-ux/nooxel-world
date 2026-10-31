@@ -81,6 +81,7 @@
         if (r.data) await sb.storage.from("avatars").remove([r.data]);
       } catch (e) { if (path) await sb.storage.from("avatars").remove([path]).catch(() => {}); /* la photo est facultative : on continue, elle pourra être ajoutée plus tard */ }
     }
+    try { const { data: { session } } = await sb.auth.getSession(); localStorage.setItem("nooxel_setup_ok", session.user.id); } catch (e) {}
     location.replace(nextUrl());
   });
   (async function boot() {

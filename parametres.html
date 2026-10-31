@@ -59,7 +59,7 @@
     { title: "Mon activité", rows: [["news", "Fil d'actualité", "fil.html"], ["heart", "Mes favoris", "compte.html?tab=fav"], ["star", "Mes avis laissés", "compte.html"]] },
     { title: "Professionnel", rows: [["briefcase", "Espace professionnel", "pro.html", "Gérer ma page commerçant / Devenir professionnel"]] },
     { title: "Paramètres du compte", rows: [["bell", "Notifications", "toggle"], ["lock", "Confidentialité", "confidentialite.html"]] },
-    { title: "Assistance", rows: [["alert", "Signaler un problème", "signaler.html"], ["help", "Centre d'aide", "aide.html"]] },
+    { title: "Assistance", rows: [["alert", "Signaler un problème", "signaler.html"], ["download", "Installer l'application", "/?install=1", "Ajouter Nooxel World à l'écran d'accueil"], ["help", "Centre d'aide", "aide.html"]] },
     { title: "Informations légales", rows: [["doc", "Mentions légales", "mentions-legales.html"], ["shield", "Politique de confidentialité", "confidentialite.html"], ["doc", "Conditions d'utilisation", "cgu.html"]] },
   ];
   const chev = () => icon("chev");
@@ -78,6 +78,8 @@
     const c = chev(); c.classList.add("chev");
     app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "compte.html", "data-row": "Mon compte", style: "padding:0" },
       el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
+    const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;      // déjà installée : la ligne disparaît
+    if (installed) for (const s of SECTIONS) s.rows = s.rows.filter(r => r[1] !== "Installer l'application");
     for (const s of SECTIONS) app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...s.rows.map(row)));
     const out = el("button", { class: "row", type: "button", id: "logout", "data-row": "Se déconnecter" }, icon("logout"), el("span", { class: "t", text: "Se déconnecter" })); const c2 = chev(); c2.classList.add("chev"); out.append(c2);
     const del = el("button", { class: "row", type: "button", id: "delete-account", "data-row": "Supprimer mon compte" }, icon("trash"), el("span", { class: "t", text: "Supprimer mon compte" }));
