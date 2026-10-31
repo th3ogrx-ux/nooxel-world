@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="tabbar.css">
   <title>Nooxel World</title>
-  <link rel="icon" href="assets/favicon.png">
+  <link rel="icon" href="assets/favicon.png?v=2">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
   <meta name="theme-color" content="#040b1c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -85,8 +85,9 @@
 
     /* Logo animé : l'épingle-bulle tombe sur la carte, onde d'impact, puis les points « écrivent » pendant le chargement.
        Uniquement transform/opacity : fluide même sur un téléphone d'entrée de gamme. */
-    .pin-wrap { width: min(36vw, 150px); }
-    .pinlogo { position: relative; display: block; width: 100%; overflow: visible; filter: drop-shadow(0 0 22px rgba(25,140,255,.45)); }
+    .pin-wrap { width: min(52vw, 210px); }
+    @keyframes logoin { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
+    .pinlogo { position: relative; display: block; width: 100%; height: auto; filter: drop-shadow(0 0 22px rgba(25,140,255,.45)); animation: logoin .7s cubic-bezier(.2,.9,.3,1.2) both; }
     .pin-drop { transform-box: fill-box; transform-origin: 50% 100%; animation: pindrop 1.05s both; }
     @keyframes pindrop {
       0%   { transform: translateY(-85vh); opacity: 0; animation-timing-function: cubic-bezier(.55,0,.9,.55); }
@@ -118,12 +119,12 @@
 
     .req { margin: 0; max-width: 270px; color: #6f8fc9; font-size: .85rem; line-height: 1.4; animation: rise .6s ease .15s both; }
     .continue { display: flex; align-items: center; justify-content: center; gap: .4rem; flex-wrap: wrap; }
-    .continue img { width: 22px; height: 18px; object-fit: contain; }
+    .continue img { width: 34px; height: auto; }
     .continue strong { color: #cfe0ff; font-weight: 600; }
 
     #layer { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 1rem; background: rgba(0,4,16,.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); animation: fade .25s ease both; }
     .gcard { position: relative; width: min(100%, 400px); max-height: 100%; overflow-y: auto; box-sizing: border-box; display: grid; gap: .9rem; padding: 2rem 1.6rem 1.4rem; border-radius: 28px; background: #fff; color: #1f1f1f; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.55); animation: pop .3s ease both; }
-    .gcard .logo-n { width: 56px; margin: 0 auto; }
+    .gcard .logo-n { width: 92px; height: auto; margin: 0 auto; }
     .gcard h1 { margin: .2rem 0 0; font-size: 1.55rem; font-weight: 500; color: #1f1f1f; }
     .gcard .continue { margin: 0 0 .6rem; color: #5f6368; font-size: .95rem; }
     .gcard .continue strong { color: #1f1f1f; }
@@ -320,21 +321,7 @@
     <section id="welcome">
       <div class="hero">
         <div class="planet-wrap pin-wrap">
-          <svg class="pinlogo" viewBox="0 0 120 150" role="img" aria-label="Nooxel World">
-            <defs>
-              <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2fc4ff"/><stop offset="1" stop-color="#0a4fe0"/></linearGradient>
-            </defs>
-            <ellipse class="pin-ground" cx="60" cy="140" rx="20" ry="4.5" fill="rgba(10,92,255,.45)"/>
-            <ellipse class="pin-ring" cx="60" cy="140" rx="20" ry="4.5"/>
-            <ellipse class="pin-ring r2" cx="60" cy="140" rx="20" ry="4.5"/>
-            <g class="pin-drop">
-              <path d="M60 134C60 134 12 92 12 56a48 48 0 0 1 96 0c0 36-48 78-48 78z" fill="url(#pg)"/>
-              <path d="M24 50a36 36 0 0 1 36-34" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="5" stroke-linecap="round"/>
-              <circle class="pin-dot d1" cx="39" cy="56" r="7.5"/>
-              <circle class="pin-dot d2" cx="60" cy="56" r="7.5"/>
-              <circle class="pin-dot d3" cx="81" cy="56" r="7.5"/>
-            </g>
-          </svg>
+          <img class="pinlogo" src="assets/logo-nw.png" alt="Nooxel World" width="512" height="286">
         </div>
         <h1 class="brand">Nooxel World</h1>
       </div>
@@ -353,7 +340,7 @@
 
     <div id="layer" class="hidden">
       <form id="login" class="gcard" role="dialog" aria-modal="true" aria-labelledby="title">
-        <img class="logo-n" src="assets/logo-n.webp" alt="Nooxel">
+        <img class="logo-n" src="assets/logo-nw-bleu.png" alt="Nooxel World" width="512" height="286">
         <h1 id="title">Connexion</h1>
         <p class="continue" id="sub"></p>
         <div id="chooser" class="hidden">
@@ -446,7 +433,7 @@
         <button type="button" class="link" id="help-close">Plus tard</button>
       </div>
       <div id="install-bar" class="sheet install hidden" role="dialog" aria-labelledby="inst-title">
-        <img class="app-icon" src="assets/icon-192.png" alt="" width="56" height="56">
+        <img class="app-icon" src="assets/icon-192.png?v=2" alt="" width="56" height="56">
         <h2 id="inst-title">Gardez Nooxel World sur votre téléphone</h2>
         <p>Ajoutez l'application à votre écran d'accueil : un seul toucher pour l'ouvrir, en plein écran, comme une vraie appli.</p>
         <button type="button" class="btn-blue wide" id="inst-yes">Ajouter à l'écran d'accueil</button>
@@ -454,7 +441,7 @@
         <button type="button" class="link" id="inst-never">Ne plus demander</button>
       </div>
       <div id="install-help" class="sheet help hidden" role="dialog" aria-labelledby="ih-title">
-        <img class="app-icon" src="assets/icon-192.png" alt="" width="56" height="56">
+        <img class="app-icon" src="assets/icon-192.png?v=2" alt="" width="56" height="56">
         <h2 id="ih-title">Ajouter à l'écran d'accueil</h2>
         <p class="for" id="ih-for"></p>
         <ol id="ih-steps" class="steps"></ol>
@@ -519,8 +506,8 @@
     }
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
-    const SUB = '<span>pour continuer vers</span> <img src="assets/planet.webp" alt=""> <strong>Nooxel World</strong>';
-    const SUB_UP = '<span>Un seul compte pour accéder à</span> <img src="assets/planet.webp" alt=""> <strong>Nooxel World</strong>';
+    const SUB = '<span>pour continuer vers</span> <strong>Nooxel World</strong>';
+    const SUB_UP = '<span>Un seul compte pour accéder à</span> <strong>Nooxel World</strong>';
 
     function setMode(signup, animate) {
       signupMode = signup;
@@ -615,7 +602,7 @@
         $("me").textContent = email[0];
         $("me").style.background = `hsl(${hue(email)} 65% 45%)`;
         startMap();
-        if (sb) sb.rpc("my_profile_summary").then(r => { if (r && r.data && !r.data.pseudo) location.replace("configurer-profil.html"); }, () => {});     // pseudo obligatoire avant l'accès à l'application
+        if (sb) sb.rpc("my_profile_summary").then(r => { if (r && r.data && r.data.needs_setup) location.replace("configurer-profil.html"); }, () => {});     // pseudo obligatoire avant l'accès à l'application
       } else { $("menu").classList.add("hidden"); }
     }
 
