@@ -126,7 +126,8 @@
     .gcard { position: relative; width: min(100%, 400px); max-height: 100%; overflow-y: auto; box-sizing: border-box; display: grid; gap: .9rem; padding: 2rem 1.6rem 1.4rem; border-radius: 28px; background: #fff; color: #1f1f1f; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.55); animation: pop .3s ease both; }
     .gcard .logo-n { width: 92px; height: auto; margin: 0 auto; }
     .gcard h1 { margin: .2rem 0 0; font-size: 1.55rem; font-weight: 500; color: #1f1f1f; }
-    .gcard .continue { margin: 0 0 .6rem; color: #5f6368; font-size: .95rem; }
+    .gcard .continue { margin: 0 0 .6rem; color: #5f6368; font-size: .95rem; } .gcard .continue:empty { display: none; }
+    .legal-mini { margin: .9rem 0 0; text-align: center; font-size: .82rem; } .legal-mini a { color: #6b7280; }
     .gcard .continue strong { color: #1f1f1f; }
     .gcard input { font: inherit; font-size: 16px; padding: .85rem 1rem; border-radius: 10px; border: 1px solid #c4c7c5; background: #fff; color: #1f1f1f; outline: none; }
     .gcard input::placeholder { color: #80868b; }
@@ -334,7 +335,7 @@
           <span>Connexion</span>
         </button>
         <button type="button" class="link-create hidden" id="go-create">Pas de compte ? <b>Créer un compte</b></button>
-        <p class="legal-links foot"><a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></p>
+        
       </div>
     </section>
 
@@ -362,6 +363,7 @@
             <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
           </div>
         </div>
+        <p class="legal-mini"><a href="mentions-legales.html">Mentions légales</a></p>
       </form>
     </div>
 
@@ -507,11 +509,11 @@
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
     const SUB = '<span>pour continuer vers</span> <strong>Nooxel World</strong>';
-    const SUB_UP = '<span>Un seul compte pour accéder à</span> <strong>Nooxel World</strong>';
+    const SUB_UP = "";      // création de compte : pas de phrase sous le titre
 
     function setMode(signup, animate) {
       signupMode = signup;
-      $("title").textContent = signup ? "Créer un compte Nooxel" : "Connexion";
+      $("title").textContent = signup ? "Créer un compte Nooxel World" : "Connexion";
       $("sub").innerHTML = signup ? SUB_UP : SUB;
       $("submit-label").textContent = signup ? "Créer mon compte" : "Se connecter";
       $("toggle").textContent = "← Retour";
