@@ -485,7 +485,7 @@
       });
     }
     // Déjà connecté : on télécharge la bibliothèque de carte tout de suite, en parallèle du reste.
-    if (storedSession()) window.__lib = loadMapLib();
+    try { const s = storedSession(); if (s && localStorage.getItem("nooxel_setup_ok") === s.user.id) window.__lib = loadMapLib(); } catch (e) {}      // on ne précharge la carte que pour un compte déjà vérifié (un nouveau compte passe d'abord par la configuration du profil)
   </script>
 
   <script src="assets/vendor/supabase.js"></script>
@@ -595,6 +595,18 @@
       return Promise.race([sb.auth.getSession().then(r => r.data.session), wait]).catch(() => storedSession());
     }
 
+    // Écran « Configurez votre profil » : imposé aux nouveaux comptes. Réponse mémorisée par compte pour ne pas attendre à chaque ouverture.
+    const SETUP_KEY = "nooxel_setup_ok";
+    const setupKnown = uid => { try { return localStorage.getItem(SETUP_KEY) === uid; } catch (e) { return false; } };
+    let setupCheck = null;
+    async function needsSetup(uid) {
+      for (let k = 0; k < 3; k++) {      // juste après le clic sur le lien de l'email, la session peut mettre un instant à être prête
+        try { const r = await sb.rpc("my_profile_summary"); if (r && r.data) { if (!r.data.needs_setup) { try { localStorage.setItem(SETUP_KEY, uid); } catch (e) {} } return !!r.data.needs_setup; } } catch (e) {}
+        await new Promise(r => setTimeout(r, 500));
+      }
+      return false;      // pas de réponse : on n'empêche pas d'entrer
+    }
+
     async function render() {
       const session = await getSession();
       $("welcome").classList.toggle("hidden", !!session);
@@ -606,8 +618,13 @@
         $("who").textContent = email;
         $("me").textContent = email[0];
         $("me").style.background = `hsl(${hue(email)} 65% 45%)`;
+        if (location.hash.includes("access_token") || location.hash.includes("error")) history.replaceState(null, "", location.pathname + location.search);   // lien de confirmation : on nettoie l'adresse
+        // Nouveau compte : l'écran « Configurez votre profil » passe AVANT la carte (la carte n'est même pas chargée, donc pas de ralentissement).
+        if (sb && !setupKnown(session.user.id)) {
+          setupCheck = setupCheck || needsSetup(session.user.id);
+          if (await setupCheck) { location.replace("configurer-profil.html"); return; }
+        }
         startMap();
-        if (sb) sb.rpc("my_profile_summary").then(r => { if (r && r.data && r.data.needs_setup) location.replace("configurer-profil.html"); }, () => {});     // pseudo obligatoire avant l'accès à l'application
       } else { $("menu").classList.add("hidden"); }
     }
 
@@ -787,6 +804,7 @@
     async function openShopFromUrl() {
       const qs = new URLSearchParams(location.search), id = qs.get("commerce");
       if (qs.get("search") === "1") setTimeout(() => $("q").focus(), 300);          // onglet « Chercher » depuis la page Compte
+      if (qs.get("install") === "1") setTimeout(startInstall, 600);          // « Installer l'application » depuis Paramètres
       if (qs.get("menu") === "1") $("menu").classList.remove("hidden");       // roue crantée de la page Compte : ouvre les réglages
       if (!id || !sb) { history.replaceState(null, "", location.pathname); return; }
       const { data } = await sb.rpc("get_merchant_page", { p_id: id }).then(r => r || {}, () => ({}));
@@ -1127,8 +1145,8 @@
     addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; });
     addEventListener("appinstalled", () => { setInstallPref({ never: true }); $("install-bar").classList.add("hidden"); $("install-help").classList.add("hidden"); $("menu-install").classList.add("hidden"); });
 
-    const getInstallPref = () => { try { return JSON.parse(localStorage.getItem("nooxel_install")) || {}; } catch (e) { return {}; } };
-    const setInstallPref = p => { try { localStorage.setItem("nooxel_install", JSON.stringify({ ...getInstallPref(), ...p })); } catch (e) {} };
+    const getInstallPref = () => { try { return JSON.parse(localStorage.getItem("nooxel_install2")) || {}; } catch (e) { return {}; } };
+    const setInstallPref = p => { try { localStorage.setItem("nooxel_install2", JSON.stringify({ ...getInstallPref(), ...p })); } catch (e) {} };
 
     async function startInstall() {
       $("install-bar").classList.add("hidden");
@@ -1335,7 +1353,7 @@
     // Confirmation d'email ouverte dans un autre onglet : cet onglet-ci bascule dès que la session apparaît.
     window.addEventListener("storage", e => { if (e.key === AUTH_KEY && storedSession()) render(); });
     document.addEventListener("visibilitychange", () => { if (!document.hidden && storedSession()) render(); });
-    if (storedSession()) startMap();   // pas besoin d'attendre la vérification pour lancer la carte
+    if (storedSession() && setupKnown(storedSession().user.id)) startMap();   // compte déjà vérifié : pas besoin d'attendre pour lancer la carte
     render();
   </script>
 </body>
