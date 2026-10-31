@@ -511,12 +511,12 @@
     }
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
-    const SUB = '<span>pour continuer vers</span> <strong>Nooxel World</strong>';
+    const SUB = "";      // connexion : logo, « Se connecter », email, mot de passe — rien d'autre
     const SUB_UP = "";      // création de compte : pas de phrase sous le titre
 
     function setMode(signup, animate) {
       signupMode = signup;
-      $("title").textContent = signup ? "Créer un compte Nooxel World" : "Connexion";
+      $("title").textContent = signup ? "Créer un compte Nooxel World" : "Se connecter";
       $("sub").innerHTML = signup ? SUB_UP : SUB;
       $("submit-label").textContent = signup ? "Créer mon compte" : "Se connecter";
       $("toggle").textContent = "← Retour";
@@ -1278,14 +1278,15 @@
 
     // Curseur dans le champ email seulement avec une souris : sur téléphone, ça ouvrirait le clavier tout de suite.
     $("go-login").onclick = () => {
-      wantsLogin = true; render(); showChooser();
+      wantsLogin = true; render(); setMode(false); showForm();      // directement : logo, « Se connecter », email, mot de passe
+      $("email").value = loadAccounts()[0] || "";
     };
     $("go-create").onclick = () => { wantsLogin = true; render(); $("create").onclick(); };      // « Créer un compte » sous le bouton Connexion : directement le formulaire d'inscription
     const closeCard = () => { wantsLogin = false; setMode(false); $("email").value = ""; $("password").value = ""; render(); };
     $("layer").addEventListener("click", e => { if (e.target === $("layer")) closeCard(); });
     document.addEventListener("keydown", e => { if (e.key === "Escape" && wantsLogin) closeCard(); });
 
-    $("toggle").onclick = () => { setMode(false, true); showChooser(); };
+    $("toggle").onclick = () => closeCard();      // « ← Retour » : retour à l'écran d'accueil
     let resendTo = "", resendAt = 0;
     $("resend").onclick = async () => {
       const wait = 60000 - (Date.now() - resendAt);
