@@ -123,11 +123,11 @@ async function cropJpeg(file, w, h, maxBytes = 900000) {
   throw new Error("Image trop lourde même réduite.");
 }
 const avatarUrl = (path) => sb.storage.from("avatars").getPublicUrl(path).data.publicUrl;
-// Écran « Configurez votre profil » : obligatoire tant qu'on n'a pas de pseudo. Renvoie true si on a été redirigé.
+// Écran « Configurez votre profil » : imposé aux NOUVEAUX comptes (needs_setup) tant qu'ils n'ont pas de pseudo. Renvoie true si on a été redirigé.
 async function gateProfile() {
   try {
     const { data } = await sb.rpc("my_profile_summary");
-    if (data && !data.pseudo) { location.replace("configurer-profil.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search)); return true; }
+    if (data && data.needs_setup) { location.replace("configurer-profil.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search)); return true; }
   } catch (e) {}
   return false;
 }

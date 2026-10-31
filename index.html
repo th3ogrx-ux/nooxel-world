@@ -506,8 +506,8 @@
     }
     function say(text, ok) { $("msg").textContent = text || ""; $("msg").classList.toggle("ok", !!ok); }
 
-    const SUB = '<span>pour continuer vers</span> <img src="assets/logo-nw-bleu.png" alt=""> <strong>Nooxel World</strong>';
-    const SUB_UP = '<span>Un seul compte pour accéder à</span> <img src="assets/logo-nw-bleu.png" alt=""> <strong>Nooxel World</strong>';
+    const SUB = '<span>pour continuer vers</span> <strong>Nooxel World</strong>';
+    const SUB_UP = '<span>Un seul compte pour accéder à</span> <strong>Nooxel World</strong>';
 
     function setMode(signup, animate) {
       signupMode = signup;
@@ -602,7 +602,7 @@
         $("me").textContent = email[0];
         $("me").style.background = `hsl(${hue(email)} 65% 45%)`;
         startMap();
-        if (sb) sb.rpc("my_profile_summary").then(r => { if (r && r.data && !r.data.pseudo) location.replace("configurer-profil.html"); }, () => {});     // pseudo obligatoire avant l'accès à l'application
+        if (sb) sb.rpc("my_profile_summary").then(r => { if (r && r.data && r.data.needs_setup) location.replace("configurer-profil.html"); }, () => {});     // pseudo obligatoire avant l'accès à l'application
       } else { $("menu").classList.add("hidden"); }
     }
 
