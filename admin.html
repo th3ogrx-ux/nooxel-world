@@ -142,7 +142,7 @@
     me = session.user; $("who").textContent = me.email || "";
     const who = await sb.rpc("am_i_admin");
     if (who.error || !who.data) { $("main").replaceChildren(el("p", { class: "empty", text: "Accès refusé : ce compte n'est pas administrateur." })); return; }
-    try { await gate(); } catch { $("main").replaceChildren(el("p", { class: "empty", text: "Impossible de vérifier la double authentification. Rechargez la page." })); return; }
+    // Double authentification (code à 6 chiffres) désactivée : voir supabase/admin-sans-2fa.sql. Pour la remettre : relancer admin-mfa.sql et rétablir « await gate() » ici.
     show("review");
   }
 
