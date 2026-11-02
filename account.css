@@ -1,0 +1,45 @@
+/* Écrans « Mon compte », « Modifier mon profil », « Mes avis laissés » (thème bleu sombre). À charger après shop.css et blue.css. */
+:root { --row: #0a1733; --edge: rgba(120,160,255,.16); --txt: #e8efff; --dim: #8ea3d0; --blue2: #2a6fe8; }
+body { background: radial-gradient(130% 70% at 50% 0%, #0b1d47, #050d22 55%, #030816) no-repeat #030816; background-attachment: fixed; color: var(--txt); }
+.acc { max-width: 560px; margin: 0 auto; padding: 0 1rem 8rem; }
+.hd { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; padding: calc(env(safe-area-inset-top, 0px) + .8rem) 0 .6rem; }
+.hd h1 { margin: 0; text-align: center; font-size: 1.2rem; font-weight: 700; }
+.hd a, .hd .save { color: var(--txt); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -.5rem; }
+.hd.wide { grid-template-columns: 48px 1fr auto; } .hd .save { width: auto; height: 40px; margin: 0; padding: 0 1.1rem; border: 0; border-radius: 14px; background: #3b82f6; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.who { text-align: center; margin: .6rem 0 1rem; }
+.ring { display: inline-flex; width: 118px; height: 118px; border-radius: 50%; border: 3px solid #2a6fe8; padding: 4px; box-shadow: 0 0 22px rgba(42,111,232,.45); background: #06122b; }
+.ring img, .ring .silhouette { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.ring .silhouette svg { width: 78%; height: 78%; }
+.who h2 { margin: .7rem 0 0; font-size: 1.4rem; } .who p { margin: .2rem 0 0; color: var(--dim); font-size: .95rem; }
+.pillbtn { display: flex; align-items: center; gap: .7rem; width: 100%; margin: .6rem 0 .3rem; padding: .85rem 1rem; border: 1.5px solid rgba(80,140,255,.55); border-radius: 16px; background: rgba(42,111,232,.08); color: var(--txt); font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+.pillbtn .t { flex: 1; text-align: center; margin-left: -1.2rem; }
+h2.sec { margin: 1.3rem .2rem .5rem; font-size: 1.02rem; font-weight: 700; }
+.grp { background: var(--row); border: 1px solid var(--edge); border-radius: 16px; overflow: hidden; }
+.rw { display: flex; align-items: center; gap: .9rem; width: 100%; padding: .85rem 1rem; border: 0; border-top: 1px solid var(--edge); background: none; color: var(--txt); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.rw:first-child { border-top: 0; }
+.rw svg.i { color: #4a8bff; width: 26px; height: 26px; }
+.rw .t { flex: 1; min-width: 0; } .rw .t small { display: block; color: var(--dim); font-size: .85rem; margin-top: .1rem; }
+.rw .chev { width: 18px; height: 18px; color: var(--dim); }
+.ok { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .6rem; border-radius: 999px; background: rgba(40,180,100,.2); color: #6fe0a0; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.sw { width: 52px; height: 30px; border-radius: 999px; background: #34456f; position: relative; flex: none; border: 0; cursor: pointer; transition: background .2s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.sw[aria-checked=true] { background: #3b82f6; } .sw[aria-checked=true]::after { transform: translateX(22px); }
+.rw.danger { margin-top: .9rem; border: 1.5px solid rgba(255,90,60,.6); border-radius: 16px; background: rgba(255,90,60,.07); color: #ff7a5c; } .rw.danger svg.i, .rw.danger .chev { color: #ff7a5c; } .rw.danger small { color: #ff9b85; }
+.msg { margin: .8rem .2rem 0; min-height: 1.3em; font-size: .95rem; color: #ff8a72; } .msg.good { color: #6fe0a0; }
+/* formulaire */
+.field { margin: 1rem 0 0; } .field label { display: flex; justify-content: space-between; align-items: center; color: var(--dim); font-size: .92rem; margin-bottom: .35rem; }
+.field input { width: 100%; padding: .9rem 1rem; border: 1px solid var(--edge); border-radius: 14px; background: var(--row); color: var(--txt); font: inherit; font-size: 16px; }
+.field input:disabled { color: var(--dim); } .field input::placeholder { color: #5d6f99; }
+.field .lock { display: inline-flex; align-items: center; gap: .3rem; color: #6fe0a0; font-size: .85rem; } .field .lock svg.i { width: 16px; height: 16px; color: #6fe0a0; }
+.linkb { display: inline-block; margin: .5rem 0 0; border: 0; background: none; color: #5a9cff; font: inherit; cursor: pointer; padding: .2rem 0; }
+.avedit { text-align: center; margin: .5rem 0 0; } .avedit .ring { position: relative; width: 150px; height: 150px; } .avedit .cam { position: absolute; right: 2px; bottom: 6px; width: 46px; height: 46px; border-radius: 50%; background: #3b82f6; color: #fff; display: flex; align-items: center; justify-content: center; border: 0; cursor: pointer; box-shadow: 0 0 0 4px #050d22; }
+.avlinks { margin-top: .7rem; color: #5a9cff; font-size: .95rem; } .avlinks button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: .2rem .3rem; }
+.big { display: block; width: 100%; margin: 1.4rem 0 0; padding: 1rem; border: 0; border-radius: 16px; background: #3b82f6; color: #fff; font: inherit; font-size: 1.05rem; font-weight: 600; cursor: pointer; } .big:disabled { opacity: .6; }
+/* fenêtre (2FA, confirmation) */
+dialog.sheet2 { border: 0; padding: 0; background: transparent; width: min(92vw, 420px); color: var(--txt); } dialog.sheet2::backdrop { background: rgba(0,4,16,.8); }
+dialog.sheet2 > div { background: #0b1a3d; border: 1px solid var(--edge); border-radius: 20px; padding: 1.2rem; }
+dialog.sheet2 h3 { margin: 0 0 .4rem; font-size: 1.15rem; } dialog.sheet2 p { margin: .3rem 0; color: var(--dim); font-size: .93rem; }
+dialog.sheet2 .qr { display: block; width: 190px; height: 190px; margin: .6rem auto; background: #fff; border-radius: 12px; padding: 8px; } dialog.sheet2 .secret { font: 600 .95rem ui-monospace, monospace; letter-spacing: .08em; word-break: break-all; text-align: center; color: #cfe0ff; }
+dialog.sheet2 input { width: 100%; margin-top: .6rem; padding: .8rem; text-align: center; letter-spacing: .35em; font-size: 1.4rem; border: 1px solid var(--edge); border-radius: 12px; background: #06122b; color: var(--txt); }
+dialog.sheet2 .b { display: block; width: 100%; margin-top: .7rem; padding: .8rem; border: 0; border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; background: #3b82f6; color: #fff; } dialog.sheet2 .b.g { background: rgba(255,255,255,.08); color: var(--txt); } dialog.sheet2 .b.r { background: #d93025; }

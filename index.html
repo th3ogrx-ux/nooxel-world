@@ -364,6 +364,11 @@
             <button type="submit" class="btn-blue" id="submit"><span id="submit-label">Se connecter</span></button>
           </div>
         </div>
+        <div id="mfa" class="fields hidden">
+          <input id="mfa-input" type="text" inputmode="numeric" placeholder="Code à 6 chiffres" autocomplete="one-time-code" maxlength="6" aria-label="Code à 6 chiffres">
+          <p id="mfa-msg" role="alert"></p>
+          <div class="actions"><button type="button" class="link" id="mfa-cancel">← Retour</button><button type="button" class="btn-blue" id="mfa-submit">Valider</button></div>
+        </div>
         <p class="legal-mini"><a href="mentions-legales.html">Mentions légales</a></p>
       </form>
     </div>
@@ -607,8 +612,34 @@
       return false;      // pas de réponse : on n'empêche pas d'entrer
     }
 
+    // Double authentification d'un compte normal : après le mot de passe, on demande le code si la personne l'a activée.
+    let mfaPassed = false;
+    async function needsMfa() {
+      if (mfaPassed || !sb) return false;
+      try { const { data } = await sb.auth.mfa.getAuthenticatorAssuranceLevel(); if (data && data.nextLevel === "aal2" && data.currentLevel !== "aal2") return true; } catch (e) {}
+      mfaPassed = true; return false;
+    }
+    function showMfa() {
+      $("welcome").classList.add("hidden"); $("home").classList.add("hidden"); $("layer").classList.remove("hidden");
+      $("chooser").classList.add("hidden"); $("fields").classList.add("hidden"); $("mfa").classList.remove("hidden");
+      $("title").textContent = "Vérification en deux étapes"; $("sub").textContent = "Entrez le code à 6 chiffres de votre application d'authentification.";
+    }
+    $("mfa-submit").onclick = async () => {
+      const code = $("mfa-input").value.trim(); $("mfa-msg").textContent = "";
+      if (!/^\d{6}$/.test(code)) { $("mfa-msg").textContent = "Entrez les 6 chiffres affichés par l'application."; return; }
+      $("mfa-submit").disabled = true;
+      try {
+        const { data: f } = await sb.auth.mfa.listFactors(); const fac = (f && f.totp || []).find(x => x.status === "verified");
+        const r = await sb.auth.mfa.challengeAndVerify({ factorId: fac.id, code }); if (r.error) throw r.error;
+        mfaPassed = true; $("mfa").classList.add("hidden"); $("mfa-input").value = ""; setMode(false); $("fields").classList.remove("hidden"); render();
+      } catch (e) { $("mfa-msg").textContent = "Code incorrect ou expiré. Réessayez."; }
+      $("mfa-submit").disabled = false;
+    };
+    $("mfa-cancel").onclick = async () => { mfaPassed = false; $("mfa").classList.add("hidden"); $("mfa-input").value = ""; if (sb) await sb.auth.signOut().catch(() => {}); wantsLogin = false; setMode(false); render(); };
+
     async function render() {
       const session = await getSession();
+      if (session && await needsMfa()) { showMfa(); return; }
       $("welcome").classList.toggle("hidden", !!session);
       $("layer").classList.toggle("hidden", !!session || !wantsLogin);
       $("home").classList.toggle("hidden", !session);

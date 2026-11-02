@@ -56,7 +56,7 @@
   // Les lignes dont la fonction n'existe pas encore mènent à un écran de test vide (bientot.html).
   const soon = (name) => "bientot.html?page=" + encodeURIComponent(name);
   const SECTIONS = [
-    { title: "Mon activité", rows: [["news", "Fil d'actualité", "fil.html"], ["heart", "Mes favoris", "compte.html?tab=fav"], ["star", "Mes avis laissés", "compte.html"]] },
+    { title: "Mon activité", rows: [["news", "Fil d'actualité", "fil.html"], ["heart", "Mes favoris", "compte.html?tab=fav"], ["star", "Mes avis laissés", "mes-avis.html"]] },
     { title: "Professionnel", rows: [["briefcase", "Espace professionnel", "pro.html", "Gérer ma page commerçant / Devenir professionnel"]] },
     { title: "Paramètres du compte", rows: [["bell", "Notifications", "toggle"], ["lock", "Confidentialité", "confidentialite.html"]] },
     { title: "Assistance", rows: [["alert", "Signaler un problème", "signaler.html"], ["download", "Installer l'application", "/?install=1", "Ajouter Nooxel World à l'écran d'accueil"], ["help", "Centre d'aide", "aide.html"]] },
@@ -76,7 +76,7 @@
     $("back").append(icon("back", 26));
     const app = $("app");
     const c = chev(); c.classList.add("chev");
-    app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "compte.html", "data-row": "Mon compte", style: "padding:0" },
+    app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "mon-compte.html", "data-row": "Mon compte", style: "padding:0" },
       el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
     const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;      // déjà installée : la ligne disparaît
     if (installed) for (const s of SECTIONS) s.rows = s.rows.filter(r => r[1] !== "Installer l'application");

@@ -81,7 +81,7 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .pill svg { width: 14px; height: 14px; fill: #4a8bff; stroke: none; }
 .profile .metrics { margin: 1.1rem 0 .9rem; }
 .profile .metrics b { color: var(--accent); }
-.btn-outline { width: 100%; height: 46px; border: 1.5px solid var(--accent); border-radius: 999px; background: transparent; color: #a9c8ff; font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; cursor: pointer; }
+.btn-outline { text-decoration: none; width: 100%; height: 46px; border: 1.5px solid var(--accent); border-radius: 999px; background: transparent; color: #a9c8ff; font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; cursor: pointer; }
 .editbox { text-align: left; margin-top: .8rem; }
 .editbox label { display: grid; gap: .25rem; font-size: .9rem; color: var(--mute); }
 .editbox input { width: 100%; font: inherit; font-size: 16px; padding: .65rem .8rem; border: 1px solid #c4cbe0; border-radius: 12px; background: #fff; color: #1f1f1f; }

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mon compte — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+</head>
+<body>
+<main class="acc">
+  <header class="hd"><a href="parametres.html" id="back" aria-label="Retour"></a><h1>Mon compte</h1><span></span></header>
+  <div id="app"></div>
+</main>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script>
+  $("back").append(icon("back"));
+  const maskEmail = (e) => { const [l, d] = String(e || "").split("@"); return l ? l.slice(0, 2) + "••••@" + (d || "") : ""; };
+  const row = (ic, label, sub, right, attrs = {}, tag = "a") => el(tag, { class: "rw", ...attrs }, icon(ic), el("span", { class: "t" }, label, sub ? el("small", { text: sub }) : null), ...right);
+  const chev = () => { const c = icon("chev"); c.classList.add("chev"); return c; };
+  const msg = el("p", { class: "msg", id: "msg", role: "status" });
+  const say = (t, good) => { msg.textContent = t || ""; msg.classList.toggle("good", !!good); };
+  function ask(title, text, yes, danger) {
+    return new Promise((done) => {
+      const d = sheet(el("h3", { text: title }), el("p", { text }), el("button", { class: "b" + (danger ? " r" : ""), type: "button", id: "ask-yes", text: yes, onclick: () => { d.close(); done(true); } }), el("button", { class: "b g", type: "button", id: "ask-no", text: "Annuler", onclick: () => d.close() }));
+      d.addEventListener("close", () => done(false), { once: true });
+    });
+  }
+  async function boot() {
+    const app = $("app");
+    const session = sb && await currentSession();
+    if (!session) { app.replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir votre compte. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return;
+    const { data: s } = await sb.rpc("my_profile_summary"); const u = session.user;
+    const ring = el("span", { class: "ring" }, s && s.avatar_path ? el("img", { id: "mc-photo", src: avatarUrl(s.avatar_path), alt: "Votre photo" }) : silhouette(100));
+    const sw = el("button", { class: "sw", id: "mfa-switch", type: "button", role: "switch", "aria-checked": "false", "aria-label": "Authentification à deux facteurs" });
+    const since = s && s.member_since ? new Date(s.member_since).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+    const verified = el("span", { class: "ok", id: "email-ok" }, "✓ Vérifié");
+    app.append(
+      el("div", { class: "who" }, ring, el("h2", { id: "mc-name", text: (s && s.pseudo) || "Choisissez un pseudo" }), since ? el("p", { id: "mc-since", text: "Membre depuis le " + since }) : null),
+      el("a", { class: "pillbtn", id: "edit-profile", href: "modifier-profil.html" }, icon("user2"), el("span", { class: "t", text: "Modifier mon profil" }), chev()),
+      el("h2", { class: "sec", text: "Informations de connexion" }),
+      el("div", { class: "grp" },
+        row("mail", "Email", maskEmail(u.email), [u.email_confirmed_at ? verified : null, chev()], { id: "row-email", href: "modifier-profil.html#email" }),
+        row("lock", "Mot de passe", "••••••••", [chev()], { id: "row-password", href: "modifier-profil.html#password" })),
+      el("h2", { class: "sec", text: "Sécurité" }),
+      el("div", { class: "grp" },
+        row("shield", "Authentification à deux facteurs", null, [sw], { id: "row-mfa" }, "div"),
+        row("logout", "Se déconnecter de tous les appareils", null, [chev()], { id: "row-signout-all", type: "button" }, "button")),
+      el("h2", { class: "sec", text: "Mes données" }),
+      el("div", { class: "grp" }, row("download", "Télécharger mes données", null, [chev()], { id: "row-export", type: "button" }, "button")),
+      row("trash", "Supprimer mon compte", "Cette action est irréversible", [chev()], { id: "row-delete", type: "button", class: "rw danger" }, "button"), msg);
+    $("row-delete").className = "rw danger";
+    wireMfaSwitch(sw, (on, err) => { if (err) say("Opération impossible pour le moment. Réessayez.", false); else say(on ? "Double authentification activée." : "Double authentification désactivée.", true); });
+    $("row-signout-all").addEventListener("click", async () => {
+      if (!(await ask("Se déconnecter partout ?", "Vous serez déconnecté de tous vos appareils, y compris celui-ci.", "Se déconnecter", false))) return;
+      await sb.auth.signOut({ scope: "global" }).catch(() => {}); location.href = "/";
+    });
+    $("row-export").addEventListener("click", async () => {
+      say("");
+      const { data, error } = await sb.rpc("export_my_data"); if (error) { say("Export impossible pour le moment. Réessayez."); return; }
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = el("a", { href: url, download: "nooxel-mes-donnees.json" }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+      say("Fichier « nooxel-mes-donnees.json » téléchargé.", true);
+    });
+    $("row-delete").addEventListener("click", async () => {
+      if (!(await ask("Supprimer votre compte ?", "Votre compte Nooxel et vos données seront effacés définitivement. Cette action est irréversible.", "Supprimer définitivement", true))) return;
+      const { error } = await sb.rpc("delete_my_account"); if (error) { say("La suppression n'a pas pu être faite pour le moment. Contactez-nous pour effacer votre compte."); return; }
+      try { localStorage.removeItem("sb-smjbgjolteovcwkoxcar-auth-token"); localStorage.removeItem("nooxel_accounts"); localStorage.removeItem("nooxel_setup_ok"); } catch (e) {}
+      await sb.auth.signOut().catch(() => {}); location.href = "/";
+    });
+  }
+  boot();
+</script>
+</body>
+</html>
