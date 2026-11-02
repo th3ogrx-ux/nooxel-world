@@ -22,3 +22,6 @@ dialog { color-scheme: dark; }
 .card label.check, .card .check { color: var(--navy); }
 .slot { border-top-color: var(--line); color: var(--navy); } .slot small { color: var(--mute); }
 .post-shop { color: #7fb0ff; }
+.logo { display: inline-flex; align-items: center; justify-content: center; flex: none; overflow: hidden; border-radius: 50%; background: #1a3270; color: #e8efff; font-weight: 700; }
+.logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vcheck { width: 22px; height: 22px; flex: none; }

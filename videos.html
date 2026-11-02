@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vidéos — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="tabbar.css">
+  <style>
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; background: #000; }
+    svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    #vs { position: fixed; inset: 0; overflow-y: scroll; scroll-snap-type: y mandatory; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; background: #000; }
+    #vs::-webkit-scrollbar { display: none; }
+    .vs { position: relative; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; background: #000; overflow: hidden; }
+    .vs video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+    .vs::after { content: ""; position: absolute; inset: auto 0 0 0; height: 55%; background: linear-gradient(transparent, rgba(0,0,0,.72)); pointer-events: none; }
+    .v-play { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 2rem; cursor: pointer; z-index: 2; }
+    .v-side { position: absolute; right: .9rem; bottom: 11rem; z-index: 3; display: grid; gap: 1.1rem; justify-items: center; }
+    .v-btn { display: grid; justify-items: center; gap: .15rem; border: 0; background: none; color: #fff; font: inherit; font-size: .88rem; cursor: pointer; text-shadow: 0 1px 6px rgba(0,0,0,.8); text-decoration: none; text-align: center; }
+    .v-btn svg.i { width: 34px; height: 34px; filter: drop-shadow(0 1px 4px rgba(0,0,0,.7)); }
+    .v-btn.liked svg { fill: #ff5a7a; stroke: #ff5a7a; }
+    .v-info { position: absolute; left: 1rem; right: 5.2rem; bottom: 7.6rem; z-index: 3; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+    .v-who { display: flex; align-items: center; gap: .7rem; }
+    .v-who .logo { width: 54px; height: 54px; border: 2px solid #2a5fc4; background: #0d2150; color: #fff; font-size: 1.3rem; }
+    .v-who a { color: #fff; font-weight: 700; font-size: 1.1rem; text-decoration: none; }
+    .v-rate { font-size: 1rem; } .v-rate .gold { color: #f5b301; }
+    .v-follow { border: 1.5px solid rgba(255,255,255,.85); border-radius: 999px; background: rgba(0,0,0,.25); color: #fff; font: inherit; font-size: .95rem; padding: .3rem .9rem; cursor: pointer; }
+    .v-cap { margin: .6rem 0 0; font-size: 1.02rem; overflow-wrap: anywhere; }
+    .v-dist { margin: .45rem 0 0; display: flex; align-items: center; gap: .35rem; font-size: .98rem; } .v-dist svg.i { width: 18px; height: 18px; }
+    #hint { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 1.2rem); left: 0; right: 0; z-index: 5; text-align: center; color: #fff; font-size: 1rem; line-height: 1.35; text-shadow: 0 1px 8px rgba(0,0,0,.9); pointer-events: none; transition: opacity .6s; }
+    #mute { position: fixed; top: calc(env(safe-area-inset-top, 0px) + .9rem); right: .8rem; z-index: 6; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+    #mute svg.i { width: 22px; height: 22px; }
+    .vempty { position: fixed; inset: 0; display: grid; place-items: center; color: #8ea3d0; text-align: center; padding: 2rem; background: radial-gradient(120% 80% at 50% 0%, #0c2152, #061330 60%); }
+    #toast2 { position: fixed; left: 50%; bottom: 9rem; transform: translateX(-50%); background: #fff; color: #0f2a5c; padding: .6rem 1.1rem; border-radius: 999px; font-size: .92rem; z-index: 20; }
+  </style>
+</head>
+<body>
+<div id="vs"></div>
+<p id="hint" class="hidden">← Swipe vers le haut →<br>pour voir la vidéo suivante</p>
+<button id="mute" class="hidden" type="button" aria-label="Son"></button>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="tabbar.js" data-active="videos"></script>
+<script>
+  const vids = []; let before = null, loading = false, done = false, muted = true, io = null, here = null;
+  const toast = (m) => { let t = $("toast2"); if (!t) { t = el("p", { id: "toast2", role: "status" }); document.body.append(t); } t.textContent = m; clearTimeout(toast.t); toast.t = setTimeout(() => t.remove(), 2400); };
+  const lowData = () => { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); };
+  const paintMute = () => { $("mute").replaceChildren(icon(muted ? "mute" : "volume")); $("mute").setAttribute("aria-pressed", String(!muted)); };
+  $("mute").addEventListener("click", () => { muted = !muted; paintMute(); document.querySelectorAll("#vs video").forEach((v) => { v.muted = muted; }); });
+  let hintSeen = false; try { hintSeen = localStorage.getItem("nooxel_vid_hint") === "1"; } catch (e) {}
+  const endHint = () => { if (hintSeen) return; hintSeen = true; try { localStorage.setItem("nooxel_vid_hint", "1"); } catch (e) {} $("hint").style.opacity = "0"; setTimeout(() => $("hint").classList.add("hidden"), 700); };
+  $("vs").addEventListener("scroll", () => { if ($("vs").scrollTop > 40) endHint(); }, { passive: true });
+
+  function slide(v) {
+    const video = el("video", { playsinline: true, loop: true, preload: "none", poster: imgUrl(v.poster_path), "data-vid": v.id }); video.muted = muted;
+    const playBtn = el("button", { class: "v-play hidden", type: "button", "aria-label": "Lire", text: "▶" });
+    const toggle = () => { if (video.paused) { video.play().catch(() => {}); playBtn.classList.add("hidden"); } else { video.pause(); playBtn.classList.remove("hidden"); } };
+    video.addEventListener("click", toggle); playBtn.addEventListener("click", toggle);
+    const st = { liked: !!v.liked, n: v.like_count || 0 };
+    const heart = el("button", { class: "v-btn" + (st.liked ? " liked" : ""), type: "button", "data-like": v.id, "aria-pressed": String(st.liked), "aria-label": "J'aime" }, icon("heart"), el("span", { class: "n", text: String(st.n) }));
+    const paint = () => { heart.classList.toggle("liked", st.liked); heart.setAttribute("aria-pressed", String(st.liked)); heart.querySelector(".n").textContent = String(st.n); };
+    heart.addEventListener("click", async () => {
+      const was = st.liked; st.liked = !was; st.n += was ? -1 : 1; paint();
+      const { data, error } = await sb.rpc(was ? "unlike_video" : "like_video", { p_video: v.id });
+      if (error) { st.liked = was; st.n += was ? 1 : -1; paint(); toast(fr(error)); return; }
+      st.n = data; paint();
+    });
+    const side = el("div", { class: "v-side" }, heart, el("a", { class: "v-btn", href: "commerce.html?id=" + encodeURIComponent(v.merchant_id), "data-page": v.merchant_id }, icon("shop"), el("span", { text: "Voir la page" })));
+    const fol = v.is_owner ? null : el("button", { class: "v-follow", type: "button", "data-follow": v.merchant_id });
+    if (fol) {
+      const pf = () => { fol.textContent = v.is_following ? "Abonné ✓" : "Suivre"; fol.setAttribute("aria-pressed", String(!!v.is_following)); };
+      pf();
+      fol.addEventListener("click", async () => {
+        fol.disabled = true; const { error } = await sb.rpc(v.is_following ? "unfollow_merchant" : "follow_merchant", { p_merchant: v.merchant_id }); fol.disabled = false;
+        if (error) { toast(fr(error)); return; } const now = !v.is_following; vids.filter((x) => x.merchant_id === v.merchant_id).forEach((x) => { x.is_following = now; });
+        document.querySelectorAll(`[data-follow="${v.merchant_id}"]`).forEach((b) => { b.textContent = now ? "Abonné ✓" : "Suivre"; b.setAttribute("aria-pressed", String(now)); });
+      });
+    }
+    const dist = el("p", { class: "v-dist hidden" }, icon("pin2"), el("span"));
+    if (here && v.lat != null && v.kind !== "mobile") { dist.querySelector("span").textContent = "À " + fmtKm(distKm(here, { lat: v.lat, lng: v.lng })); dist.classList.remove("hidden"); }
+    const info = el("div", { class: "v-info" }, el("div", { class: "v-who" }, logoBadge(v.logo_path, v.business_name, 54),
+        el("div", {}, el("a", { href: "commerce.html?id=" + encodeURIComponent(v.merchant_id), text: v.business_name }),
+          v.review_count ? el("div", { class: "v-rate" }, el("span", { class: "gold", text: "★" }), " " + rateStr(v.rating_avg)) : null), fol),
+      v.caption ? el("p", { class: "v-cap", text: v.caption }) : null, dist);
+    return el("section", { class: "vs", "data-slide": v.id }, video, playBtn, side, info);
+  }
+
+  async function load() {
+    if (loading || done) return; loading = true;
+    const { data, error } = await sb.rpc("video_feed", { p_before: before, p_limit: 8 });
+    loading = false;
+    if (error) { if (!vids.length) $("vs").replaceChildren(el("div", { class: "vempty" }, fr(error))); return; }
+    for (const v of data) { vids.push(v); const s = slide(v); $("vs").append(s); io.observe(s); }
+    if (data.length) before = data[data.length - 1].created_at; if (data.length < 8) done = true;
+    if (!vids.length) { $("vs").replaceChildren(el("div", { class: "vempty", id: "vempty" }, "Aucune vidéo pour le moment. Les commerçants vérifiés publient ici de courtes vidéos.")); return; }
+    if (!hintSeen) $("hint").classList.remove("hidden");
+    $("mute").classList.remove("hidden");
+  }
+
+  (async function boot() {
+    if (!sb || !(await currentSession())) { $("vs").replaceChildren(el("div", { class: "vempty" }, el("p", {}, "Connectez-vous pour voir les vidéos. ", el("a", { href: "/", text: "Se connecter" })))); return; }
+    if (await gateProfile()) return;
+    paintMute(); here = await geoIfGranted();
+    io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      const video = e.target.querySelector("video"), btn = e.target.querySelector(".v-play");
+      if (e.isIntersecting && e.intersectionRatio >= 0.7) {
+        if (!video.getAttribute("src")) video.src = videoUrl(vids.find((x) => x.id === video.dataset.vid).video_path);      // une seule vidéo chargée à la fois
+        if (lowData()) btn.classList.remove("hidden"); else { btn.classList.add("hidden"); video.play().catch(() => btn.classList.remove("hidden")); }
+        const i = vids.findIndex((x) => x.id === video.dataset.vid); if (i >= vids.length - 2) load();
+      } else { video.pause(); if (!e.isIntersecting && video.getAttribute("src")) { video.removeAttribute("src"); video.load(); } }
+    }), { root: $("vs"), threshold: [0, 0.7] });
+    load();
+  })();
+</script>
+</body>
+</html>
