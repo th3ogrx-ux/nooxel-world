@@ -175,7 +175,8 @@
     #map { position: absolute; inset: 0; }
     #me { position: absolute; top: calc(env(safe-area-inset-top, 0px) + .8rem); right: .8rem; z-index: 6; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: inherit; font-weight: 700; font-size: 1.05rem; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
         #home.has-bar .locate-ctrl { display: none; }          /* le bouton « Ma position » est au centre de la barre */
-    .shop-marker { position: relative; width: 30px; height: 36px; padding: 0; border: 0; background: none; cursor: pointer; }
+    .shop-marker { position: relative; width: 38px; height: 48px; padding: 0; border: 0; background: none; cursor: pointer; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
+    .shop-marker .catpin { display: block; }
     .shop-pin { position: absolute; left: 2px; top: 1px; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #1a6bff; border: 2px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.45); display: grid; place-items: center; }
     .shop-pin svg { transform: rotate(45deg); }
     .shop-pin.mobile { background: #12a150; }
@@ -467,7 +468,8 @@
     </section>
   </main>
 
-  <script>
+  <script src="categories.js"></script>
+<script>
     // Déjà connecté sur cet appareil ? On va directement à la carte, sans passer par l'écran d'entrée.
     const AUTH_KEY = "sb-smjbgjolteovcwkoxcar-auth-token";
     function storedSession() {
@@ -827,7 +829,7 @@
       for (const m of data) {
         if (shopMarkers.has(m.id)) continue;
         const el = document.createElement("button"); el.type = "button"; el.className = "shop-marker"; el.setAttribute("aria-label", m.business_name);
-        el.innerHTML = '<span class="shop-pin' + (m.kind === "mobile" ? " mobile" : "") + '"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>';
+        el.innerHTML = catPin(m.category, m.kind === "mobile");
         el.addEventListener("click", e => { e.stopPropagation(); showPlace(shopPlace(m)); });
         shopMarkers.set(m.id, new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([m.lng, m.lat]).addTo(map));
       }

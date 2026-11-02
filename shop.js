@@ -30,10 +30,6 @@ const VIDEO_BASE = null;
 const videoUrl = (path) => VIDEO_BASE ? VIDEO_BASE.replace(/\/$/, "") + "/" + path : sb.storage.from("merchant-videos").getPublicUrl(path).data.publicUrl;
 const imgUrl = (path) => sb.storage.from("merchant-media").getPublicUrl(path).data.publicUrl;
 // ---------- Page d'un commerce : catégories, horaires, distance
-const CATEGORIES = [["restaurant", "Restaurant"], ["cafe", "Café"], ["bar", "Bar"], ["boulangerie", "Boulangerie"], ["patisserie", "Pâtisserie"], ["boucherie", "Boucherie"],
-  ["epicerie", "Épicerie"], ["vetements", "Vêtements"], ["beaute", "Beauté et coiffure"], ["sante", "Santé"], ["artisan", "Artisan"], ["services", "Services"],
-  ["loisirs", "Loisirs"], ["hebergement", "Hébergement"], ["autre", "Autre"]];
-const catLabel = (v) => { const c = CATEGORIES.find((x) => x[0] === v); return c ? c[1] : ""; };
 const DAYS = [["mon", "Lundi"], ["tue", "Mardi"], ["wed", "Mercredi"], ["thu", "Jeudi"], ["fri", "Vendredi"], ["sat", "Samedi"], ["sun", "Dimanche"]];
 const TIMEZONES = [["Europe/Paris", "France métropolitaine"], ["America/Martinique", "Martinique, Guadeloupe"], ["America/Cayenne", "Guyane"], ["Indian/Reunion", "La Réunion"],
   ["Indian/Mayotte", "Mayotte"], ["Pacific/Noumea", "Nouvelle-Calédonie"], ["Pacific/Tahiti", "Polynésie française"], ["Pacific/Wallis_and_Futuna", "Wallis-et-Futuna"], ["America/Miquelon", "Saint-Pierre-et-Miquelon"]];
