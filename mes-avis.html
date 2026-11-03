@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mes avis laissés — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="tabbar.css">
+  <style>
+    .rv { display: flex; gap: .9rem; align-items: flex-start; background: var(--row); border: 1px solid var(--edge); border-radius: 18px; padding: .8rem; margin: 0 0 .8rem; }
+    .rv .thumb { width: 84px; height: 84px; flex: none; border-radius: 14px; background: #14285a; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #e8efff; font-weight: 700; font-size: 1.6rem; }
+    .rv .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .rv .main { flex: 1; min-width: 0; } .rv .main a { color: var(--txt); font-weight: 700; font-size: 1.1rem; text-decoration: none; }
+    .rv .stars { color: #f5b301; letter-spacing: .08em; } .rv .txt { margin: .25rem 0 0; color: #b8c7e8; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .rv .date { margin: .3rem 0 0; color: var(--dim); font-size: .9rem; }
+    .rv .tools { display: flex; align-items: center; gap: .3rem; flex: none; } .rv .tools i { width: 1px; height: 26px; background: var(--edge); }
+    .rv .tools button { width: 40px; height: 40px; border: 0; background: none; color: #a9b9dd; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; } .rv .tools .del { color: #ff5a5a; }
+    .none { text-align: center; color: #cfd9f2; padding: 3rem 1rem; font-size: 1.15rem; } .none svg { width: 96px; height: 96px; color: #5b6b94; stroke-width: 1.4; margin-bottom: 1rem; }
+    .starrow { display: flex; gap: .2rem; justify-content: center; margin: .6rem 0; } .starrow .star { font-size: 2.2rem; }
+    dialog.sheet2 textarea { width: 100%; min-height: 110px; padding: .7rem; font: inherit; font-size: 16px; border: 1px solid var(--edge); border-radius: 12px; background: #fff; color: #1f1f1f; }
+  </style>
+</head>
+<body>
+<div class="shell"><main class="acc">
+  <header class="hd"><a href="parametres.html" id="back" aria-label="Retour"></a><h1>Mes avis laissés</h1><span></span></header>
+  <div id="app"></div>
+  <button class="big hidden" id="more" type="button" style="background:rgba(255,255,255,.08)">Voir plus</button>
+</main></div>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script src="tabbar.js" data-active="account"></script>
+<script>
+  $("back").append(icon("back", 26));
+  let before = null, count = 0;
+  const stars = (n) => el("span", { class: "stars", role: "img", "aria-label": n + " sur 5", text: "★".repeat(n) + "☆".repeat(5 - n) });
+  function card(r) {
+    const body = el("p", { class: "txt", text: r.body });
+    const sc = el("div", {}, stars(r.rating));
+    const c = el("article", { class: "rv", "data-review": r.id },
+      el("span", { class: "thumb" }, r.logo_path ? el("img", { src: imgUrl(r.logo_path), alt: "", loading: "lazy" }) : (r.business_name || "?").charAt(0).toUpperCase()),
+      el("div", { class: "main" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(r.merchant_id), text: r.business_name }), sc, body, el("p", { class: "date", text: dateFr(r.created_at) })),
+      el("div", { class: "tools" }, el("button", { class: "edit", type: "button", "aria-label": "Modifier mon avis", onclick: () => editSheet(r, c) }, icon("pencil")), el("i"),
+        el("button", { class: "del", type: "button", "aria-label": "Supprimer mon avis", onclick: () => delSheet(r, c) }, icon("trash"))));
+    c._upd = () => { sc.replaceChildren(stars(r.rating)); body.textContent = r.body; };
+    return c;
+  }
+  function editSheet(r, c) {
+    let rating = r.rating; const err = el("p", { class: "msg", id: "ev-err" });
+    const starBtns = [1, 2, 3, 4, 5].map((n) => el("button", { type: "button", class: "star", "data-star": n, "aria-label": n + " étoile" + (n > 1 ? "s" : ""), text: "★", onclick: () => { rating = n; paint(); } }));
+    const paint = () => starBtns.forEach((b, i) => b.classList.toggle("on", i < rating)); paint();
+    const ta = el("textarea", { id: "ev-body", maxlength: 2000 }); ta.value = r.body;
+    const go = el("button", { class: "b", id: "ev-save", type: "button", text: "Enregistrer", onclick: async () => {
+      err.textContent = ""; go.disabled = true;
+      const { error } = await sb.rpc("submit_review", { p_merchant: r.merchant_id, p_rating: rating, p_body: ta.value, p_visited: !!r.visited });
+      go.disabled = false; if (error) { err.textContent = reviewErr(error); return; }
+      r.rating = rating; r.body = ta.value.trim(); c._upd(); d.close();
+    } });
+    const d = sheet(el("h3", { text: "Modifier mon avis" }), el("p", { text: r.business_name }), el("div", { class: "starrow" }, ...starBtns), ta, err, go, el("button", { class: "b g", type: "button", text: "Annuler", onclick: () => d.close() }));
+  }
+  function delSheet(r, c) {
+    const err = el("p", { class: "msg", id: "dv-err" });
+    const yes = el("button", { class: "b r", id: "dv-yes", type: "button", text: "Supprimer", onclick: async () => {
+      yes.disabled = true; const { error } = await sb.rpc("delete_my_review", { p_merchant: r.merchant_id }); yes.disabled = false;
+      if (error) { err.textContent = reviewErr(error); return; } c.remove(); count--; d.close(); if (!count) empty();
+    } });
+    const d = sheet(el("h3", { text: "Supprimer cet avis ?" }), el("p", { text: "Votre avis sur « " + r.business_name + " » sera supprimé définitivement." }), err, yes, el("button", { class: "b g", type: "button", text: "Annuler", onclick: () => d.close() }));
+  }
+  const empty = () => $("app").replaceChildren(el("div", { class: "none", id: "none" }, (() => { const t = document.createElement("template"); t.innerHTML = '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M12 8l1 2.2 2.4.3-1.8 1.6.5 2.4L12 13.3 9.9 14.5l.5-2.4-1.8-1.6 2.4-.3z"/></svg>'; return t.content.firstChild; })(), el("p", { text: "Vous n'avez laissé aucun avis pour le moment." })));
+  async function load(first) {
+    const { data, error } = await sb.rpc("my_reviews", { p_before: before, p_limit: 10 });
+    if (error) { $("app").replaceChildren(el("p", { class: "msg", text: fr(error) })); return; }
+    for (const r of data) { $("app").append(card(r)); count++; }
+    if (data.length) before = data[data.length - 1].created_at; $("more").classList.toggle("hidden", data.length < 10);
+    if (first && !count) empty();
+  }
+  $("more").addEventListener("click", () => load());
+  (async function boot() {
+    if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir vos avis. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return; load(true);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Modifier mon profil — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+</head>
+<body>
+<main class="acc">
+  <header class="hd wide"><a href="compte.html" id="back" aria-label="Retour"></a><h1>Modifier mon profil</h1><button class="save" id="save-top" type="button">Enregistrer</button></header>
+  <div id="app"></div>
+</main>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script>
+  $("back").append(icon("back"));
+  const PERR = {
+    invalid_pseudo: "Pseudo invalide : 3 à 20 caractères, lettres sans accent, chiffres, point, tiret ou souligné.",
+    reserved_pseudo: "Ce pseudo n'est pas autorisé. Choisissez-en un autre.", bad_pseudo: "Ce pseudo n'est pas autorisé. Choisissez-en un autre.",
+    pseudo_taken: "Ce pseudo est déjà pris.", pseudo_change_too_soon: "Vous ne pouvez changer de pseudo qu'une fois tous les 30 jours.",
+    invalid_first_name: "Prénom invalide : lettres, espaces, tirets ou apostrophes seulement (40 caractères au plus).",
+  };
+  const perr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(PERR).find((c) => m.includes(c)); return k ? PERR[k] : "Enregistrement impossible pour le moment. Réessayez."; };
+  const msg = el("p", { class: "msg", id: "msg", role: "status" }); const say = (t, good) => { msg.textContent = t || ""; msg.classList.toggle("good", !!good); };
+  let S = null, blob = null, removePhoto = false, session = null;
+
+  async function boot() {
+    const app = $("app");
+    session = sb && await currentSession();
+    if (!session) { app.replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour modifier votre profil. ", el("a", { href: "/", text: "Se connecter" }))); $("save-top").classList.add("hidden"); return; }
+    if (await gateProfile()) return;
+    S = (await sb.rpc("my_profile_summary")).data || {}; const u = session.user;
+    // photo
+    const ring = el("span", { class: "ring", id: "ring" });
+    const paintAvatar = () => { ring.replaceChildren(); const url = blob ? URL.createObjectURL(blob) : (!removePhoto && S.avatar_path ? avatarUrl(S.avatar_path) : null);
+      ring.append(url ? el("img", { id: "pf-photo", src: url, alt: "Votre photo de profil" }) : silhouette(100), el("button", { class: "cam", id: "cam", type: "button", "aria-label": "Changer la photo", onclick: () => file.click() }, icon("camera"))); };
+    const file = el("input", { type: "file", accept: "image/*", id: "file", class: "hidden" });
+    file.addEventListener("change", async () => { say(""); const f = file.files[0]; if (!f) return; try { blob = await cropJpeg(f, 400, 400); removePhoto = false; paintAvatar(); paintLinks(); } catch (e) { say(e instanceof Error ? e.message : "Photo illisible."); } file.value = ""; });
+    const links = el("div", { class: "avlinks" });
+    const paintLinks = () => { links.replaceChildren(el("button", { type: "button", id: "photo-change", text: "Modifier la photo", onclick: () => file.click() }), " • ", el("button", { type: "button", id: "photo-remove", text: "Supprimer la photo", onclick: () => { blob = null; removePhoto = true; paintAvatar(); paintLinks(); } })); links.querySelector("#photo-remove").classList.toggle("hidden", !blob && (removePhoto || !S.avatar_path)); links.childNodes[1].textContent = (!blob && (removePhoto || !S.avatar_path)) ? "" : " • "; };
+    paintAvatar(); paintLinks();
+    // pseudo
+    const pseudo = el("input", { type: "text", id: "pseudo", maxlength: 20, autocomplete: "nickname", autocapitalize: "off", spellcheck: "false" }); pseudo.value = S.pseudo || "";
+    const counter = el("span", { id: "pseudo-count" }); const cnt = () => { counter.textContent = pseudo.value.length + "/20"; }; pseudo.addEventListener("input", cnt); cnt();
+    const locked = S.pseudo && S.can_change_pseudo === false; if (locked) pseudo.disabled = true;
+    const lockHint = locked ? el("p", { class: "msg", id: "pseudo-lock", style: "color:#8ea3d0;margin:.4rem .2rem 0", text: "Vous pourrez changer de pseudo à partir du " + new Date(S.pseudo_change_after).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + "." }) : null;
+    const first = el("input", { type: "text", id: "first-name", maxlength: 40, autocomplete: "given-name", placeholder: "Votre prénom" }); first.value = S.first_name || "";
+    // email
+    const email = el("input", { type: "text", id: "email", disabled: true }); email.value = u.email || "";
+    const emailBox = el("div", { class: "hidden", id: "email-box" });
+    const newEmail = el("input", { type: "email", id: "new-email", placeholder: "Nouvelle adresse email", autocomplete: "email" });
+    emailBox.append(el("div", { class: "field" }, newEmail), el("button", { class: "big", id: "email-send", type: "button", text: "Envoyer le lien de confirmation", onclick: async () => {
+      say(""); const v = newEmail.value.trim(); if (!/^\S+@\S+\.\S+$/.test(v)) { say("Entrez une adresse email valide."); return; }
+      const { error } = await sb.auth.updateUser({ email: v }); if (error) { say(/rate|limit/i.test(error.message) ? "Trop de demandes : réessayez dans une heure." : /already|registered/i.test(error.message) ? "Cette adresse est déjà utilisée." : "Changement impossible pour le moment."); return; }
+      say("Un email de confirmation a été envoyé à " + v + " (et à votre ancienne adresse). Ouvrez-le pour valider le changement.", true); } }));
+    const emailLink = el("button", { class: "linkb", id: "email-change", type: "button", text: "Changer d'email", onclick: () => emailBox.classList.toggle("hidden") });
+    // mot de passe
+    const pwBox = el("div", { class: "hidden", id: "pw-box" });
+    const pw1 = el("input", { type: "password", id: "pw1", placeholder: "Nouveau mot de passe (6 caractères min.)", autocomplete: "new-password" }), pw2 = el("input", { type: "password", id: "pw2", placeholder: "Confirmer le nouveau mot de passe", autocomplete: "new-password" });
+    pwBox.append(el("div", { class: "field" }, pw1), el("div", { class: "field" }, pw2), el("button", { class: "big", id: "pw-send", type: "button", text: "Changer le mot de passe", onclick: async () => {
+      say(""); if (pw1.value.length < 6) { say("Mot de passe trop court (6 caractères minimum)."); return; } if (pw1.value !== pw2.value) { say("Les mots de passe ne correspondent pas."); return; }
+      const { error } = await sb.auth.updateUser({ password: pw1.value }); if (error) { say(/same|different/i.test(error.message) ? "Choisissez un mot de passe différent de l'ancien." : /reauth|recent/i.test(error.message) ? "Reconnectez-vous puis réessayez." : "Changement impossible pour le moment."); return; }
+      pw1.value = pw2.value = ""; pwBox.classList.add("hidden"); say("Mot de passe modifié.", true); } }));
+    const pwRow = el("button", { class: "rw", id: "pw-row", type: "button", onclick: () => pwBox.classList.toggle("hidden") }, el("span", { class: "t", text: "Changer le mot de passe" }), (() => { const c = icon("chev"); c.classList.add("chev"); return c; })());
+    const sw = el("button", { class: "sw", id: "mfa-switch", type: "button", role: "switch", "aria-checked": "false", "aria-label": "Authentification à deux facteurs" });
+    const save = async () => {
+      say(""); const btns = [$("save-top"), $("save-bottom")]; btns.forEach((b) => { b.disabled = true; });
+      try {
+        const p = pseudo.value.trim();
+        if (!locked && p !== (S.pseudo || "")) { const r = await sb.rpc("set_pseudo", { p_pseudo: p }); if (r.error) throw r.error; S.pseudo = p; }
+        const fn = first.value.trim();
+        if (fn !== (S.first_name || "")) { const r = await sb.rpc("set_first_name", { p_name: fn }); if (r.error) throw r.error; S.first_name = fn || null; }
+        if (blob) {
+          const path = `${session.user.id}/avatar-${crypto.randomUUID()}.jpg`;
+          const up = await sb.storage.from("avatars").upload(path, blob, { contentType: "image/jpeg", upsert: false }); if (up.error) throw up.error;
+          const r = await sb.rpc("set_avatar", { p_path: path }); if (r.error) { await sb.storage.from("avatars").remove([path]); throw r.error; }
+          if (r.data) await sb.storage.from("avatars").remove([r.data]); S.avatar_path = path; blob = null;
+        } else if (removePhoto && S.avatar_path) { const r = await sb.rpc("set_avatar", { p_path: null }); if (r.error) throw r.error; if (r.data) await sb.storage.from("avatars").remove([r.data]); S.avatar_path = null; }
+        removePhoto = false; paintAvatar(); paintLinks(); say("Profil enregistré.", true);
+      } catch (e) { say(perr(e)); }
+      btns.forEach((b) => { b.disabled = false; });
+    };
+    $("save-top").addEventListener("click", save);
+    app.append(el("div", { class: "avedit" }, ring, links, file),
+      el("div", { class: "field" }, el("label", { for: "pseudo" }, "Pseudo", counter), pseudo, lockHint),
+      el("div", { class: "field" }, el("label", { for: "first-name" }, "Prénom (optionnel)"), first),
+      el("div", { class: "field", id: "email-field" }, el("label", { for: "email" }, "Email", u.email_confirmed_at ? el("span", { class: "lock", id: "email-ok" }, icon("lock"), "Vérifié") : null), email), emailLink, emailBox,
+      el("h2", { class: "sec", style: "display:flex;align-items:center;gap:.5rem" }, icon("shield"), "Sécurité"),
+      el("div", { class: "grp" }, pwRow, el("div", { class: "rw" }, el("span", { class: "t", text: "Authentification à deux facteurs" }), sw)), pwBox, msg,
+      el("button", { class: "big", id: "save-bottom", type: "button", text: "Enregistrer les modifications", onclick: save }));
+    wireMfaSwitch(sw, (on, err) => { if (err) say("Opération impossible pour le moment. Réessayez."); else say(on ? "Double authentification activée." : "Double authentification désactivée.", true); });
+    if (location.hash === "#email") { emailBox.classList.remove("hidden"); emailLink.scrollIntoView(); } if (location.hash === "#password") { pwBox.classList.remove("hidden"); pwRow.scrollIntoView(); }
+  }
+  boot();
+</script>
+</body>
+</html>

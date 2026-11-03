@@ -20,6 +20,7 @@
 </main></div>
 <script src="tabbar.js" data-active="account"></script>
 <script src="assets/vendor/supabase.js"></script>
+<script src="categories.js"></script>
 <script src="shop.js"></script>
 <script>
   const PERR = {
@@ -67,7 +68,7 @@
         el("div", {}, el("b", { id: "pf-reviews", text: String(sum.reviews_count) }), el("span", { text: sum.reviews_count > 1 ? "avis laissés" : "avis laissé" })),
         el("div", {}, el("b", { id: "pf-following", text: String(sum.following_count) }), el("span", { text: sum.following_count > 1 ? "commerces suivis" : "commerce suivi" })),
         el("div", {}, el("b", { id: "pf-points", text: String(sum.points) }), el("span", { text: "points" }))),
-      editor(nameEl));
+      el("a", { class: "btn-outline", id: "pf-edit", href: "modifier-profil.html" }, icon("pencil", 18), "Modifier mon profil"));
     const secs = el("div", { class: "utabs", role: "group", "aria-label": "Sections du profil" },
       ...[["reviews", "Avis"], ["fav", "Favoris"]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "reviews"), text: label, onclick: () => show(k) })));
     const rsec = el("div", { id: "section-reviews", class: "section" }, el("div", { id: "my-reviews" }), el("p", { class: "empty hidden", id: "no-reviews", text: "Vous n'avez pas encore laissé d'avis. Ouvrez la page d'un commerce pour donner le vôtre." }),
@@ -79,29 +80,6 @@
     app.replaceChildren(...[banner, head, secs, rsec, fsec].filter(Boolean));
     rLoaded = true; loadReviews(true);
     if (new URLSearchParams(location.search).get("tab") === "fav") show("fav");
-  }
-
-  function editor(nameEl) {
-    const slot = el("div", { id: "pf-edit-slot" });
-    const open = el("button", { class: "btn-outline", id: "pf-edit", type: "button" }, icon("pencil", 18), "Modifier mon profil");
-    open.addEventListener("click", () => {
-      const input = el("input", { type: "text", id: "pf-pseudo", maxlength: 20, autocomplete: "nickname", placeholder: "Votre pseudo public" }); input.value = sum.pseudo || "";
-      const err = el("p", { class: "err", id: "pf-err" });
-      const save = el("button", { class: "btn-save", id: "pf-save", type: "button", text: "Enregistrer" });
-      const cancel = el("button", { class: "btn-cancel", type: "button", text: "Annuler", onclick: () => { slot.replaceChildren(); open.classList.remove("hidden"); } });
-      save.addEventListener("click", async () => {
-        err.textContent = ""; save.disabled = true;
-        if (input.value.trim() === (sum.pseudo || "")) { save.disabled = false; slot.replaceChildren(); open.classList.remove("hidden"); return; }
-        const { error } = await sb.rpc("set_pseudo", { p_pseudo: input.value });
-        save.disabled = false;
-        if (error) { err.textContent = perr(error); return; }
-        sum.pseudo = input.value.trim(); nameEl.textContent = sum.pseudo; slot.replaceChildren(); open.classList.remove("hidden");
-      });
-      slot.replaceChildren(el("div", { class: "editbox" }, el("label", {}, "Pseudo public (affiché avec vos avis, jamais votre email)", input),
-        el("p", { class: "hint", text: sum.pseudo ? "Vous pouvez changer de pseudo une fois tous les 30 jours." : "Lettres sans accent, chiffres, point, tiret ou souligné." }), err, save, cancel));
-      open.classList.add("hidden"); input.focus();
-    });
-    return el("div", {}, open, slot);
   }
 
   function show(k) {

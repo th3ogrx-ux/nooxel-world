@@ -30,10 +30,6 @@ const VIDEO_BASE = null;
 const videoUrl = (path) => VIDEO_BASE ? VIDEO_BASE.replace(/\/$/, "") + "/" + path : sb.storage.from("merchant-videos").getPublicUrl(path).data.publicUrl;
 const imgUrl = (path) => sb.storage.from("merchant-media").getPublicUrl(path).data.publicUrl;
 // ---------- Page d'un commerce : catégories, horaires, distance
-const CATEGORIES = [["restaurant", "Restaurant"], ["cafe", "Café"], ["bar", "Bar"], ["boulangerie", "Boulangerie"], ["patisserie", "Pâtisserie"], ["boucherie", "Boucherie"],
-  ["epicerie", "Épicerie"], ["vetements", "Vêtements"], ["beaute", "Beauté et coiffure"], ["sante", "Santé"], ["artisan", "Artisan"], ["services", "Services"],
-  ["loisirs", "Loisirs"], ["hebergement", "Hébergement"], ["autre", "Autre"]];
-const catLabel = (v) => { const c = CATEGORIES.find((x) => x[0] === v); return c ? c[1] : ""; };
 const DAYS = [["mon", "Lundi"], ["tue", "Mardi"], ["wed", "Mercredi"], ["thu", "Jeudi"], ["fri", "Vendredi"], ["sat", "Samedi"], ["sun", "Dimanche"]];
 const TIMEZONES = [["Europe/Paris", "France métropolitaine"], ["America/Martinique", "Martinique, Guadeloupe"], ["America/Cayenne", "Guyane"], ["Indian/Reunion", "La Réunion"],
   ["Indian/Mayotte", "Mayotte"], ["Pacific/Noumea", "Nouvelle-Calédonie"], ["Pacific/Tahiti", "Polynésie française"], ["Pacific/Wallis_and_Futuna", "Wallis-et-Futuna"], ["America/Miquelon", "Saint-Pierre-et-Miquelon"]];
@@ -89,6 +85,9 @@ const ICONS = {
   star: '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>', briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3M12 15v2"/>',
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>', help: '<circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17v.01"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  share: '<path d="M14 4l6 6-6 6M20 10H9a5 5 0 0 0-5 5v3"/>', shop: '<path d="M4 9l1.5-5h13L20 9M4 9v10h16V9M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9M10 19v-5h4v5"/>', volume: '<path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>', mute: '<path d="M4 9v6h4l5 4V5L8 9zM17 9l5 6M22 9l-5 6"/>', pin2: '<path d="M12 21s7-5.6 7-11.2A7 7 0 0 0 5 9.8C5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>', camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/>', user2: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
   doc: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>', shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 9v4M12 16v.01"/>',
   logout: '<path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 8l4 4-4 4M20 12H9"/>', trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/>', chev: '<path d="M9 5l7 7-7 7"/>',
@@ -132,6 +131,14 @@ async function gateProfile() {
   } catch (e) {}
   return false;
 }
+const REVIEW_ERR = {
+  review_too_short: "Votre avis est trop court : écrivez au moins 20 caractères.",
+  review_only_insults: "Votre avis ne peut pas contenir que des insultes. Racontez ce qui s'est passé, de façon factuelle.",
+  review_contains_link: "Les liens, adresses email et numéros de téléphone ne sont pas autorisés dans un avis.",
+  review_gibberish: "Votre avis semble être un texte répété sans sens. Écrivez quelques phrases sur votre expérience.",
+  invalid_rating: "Choisissez une note de 1 à 5 étoiles.", not_found: "Ce commerce n'existe plus.",
+};
+const reviewErr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(REVIEW_ERR).find((c) => m.includes(c)); return k ? REVIEW_ERR[k] : fr(e); };
 // Une publication : photo (chargée à la demande, dimensions réservées) + texte + date.
 function postCard(p, withShop) {
   return el("article", { class: "post", "data-post": p.id },
@@ -140,7 +147,7 @@ function postCard(p, withShop) {
     el("p", { class: "post-body", text: p.body }),
     el("p", { class: "post-date", text: ago(p.created_at) }));
 }
-const ERR = { not_found: "Cette page n'existe pas ou n'est plus disponible.", not_authenticated: "Connectez-vous pour continuer.", cannot_follow_self: "Vous ne pouvez pas suivre votre propre page." };
+const ERR = { not_found: "Cette page n'existe pas ou n'est plus disponible.", not_authenticated: "Connectez-vous pour continuer.", cannot_follow_self: "Vous ne pouvez pas suivre votre propre page.", too_many_likes: "Vous avez atteint la limite de ♥ pour aujourd'hui." };
 const fr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
 async function currentSession() { if (!sb) return null; const { data } = await sb.auth.getSession(); return data && data.session; }
 

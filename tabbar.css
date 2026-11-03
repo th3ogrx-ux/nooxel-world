@@ -25,4 +25,6 @@
    Ainsi la barre d'adresse et la barre du navigateur ne bougent jamais et la barre du bas reste exactement au même endroit. */
 html:has(.shell), body:has(.shell) { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .shell { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-#tabbar button#tab-map { cursor: default; }
+#tabbar #tab-feed.on svg rect { fill: currentColor; } #tabbar #tab-feed.on svg path { stroke: #060c1c; }
+#tabbar #tab-videos.on svg circle { fill: currentColor; } #tabbar #tab-videos.on svg path { stroke: #060c1c; fill: #060c1c; }
+#tabbar .tab span { white-space: nowrap; }
