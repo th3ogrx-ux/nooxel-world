@@ -78,7 +78,7 @@
 </head>
 <body>
 <main>
-  <a class="back" href="/">← Retour à la carte</a>
+  <a data-back class="back" href="/">← Retour à la carte</a>
   <h1>Espace professionnel</h1>
   <p class="lead" id="lead">Chargement…</p>
   <div id="app"></div>
@@ -183,7 +183,7 @@
 
     app.append(profileCard());
     if (v === "pending" && req && ["pending", "contested"].includes(req.status)) app.append(pendingCard(req));
-    if (v === "verified") app.append(pageCard(), scheduleCard(), postsCard(), videosCard(), referralCard());
+    if (v === "verified") app.append(pageCard(), closureCard(), scheduleCard(), postsCard(), videosCard(), referralCard());
     else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
     if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
@@ -323,6 +323,41 @@
     });
   }
 
+  // Règle : aucun contenu généré par IA (photos, vidéos) — rappelée sous chaque bouton d'ajout de média
+  const aiNote = () => el("p", { class: "hint ai-note", text: "Photos et vidéos réelles uniquement : les contenus générés par IA sont interdits (voir les Conditions d'utilisation)." });
+
+  // Fermeture exceptionnelle / vacances
+  function closureCard() {
+    const ind = el("input", { type: "checkbox", id: "cl-indef" }), on = el("input", { type: "checkbox", id: "cl-on" });
+    const from = el("input", { type: "date", id: "cl-from" }), until = el("input", { type: "date", id: "cl-until" });
+    const err = el("p", { class: "err", id: "cl-err" }), ok = el("p", { class: "okmsg", id: "cl-ok" });
+    const dates = el("div", { id: "cl-dates" }, el("label", {}, "Du", from), el("label", {}, "Au (inclus)", until));
+    const fields = el("div", { id: "cl-fields", class: "hidden" }, el("label", { class: "check" }, ind, " Fermé jusqu'à nouvel ordre"), dates);
+    const paint = () => { fields.classList.toggle("hidden", !on.checked); dates.classList.toggle("hidden", ind.checked); };
+    on.addEventListener("change", paint); ind.addEventListener("change", paint);
+    const save = el("button", { class: "btn", id: "cl-save", type: "button", text: "Enregistrer", onclick: async () => {
+      err.textContent = ""; ok.textContent = "";
+      let upd = { closure_from: null, closure_until: null, closure_indefinite: false };
+      if (on.checked && ind.checked) upd.closure_indefinite = true;
+      else if (on.checked) {
+        if (!from.value || !until.value) { err.textContent = "Indiquez une date de début et une date de fin."; return; }
+        if (until.value < from.value) { err.textContent = "La date de fin doit être après la date de début."; return; }
+        upd = { closure_from: from.value, closure_until: until.value, closure_indefinite: false };
+      }
+      const { error } = await sb.from("merchant_profiles").update(upd).eq("id", state.merchant_id);
+      if (error) { err.textContent = "Enregistrement impossible. Vérifiez les dates (un an maximum)."; return; }
+      ok.textContent = on.checked ? "Fermeture enregistrée : elle s'affiche sur votre page." : "Fermeture retirée : votre page affiche de nouveau vos horaires.";
+    } });
+    sb.from("merchant_profiles").select("closure_from,closure_until,closure_indefinite").eq("id", state.merchant_id).single().then(({ data }) => {
+      if (!data) return; ind.checked = !!data.closure_indefinite; from.value = data.closure_from || ""; until.value = data.closure_until || "";
+      const today = new Date().toISOString().slice(0, 10);
+      on.checked = !!data.closure_indefinite || (!!data.closure_until && data.closure_until >= today); paint();
+    });
+    return el("div", { class: "card", id: "closure-card" }, el("h2", { text: "Vacances / Fermeture exceptionnelle" }),
+      el("p", { text: "Prévenez vos clients avant qu'ils ne se déplacent : le statut s'affiche sur votre page à la place de « Ouvert / Fermé »." }),
+      el("label", { class: "check" }, on, " Activer la fermeture exceptionnelle"), fields, err, ok, save);
+  }
+
   function pageCard() {
     const card = el("div", { class: "card", id: "page-card" }, el("h2", { text: "Ma page publique" }),
       el("p", { text: "Votre page est visible par tous les utilisateurs." }),
@@ -429,7 +464,7 @@
         file.value = ""; file.disabled = false;
       });
       rm.addEventListener("click", async () => { err.textContent = ""; try { await save(null); ok.textContent = "Retiré."; } catch (e) { err.textContent = "Enregistrement impossible."; } });
-      return el("div", { id: kind + "-field" }, el("label", {}, label, file), prev, rm);
+      return el("div", { id: kind + "-field" }, el("label", {}, label, file), aiNote(), prev, rm);
     };
     // Choix du métier : grille d'icônes (une par métier, la même que sur les épingles de la carte)
     const cat = { value: d.category || "" };
@@ -579,7 +614,7 @@
     refresh();
     return el("div", { class: "card", id: "posts-card" }, el("h2", { text: "Publier sur ma page" }),
       el("p", { text: "Une photo (facultative) et un texte. Vos abonnés les voient dans leur fil d'actualité." }),
-      el("label", {}, "Texte", body), el("label", {}, "Photo (facultative)", photo, th), err, ok, btn,
+      el("label", {}, "Texte", body), el("label", {}, "Photo (facultative)", photo, th), aiNote(), err, ok, btn,
       el("h2", { style: "margin-top:1.1rem", text: "Mes publications" }), mine);
   }
 
@@ -672,7 +707,7 @@
     refresh();
     return el("div", { class: "card", id: "videos-card" }, el("h2", { text: "Publier une vidéo" }),
       el("p", { text: "30 secondes au maximum, au format vertical de préférence. La vidéo est réduite automatiquement (480p) pour rester légère : comptez la durée de la vidéo pour l'optimisation, sans quitter cet écran. 20 vidéos au maximum." }),
-      el("label", {}, "Vidéo", file), el("label", {}, "Légende", cap), prog, err, ok, btn,
+      el("label", {}, "Vidéo", file), aiNote(), el("label", {}, "Légende", cap), prog, err, ok, btn,
       el("h2", { style: "margin-top:1.1rem", text: "Mes vidéos" }), mine);
   }
 
@@ -692,5 +727,6 @@
 
   load();
 </script>
+<script src="back.js"></script>
 </body>
 </html>

@@ -34,11 +34,16 @@
     #hint { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 1.2rem); left: 0; right: 0; z-index: 5; text-align: center; color: #fff; font-size: 1rem; line-height: 1.35; text-shadow: 0 1px 8px rgba(0,0,0,.9); pointer-events: none; transition: opacity .6s; }
     #mute { position: fixed; top: calc(env(safe-area-inset-top, 0px) + .9rem); right: .8rem; z-index: 6; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(0,0,0,.45); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
     #mute svg.i { width: 22px; height: 22px; }
+    #vfilter { position: fixed; top: calc(env(safe-area-inset-top, 0px) + .8rem); left: .8rem; right: 4rem; z-index: 6; display: flex; gap: .45rem; }
+    #vfilter button { border: 1.5px solid rgba(255,255,255,.55); border-radius: 999px; background: rgba(0,0,0,.4); color: #fff; font: inherit; font-size: .9rem; font-weight: 600; padding: .4rem .9rem; cursor: pointer; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+    #vfilter button[aria-pressed="true"] { background: #1a6bff; border-color: #1a6bff; }
+    #hint { top: calc(env(safe-area-inset-top, 0px) + 4.2rem); }
     .vempty { position: fixed; inset: 0; display: grid; place-items: center; color: #8ea3d0; text-align: center; padding: 2rem; background: radial-gradient(120% 80% at 50% 0%, #0c2152, #061330 60%); }
     #toast2 { position: fixed; left: 50%; bottom: 9rem; transform: translateX(-50%); background: #fff; color: #0f2a5c; padding: .6rem 1.1rem; border-radius: 999px; font-size: .92rem; z-index: 20; }
   </style>
 </head>
 <body>
+<div id="vfilter" role="group" aria-label="Filtrer les vidéos"></div>
 <div id="vs"></div>
 <p id="hint" class="hidden">← Swipe vers le haut →<br>pour voir la vidéo suivante</p>
 <button id="mute" class="hidden" type="button" aria-label="Son"></button>
@@ -46,7 +51,7 @@
 <script src="shop.js"></script>
 <script src="tabbar.js" data-active="videos"></script>
 <script>
-  const vids = []; let before = null, loading = false, done = false, muted = true, io = null, here = null;
+  const vids = []; let kind = null, gen = 0, before = null, loading = false, done = false, muted = true, io = null, here = null;
   const toast = (m) => { let t = $("toast2"); if (!t) { t = el("p", { id: "toast2", role: "status" }); document.body.append(t); } t.textContent = m; clearTimeout(toast.t); toast.t = setTimeout(() => t.remove(), 2400); };
   const lowData = () => { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); };
   const paintMute = () => { $("mute").replaceChildren(icon(muted ? "mute" : "volume")); $("mute").setAttribute("aria-pressed", String(!muted)); };
@@ -89,14 +94,25 @@
     return el("section", { class: "vs", "data-slide": v.id }, video, playBtn, side, info);
   }
 
+  // Filtres : Tout / Indépendants / Boutiques
+  const FILTERS = [[null, "Tout", "all"], ["mobile", "Indépendants", "mobile"], ["shop", "Boutiques", "shop"]];
+  function paintFilter() { $("vfilter").replaceChildren(...FILTERS.map(([k, label, id]) => el("button", { type: "button", id: "vf-" + id, "aria-pressed": String(k === kind), text: label, onclick: () => setKind(k) }))); }
+  function setKind(k) {
+    if (k === kind) return;
+    kind = k; gen++; loading = false; done = false; before = null; vids.length = 0;
+    document.querySelectorAll("#vs video").forEach((v) => { v.pause(); v.removeAttribute("src"); v.load(); });
+    $("vs").replaceChildren(); $("vs").scrollTop = 0; paintFilter(); load();
+  }
+
   async function load() {
     if (loading || done) return; loading = true;
-    const { data, error } = await sb.rpc("video_feed", { p_before: before, p_limit: 8 });
-    loading = false;
+    const my = gen;
+    const { data, error } = await sb.rpc("video_feed", { p_before: before, p_limit: 8, p_kind: kind });
+    loading = false; if (my !== gen) return;      // le filtre a changé pendant le chargement : réponse ignorée
     if (error) { if (!vids.length) $("vs").replaceChildren(el("div", { class: "vempty" }, fr(error))); return; }
     for (const v of data) { vids.push(v); const s = slide(v); $("vs").append(s); io.observe(s); }
     if (data.length) before = data[data.length - 1].created_at; if (data.length < 8) done = true;
-    if (!vids.length) { $("vs").replaceChildren(el("div", { class: "vempty", id: "vempty" }, "Aucune vidéo pour le moment. Les commerçants vérifiés publient ici de courtes vidéos.")); return; }
+    if (!vids.length) { $("vs").replaceChildren(el("div", { class: "vempty", id: "vempty" }, kind === "mobile" ? "Aucune vidéo d'indépendant pour le moment." : kind === "shop" ? "Aucune vidéo de boutique pour le moment." : "Aucune vidéo pour le moment. Les commerçants vérifiés publient ici de courtes vidéos.")); return; }
     if (!hintSeen) $("hint").classList.remove("hidden");
     $("mute").classList.remove("hidden");
   }
@@ -104,7 +120,7 @@
   (async function boot() {
     if (!sb || !(await currentSession())) { $("vs").replaceChildren(el("div", { class: "vempty" }, el("p", {}, "Connectez-vous pour voir les vidéos. ", el("a", { href: "/", text: "Se connecter" })))); return; }
     if (await gateProfile()) return;
-    paintMute(); here = await geoIfGranted();
+    paintFilter(); paintMute(); here = await geoIfGranted();
     io = new IntersectionObserver((entries) => entries.forEach((e) => {
       const video = e.target.querySelector("video"), btn = e.target.querySelector(".v-play");
       if (e.isIntersecting && e.intersectionRatio >= 0.7) {

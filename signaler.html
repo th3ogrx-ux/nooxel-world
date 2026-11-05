@@ -12,7 +12,7 @@
 </head>
 <body>
 <main>
-  <a class="back" href="/">← Retour à la carte</a>
+  <a data-back class="back" href="/">← Retour à la carte</a>
   <h1>Signaler un problème</h1>
   <p class="lead">Un bug, un souci avec l'application ? Dites-nous ce qui ne va pas. Pour signaler un commerce ou un avis, utilisez le bouton « Signaler » de sa page.</p>
   <div id="app"><p class="empty">Chargement…</p></div>
@@ -28,5 +28,6 @@
     app.replaceChildren(el("div", { class: "card" }, reportForm({ kind: "app", title: "Décrire le problème", page: (from || (() => { try { return new URL(document.referrer).pathname; } catch (e) { return ""; } })()).slice(0, 190) || null })));
   })();
 </script>
+<script src="back.js"></script>
 </body>
 </html>
