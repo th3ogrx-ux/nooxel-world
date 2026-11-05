@@ -6,57 +6,112 @@
   <title>Administration — Nooxel World</title>
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://smjbgjolteovcwkoxcar.supabase.co; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
   <link rel="icon" href="assets/favicon.png?v=2">
   <style>
-    :root { color-scheme: light; --blue: #1a6bff; --ink: #1f1f1f; --mute: #5f6368; --line: #e3e6ea; }
+    :root { color-scheme: dark; --bg: #050c1f; --panel: #0b1633; --panel2: #0f1d42; --line: rgba(120,160,255,.16); --ink: #e8efff; --mute: #8ea3d0; --blue: #2f7bff; --blue2: #5a9bff; --green: #34d399; --red: #ff6b6b; --amber: #fbbf24; }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f2f4f8; color: var(--ink); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
-    header { background: #040b1c; color: #fff; padding: .8rem 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
-    header b { letter-spacing: .12em; text-transform: uppercase; font-size: .85rem; }
-    header span { color: #9db4e8; font-size: .85rem; margin-left: auto; }
-    nav { display: flex; gap: .4rem; }
-    nav button { border: 0; background: rgba(255,255,255,.1); color: #fff; padding: .45rem .9rem; border-radius: 999px; font: inherit; cursor: pointer; }
-    nav button.on { background: var(--blue); }
-    main { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; }
-    .card { background: #fff; border-radius: 16px; padding: 1rem 1.1rem; margin: 0 0 .9rem; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+    body { margin: 0; background: radial-gradient(120% 60% at 20% 0%, #0c1f4d 0%, var(--bg) 55%) fixed; color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; }
+    a { color: var(--blue2); }
+    .app { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
+    aside { position: sticky; top: 0; height: 100vh; padding: 1.2rem .9rem; background: linear-gradient(180deg, #081230, #050c1f); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 1.1rem; }
+    .brand { display: flex; align-items: center; gap: .7rem; padding: .2rem .5rem; }
+    .brand i { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(145deg, #3b8bff, #0a3fc0); display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: .95rem; box-shadow: 0 6px 18px rgba(47,123,255,.4); }
+    .brand b { display: block; font-size: 1rem; letter-spacing: .02em; } .brand small { color: var(--mute); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; }
+    nav { display: flex; flex-direction: column; gap: .25rem; }
+    nav .sep { margin: .7rem .6rem .2rem; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: #5f77ab; }
+    nav button { display: flex; align-items: center; gap: .75rem; width: 100%; border: 0; background: none; color: #b6c6ea; padding: .62rem .7rem; border-radius: 12px; font: inherit; text-align: left; cursor: pointer; transition: background .15s, color .15s; }
+    nav button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    nav button .lbl { flex: 1; }
+    nav button:hover { background: rgba(120,160,255,.09); color: #fff; }
+    nav button.on { background: linear-gradient(90deg, rgba(47,123,255,.28), rgba(47,123,255,.08)); color: #fff; box-shadow: inset 2px 0 0 var(--blue); }
+    nav .cnt { min-width: 22px; padding: 0 .4rem; border-radius: 999px; background: var(--blue); color: #fff; font-size: .72rem; font-weight: 700; text-align: center; line-height: 20px; }
+    nav .cnt:empty, nav .cnt[data-n="0"] { display: none; }
+    .who { margin-top: auto; padding: .7rem .8rem; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--mute); font-size: .8rem; overflow-wrap: anywhere; }
+    .who b { display: block; color: var(--ink); font-size: .85rem; margin-bottom: .1rem; }
+    .content { min-width: 0; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.4rem 2rem .4rem; }
+    .topbar h1 { margin: 0; font-size: 1.55rem; letter-spacing: -.01em; } .topbar p { margin: .15rem 0 0; color: var(--mute); font-size: .9rem; }
+    main { max-width: 1180px; margin: 0 auto; padding: .8rem 2rem 4rem; }
+    .card { background: linear-gradient(180deg, rgba(20,38,84,.55), rgba(11,22,51,.85)); border: 1px solid var(--line); border-radius: 18px; padding: 1.1rem 1.2rem; margin: 0 0 1rem; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
     .top { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-    h2 { margin: 0; font-size: 1.1rem; }
+    h2 { margin: 0; font-size: 1.08rem; }
     .meta { color: var(--mute); font-size: .88rem; margin: .15rem 0; }
-    .pill { display: inline-block; padding: .1rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 700; background: #eceff3; color: var(--mute); }
-    .pill.warn { background: #fff0d1; color: #8a5a00; } .pill.ok { background: #d8f6e5; color: #0d6b3a; } .pill.bad { background: #fde1de; color: #b3261e; } .pill.blue { background: #dbe8ff; color: #0b3fa8; }
-    .box { background: #f6f8fc; border-radius: 12px; padding: .6rem .8rem; margin: .6rem 0; font-size: .92rem; }
-    .box.contest { background: #fff7e6; }
+    .pill { display: inline-block; padding: .12rem .65rem; border-radius: 999px; font-size: .76rem; font-weight: 700; background: rgba(255,255,255,.08); color: #b6c6ea; }
+    .pill.warn { background: rgba(251,191,36,.15); color: var(--amber); } .pill.ok { background: rgba(52,211,153,.15); color: var(--green); } .pill.bad { background: rgba(255,107,107,.16); color: var(--red); } .pill.blue { background: rgba(47,123,255,.2); color: var(--blue2); }
+    .box { background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 12px; padding: .65rem .85rem; margin: .65rem 0; font-size: .92rem; overflow-wrap: anywhere; }
+    .box.contest { background: rgba(251,191,36,.09); border-color: rgba(251,191,36,.3); }
     button { font: inherit; cursor: pointer; }
-    .btn { padding: .5rem 1rem; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font-weight: 600; }
-    .btn.ghost { background: #eaf1ff; color: #0b3fa8; } .btn.red { background: #d93025; } .btn.green { background: #188038; } .btn.light { background: #eceff3; color: var(--ink); }
+    .btn { padding: .5rem 1.1rem; border: 0; border-radius: 999px; background: linear-gradient(180deg, #3b8bff, #1f63e6); color: #fff; font-weight: 600; box-shadow: 0 4px 14px rgba(47,123,255,.3); }
+    .btn.ghost { background: rgba(47,123,255,.16); color: var(--blue2); box-shadow: none; } .btn.red { background: linear-gradient(180deg, #ef5350, #c62828); box-shadow: none; } .btn.green { background: linear-gradient(180deg, #2fbf71, #188a4f); box-shadow: none; } .btn.light { background: rgba(255,255,255,.09); color: var(--ink); box-shadow: none; }
     .btn:disabled { opacity: .5; cursor: default; }
-    .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
-    textarea, input[type=text], input[type=search] { font: inherit; padding: .55rem .7rem; border: 1px solid #c4c7c5; border-radius: 10px; width: 100%; }
-    .err { color: #b3261e; margin: .4rem 0 0; min-height: 1.2em; }
-    .empty { color: var(--mute); text-align: center; padding: 2rem 1rem; }
+    .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
+    textarea, input[type=text], input[type=search] { font: inherit; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 12px; width: 100%; background: rgba(5,12,31,.7); color: var(--ink); outline: none; }
+    textarea:focus, input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,123,255,.2); }
+    .err { color: var(--red); margin: .4rem 0 0; min-height: 1.2em; }
+    .empty { color: var(--mute); text-align: center; padding: 2.5rem 1rem; }
     .hidden { display: none !important; }
     .gate { max-width: 440px; margin: 2rem auto; text-align: center; }
     .gate ol { text-align: left; padding-left: 1.2rem; color: var(--mute); font-size: .92rem; }
-    .gate .qr { width: 210px; height: 210px; margin: .6rem auto; display: block; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
-    .gate .secret { font-family: ui-monospace, monospace; word-break: break-all; background: #f6f8fc; padding: .45rem .6rem; border-radius: 8px; font-size: .88rem; user-select: all; }
+    .gate .qr { width: 210px; height: 210px; margin: .6rem auto; display: block; background: #fff; border-radius: 12px; padding: 6px; }
+    .gate .secret { font-family: ui-monospace, monospace; word-break: break-all; background: rgba(255,255,255,.06); padding: .45rem .6rem; border-radius: 8px; font-size: .88rem; user-select: all; }
     .gate input[type=text] { text-align: center; font-size: 1.6rem; letter-spacing: .4em; padding: .6rem; margin-top: .6rem; }
-    .search { display: flex; gap: .5rem; margin-bottom: .8rem; }
-    .search input { flex: 1; }
+    .search { display: flex; gap: .5rem; margin-bottom: 1rem; } .search input { flex: 1; } .search select { border: 1px solid var(--line); border-radius: 12px; background: rgba(5,12,31,.7); color: var(--ink); padding: 0 .8rem; font: inherit; }
+    /* tableau de bord */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .kpi { position: relative; overflow: hidden; border-radius: 18px; padding: 1.1rem 1.2rem; border: 1px solid var(--line); background: linear-gradient(160deg, rgba(30,60,140,.5), rgba(10,20,48,.9)); box-shadow: 0 10px 30px rgba(0,0,0,.28); }
+    .kpi::after { content: ""; position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle, rgba(90,155,255,.28), transparent 70%); }
+    .kpi small { color: var(--mute); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+    .kpi b { display: block; font-size: 2.1rem; line-height: 1.15; margin-top: .25rem; letter-spacing: -.02em; }
+    .kpi span { color: var(--mute); font-size: .82rem; } .kpi span em { font-style: normal; color: var(--green); font-weight: 600; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1rem; }
+    .chart-head { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; margin-bottom: .5rem; }
+    .chart-head p { margin: .1rem 0 0; color: var(--mute); font-size: .82rem; }
+    .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+    .seg button { border: 0; background: none; color: #b6c6ea; padding: .28rem .85rem; border-radius: 999px; font-size: .82rem; font-weight: 600; }
+    .seg button.on { background: var(--blue); color: #fff; box-shadow: 0 2px 10px rgba(47,123,255,.4); }
+    .chart { position: relative; height: 230px; } .chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+    .chart .tip { position: absolute; pointer-events: none; min-width: 120px; padding: .45rem .65rem; border-radius: 10px; background: #0d2150; border: 1px solid rgba(120,160,255,.35); font-size: .8rem; box-shadow: 0 8px 20px rgba(0,0,0,.4); transform: translate(-50%, -110%); z-index: 3; }
+    .chart .tip b { display: block; margin-bottom: .1rem; } .chart .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: .35rem; }
+    .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .4rem; color: var(--mute); font-size: .8rem; } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .35rem; }
+    .rank { list-style: none; margin: 0; padding: 0; counter-reset: r; }
+    .rank li { display: flex; align-items: center; gap: .8rem; padding: .6rem 0; border-top: 1px solid var(--line); counter-increment: r; }
+    .rank li:first-child { border-top: 0; } .rank li::before { content: counter(r); width: 24px; text-align: center; color: #5f77ab; font-weight: 700; }
+    .rank li:nth-child(-n+3)::before { color: var(--amber); }
+    .rank img, .rank .ph { width: 46px; height: 46px; border-radius: 12px; object-fit: cover; background: #14285a; flex: none; display: grid; place-items: center; font-weight: 700; color: #cfe0ff; }
+    .rank .txt { flex: 1; min-width: 0; } .rank .txt b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rank .txt small { color: var(--mute); }
+    .rank .val { font-weight: 700; color: var(--blue2); white-space: nowrap; }
+    .note { color: var(--mute); font-size: .8rem; margin-top: .6rem; }
+    .row2 { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem 0; border-top: 1px solid var(--line); } .row2:first-child { border-top: 0; }
+    @media (max-width: 880px) {
+      .app { grid-template-columns: 1fr; } aside { position: sticky; z-index: 10; height: auto; flex-direction: row; align-items: center; padding: .6rem .7rem; border-right: 0; border-bottom: 1px solid var(--line); gap: .6rem; overflow-x: auto; }
+      .brand small, .who, nav .sep { display: none; } nav { flex-direction: row; gap: .2rem; } nav button { width: auto; white-space: nowrap; padding: .5rem .75rem; } nav button svg { display: none; }
+      .topbar { padding: 1rem 1rem .2rem; } main { padding: .6rem 1rem 4rem; } .grid2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-<header>
-  <b>Nooxel · Administration</b>
+<div class="app">
+<aside>
+  <div class="brand"><i>NW</i><div><b>Nooxel World</b><small>Administration</small></div></div>
   <nav>
-    <button id="tab-review" class="on">À examiner</button>
-    <button id="tab-history">Historique</button>
-    <button id="tab-merchants">Commerçants</button>
-    <button id="tab-reports">Signalements</button>
+    <button id="tab-dashboard" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg><span class="lbl">Tableau de bord</span></button>
+    <div class="sep">Modération</div>
+    <button id="tab-review"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg><span class="lbl">À examiner</span><b class="cnt" id="cnt-review"></b></button>
+    <button id="tab-reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/></svg><span class="lbl">Signalements</span><b class="cnt" id="cnt-reports"></b></button>
+    <button id="tab-reviews"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="lbl">Avis</span></button>
+    <div class="sep">Gestion</div>
+    <button id="tab-merchants"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5 12v8h14v-8"/></svg><span class="lbl">Commerçants</span></button>
+    <button id="tab-users"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg><span class="lbl">Utilisateurs</span></button>
+    <button id="tab-history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5l3 2"/></svg><span class="lbl">Historique</span></button>
   </nav>
-  <span id="who"></span>
-</header>
-<main id="main"><p class="empty">Chargement…</p></main>
+  <div class="who"><b>Connecté</b><span id="who"></span></div>
+</aside>
+<div class="content">
+  <div class="topbar"><div><h1 id="page-title">Tableau de bord</h1><p id="page-sub"></p></div></div>
+  <main id="main"><p class="empty">Chargement…</p></main>
+</div>
+</div>
 
 <script src="assets/vendor/supabase.js"></script>
 <script>
@@ -87,7 +142,7 @@
   };
   const fr = (e) => { const m = String(e?.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Erreur : " + m.slice(0, 120); };
 
-  let tab = "review", me = null;
+  let tab = "dashboard", me = null;
 
   // ---------- Double authentification (TOTP) : obligatoire pour toute action d'administrateur ----------
   // La règle est imposée par la base de données (is_admin() exige aal2) ; cet écran ne fait que demander le code.
@@ -143,14 +198,158 @@
     const who = await sb.rpc("am_i_admin");
     if (who.error || !who.data) { $("main").replaceChildren(el("p", { class: "empty", text: "Accès refusé : ce compte n'est pas administrateur." })); return; }
     // Double authentification (code à 6 chiffres) désactivée : voir supabase/admin-sans-2fa.sql. Pour la remettre : relancer admin-mfa.sql et rétablir « await gate() » ici.
-    show("review");
+    show("dashboard");
   }
 
+  const TITLES = { dashboard: ["Tableau de bord", "Vue d'ensemble de Nooxel World"], review: ["À examiner", "Demandes de vérification de commerces en attente"], history: ["Historique", "Toutes les demandes de vérification"],
+    merchants: ["Commerçants", "Recherche et révocation de badge"], reports: ["Signalements", "Commerces, avis, profils et problèmes signalés"], reviews: ["Avis", "Modération : masquer ou supprimer"], users: ["Utilisateurs", "Comptes inscrits"] };
   document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => show(b.id.replace("tab-", ""))));
   function show(t) {
     tab = t;
     document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.id === "tab-" + t));
+    $("page-title").textContent = TITLES[t][0]; $("page-sub").textContent = TITLES[t][1];
+    if (t === "dashboard") return dashboard(); if (t === "users") return users(); if (t === "reviews") return reviewsList();
     if (t === "merchants") return merchants(); if (t === "reports") return reports("open"); return requests(t === "review" ? "to_review" : "all");
+  }
+
+  // ---------- Tableau de bord ----------
+  const NS = "http://www.w3.org/2000/svg", svgEl = (t, a) => { const e = document.createElementNS(NS, t); for (const [k, v] of Object.entries(a || {})) e.setAttribute(k, v); return e; };
+  const nf = (n) => Number(n || 0).toLocaleString("fr-FR");
+  const imgUrl = (p) => p ? sb.storage.from("merchant-media").getPublicUrl(p).data.publicUrl : null;
+  const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+  const dShort = (iso) => { const [, m, d] = iso.split("-"); return `${+d} ${MONTHS[+m - 1]}`; };
+  let dash = null, gran = "day", charts = [];
+
+  // Découpe les 365 jours en périodes : 30 jours, 12 semaines ou 12 mois
+  function buckets(g) {
+    const days = dash.series, n = days.length, out = [];
+    if (g === "day") { for (let i = Math.max(0, n - 30); i < n; i++) out.push({ label: dShort(days[i].day), from: i, to: i }); }
+    else if (g === "week") { for (let b = 11; b >= 0; b--) { const to = n - 1 - b * 7, from = to - 6; if (from >= 0) out.push({ label: "sem. du " + dShort(days[from].day), from, to }); } }
+    else { const groups = []; days.forEach((d, i) => { const k = d.day.slice(0, 7); const last = groups[groups.length - 1]; if (last && last.k === k) last.to = i; else groups.push({ k, from: i, to: i }); });
+      for (const g2 of groups.slice(-12)) { const [y, m] = g2.k.split("-"); out.push({ label: MONTHS[+m - 1] + " " + y, from: g2.from, to: g2.to }); } }
+    return out;
+  }
+  const sum = (arr, f, t, key) => { let s = 0; for (let i = f; i <= t; i++) s += Number(arr[i][key] || 0); return s; };
+
+  function lineChart(box, labels, series, opts = {}) {
+    box.replaceChildren(); const W = Math.max(280, box.clientWidth || 560), H = 230, pad = { l: 38, r: 12, t: 12, b: 28 };
+    const max0 = Math.max(1, ...series.flatMap((s) => s.values)), step = Math.pow(10, Math.floor(Math.log10(max0))), top = Math.ceil(max0 / step * 1.0) * step || 1;
+    const niceTop = max0 <= 4 ? 4 : top, iw = W - pad.l - pad.r, ih = H - pad.t - pad.b, n = labels.length;
+    const X = (i) => pad.l + (n === 1 ? iw / 2 : iw * i / (n - 1)), Y = (v) => pad.t + ih - ih * v / niceTop;
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": opts.label || "Graphique" });
+    const uid = "g" + Math.random().toString(36).slice(2, 7), defs = svgEl("defs");
+    series.forEach((s, k) => { const g = svgEl("linearGradient", { id: uid + k, x1: 0, y1: 0, x2: 0, y2: 1 }); g.append(svgEl("stop", { offset: "0%", "stop-color": s.color, "stop-opacity": series.length === 1 ? .35 : .12 }), svgEl("stop", { offset: "100%", "stop-color": s.color, "stop-opacity": 0 })); defs.append(g); });
+    svg.append(defs);
+    for (let k = 0; k <= 4; k++) { const v = niceTop * k / 4, y = Y(v);
+      svg.append(svgEl("line", { x1: pad.l, x2: W - pad.r, y1: y, y2: y, stroke: "rgba(140,170,255,.13)", "stroke-dasharray": k ? "3 4" : "" }));
+      const t = svgEl("text", { x: pad.l - 7, y: y + 4, "text-anchor": "end", fill: "#7388b8", "font-size": 10.5 }); t.textContent = nf(Math.round(v * 10) / 10); svg.append(t); }
+    const every = Math.max(1, Math.ceil(n / 6)); labels.forEach((l, i) => { if ((i % every === 0 && (n - 1 - i >= every * 0.6 || i === n - 1)) || i === n - 1) { const t = svgEl("text", { x: X(i), y: H - 8, "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle", fill: "#7388b8", "font-size": 10.5 }); t.textContent = l; svg.append(t); } });
+    series.forEach((s, k) => {
+      const pts = s.values.map((v, i) => [X(i), Y(v)]), d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+      svg.append(svgEl("path", { d: d + ` L${pts[n - 1][0].toFixed(1)} ${Y(0)} L${pts[0][0].toFixed(1)} ${Y(0)} Z`, fill: `url(#${uid}${k})` }));
+      svg.append(svgEl("path", { d, fill: "none", stroke: s.color, "stroke-width": 2.4, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    });
+    const vline = svgEl("line", { y1: pad.t, y2: H - pad.b, stroke: "rgba(160,190,255,.45)", visibility: "hidden" }), dots = series.map((s) => svgEl("circle", { r: 4.5, fill: s.color, stroke: "#050c1f", "stroke-width": 2, visibility: "hidden" }));
+    svg.append(vline, ...dots);
+    const tip = el("div", { class: "tip hidden" }); box.append(svg, tip);
+    const over = svgEl("rect", { x: pad.l, y: 0, width: iw, height: H, fill: "transparent" });
+    over.addEventListener("pointermove", (e) => {
+      const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (W / r.width), i = Math.max(0, Math.min(n - 1, Math.round((x - pad.l) / iw * (n - 1))));
+      vline.setAttribute("x1", X(i)); vline.setAttribute("x2", X(i)); vline.setAttribute("visibility", "visible");
+      dots.forEach((c, k) => { c.setAttribute("cx", X(i)); c.setAttribute("cy", Y(series[k].values[i])); c.setAttribute("visibility", "visible"); });
+      tip.replaceChildren(el("b", { text: labels[i] }), ...series.map((s) => el("div", {}, el("i", { style: "background:" + s.color }), `${s.name} : ${nf(s.values[i])}`)));
+      tip.classList.remove("hidden"); tip.style.left = Math.max(70, Math.min(W - 70, X(i))) + "px"; tip.style.top = Math.min(...series.map((s) => Y(s.values[i]))) + "px";
+    });
+    over.addEventListener("pointerleave", () => { vline.setAttribute("visibility", "hidden"); dots.forEach((c) => c.setAttribute("visibility", "hidden")); tip.classList.add("hidden"); });
+    svg.append(over);
+  }
+
+  function paintCharts() {
+    const bs = buckets(gran), labels = bs.map((b) => b.label), S = dash.series;
+    let cp = dash.base.personal, cm = dash.base.merchants; const cumP = [], cumM = []; let bi = 0;
+    // cumul au dernier jour de chaque période
+    const upTo = (i) => { let p = dash.base.personal, m = dash.base.merchants; for (let k = 0; k <= i; k++) { p += S[k].personal; m += S[k].merchants; } return [p, m]; };
+    bs.forEach((b) => { const [p, m] = upTo(b.to); cumP.push(p); cumM.push(m); });
+    const signups = bs.map((b) => sum(S, b.from, b.to, "personal") + sum(S, b.from, b.to, "merchants"));
+    const act = bs.map((b) => { const v = sum(S, b.from, b.to, "active"); return gran === "day" ? v : Math.round(v / (b.to - b.from + 1) * 10) / 10; });
+    lineChart($("ch-signups"), labels, [{ name: "Inscriptions", color: "#4f9bff", values: signups }], { label: "Inscriptions" });
+    lineChart($("ch-active"), labels, [{ name: gran === "day" ? "Personnes actives" : "Actives par jour (moyenne)", color: "#34d399", values: act }], { label: "Connexions" });
+    lineChart($("ch-growth"), labels, [{ name: "Profils personnels", color: "#a78bfa", values: cumP }, { name: "Commerces", color: "#fbbf24", values: cumM }], { label: "Croissance" });
+  }
+
+  function rankList(items, render, emptyText) {
+    return el("ul", { class: "rank" }, ...(items.length ? items.map(render) : [el("li", {}, el("span", { class: "meta", text: emptyText }))]));
+  }
+  const thumb = (path, name) => path ? el("img", { src: imgUrl(path), alt: "", loading: "lazy" }) : el("span", { class: "ph", text: (name || "?").charAt(0).toUpperCase() });
+  const stars = (r) => r == null ? "—" : `${String(r).replace(".", ",")} ★`;
+
+  async function dashboard() {
+    const main = $("main"); main.replaceChildren(el("p", { class: "empty", text: "Chargement des statistiques…" }));
+    const { data, error } = await sb.rpc("admin_dashboard");
+    if (error) { main.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
+    dash = data; const t = data.totals; setBadges(t);
+    const kpi = (id, label, value, sub) => el("div", { class: "kpi", id }, el("small", { text: label }), el("b", { text: nf(value) }), sub ? el("span", {}, sub) : null);
+    const kpis = el("div", { class: "kpis" },
+      kpi("kpi-users", "Utilisateurs", t.users, el("span", {}, el("em", { text: "+" + nf(t.new_7d) }), " sur 7 jours")),
+      kpi("kpi-merchants", "Commerces & entreprises", t.merchants, `${nf(t.verified_merchants)} vérifié(s)`),
+      kpi("kpi-personal", "Profils personnels", t.personal, "comptes sans commerce"),
+      kpi("kpi-logins", "Connexions aujourd'hui", t.logins_today, `${nf(t.active_today)} actif(s) aujourd'hui · ${nf(t.active_7d)} sur 7 jours`));
+    const seg = el("div", { class: "seg", role: "group", "aria-label": "Période" }, ...[["day", "Jour"], ["week", "Semaine"], ["month", "Mois"]].map(([k, l]) =>
+      el("button", { type: "button", "data-gran": k, class: k === gran ? "on" : "", text: l, onclick: () => { gran = k; seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.gran === k)); paintCharts(); } })));
+    const chartCard = (id, title, sub, extra) => el("div", { class: "card" }, el("div", { class: "chart-head" }, el("div", {}, el("h2", { text: title }), el("p", { text: sub }))), el("div", { class: "chart", id }), extra || null);
+    const legend = el("div", { class: "legend" }, el("span", {}, el("i", { style: "background:#a78bfa" }), "Profils personnels"), el("span", {}, el("i", { style: "background:#fbbf24" }), "Commerces"));
+    const since = t.activity_since ? `Historique des connexions depuis le ${new Date(t.activity_since + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} (date d'installation du suivi).` : "Le suivi des connexions vient de démarrer : les premières données apparaîtront dès aujourd'hui.";
+    const vids = el("div", { class: "card", id: "top-videos" }, el("h2", { text: "Vidéos les plus populaires" }), el("p", { class: "meta", text: "Classées par nombre de ♥. Le nombre de vues n'est pas encore mesuré par l'application." }),
+      rankList(data.top_videos.filter((v) => v.like_count > 0 || true), (v) => el("li", {}, thumb(v.poster_path, v.business_name), el("div", { class: "txt" }, el("b", { text: v.caption || "Vidéo sans légende" }), el("small", { text: v.business_name })), el("span", { class: "val", text: "♥ " + nf(v.like_count) })), "Aucune vidéo publiée pour le moment."));
+    const fol = el("div", { class: "card", id: "top-followed" }, el("h2", { text: "Commerces les plus suivis" }),
+      rankList(data.top_followed, (m) => el("li", {}, thumb(m.logo_path, m.business_name), el("div", { class: "txt" }, el("b", { text: m.business_name }), el("small", { text: m.review_count ? `${stars(m.rating_avg)} · ${nf(m.review_count)} avis` : "Aucun avis" })), el("span", { class: "val", text: nf(m.follower_count) + " abonnés" })), "Aucun commerce vérifié pour le moment."));
+    const rated = el("div", { class: "card", id: "top-rated" }, el("h2", { text: "Commerces les mieux notés" }), el("p", { class: "meta", text: "Au moins 3 avis." }),
+      rankList(data.top_rated, (m) => el("li", {}, thumb(m.logo_path, m.business_name), el("div", { class: "txt" }, el("b", { text: m.business_name }), el("small", { text: `${nf(m.review_count)} avis · ${nf(m.follower_count)} abonnés` })), el("span", { class: "val", text: stars(m.rating_avg) })), "Pas encore assez d'avis."));
+    main.replaceChildren(kpis,
+      el("div", { class: "chart-head", style: "margin:.2rem 0 .7rem" }, el("h2", { text: "Évolution" }), seg),
+      el("div", { class: "grid2" }, chartCard("ch-signups", "Inscriptions", "Nouveaux comptes (profils personnels + commerces)"), chartCard("ch-active", "Connexions quotidiennes", "Personnes actives" + (gran === "day" ? " par jour" : " : moyenne par jour"), el("p", { class: "note", text: since }))),
+      chartCard("ch-growth", "Croissance : commerces et profils personnels", "Nombre total de comptes au fil du temps", legend),
+      el("div", { class: "chart-head", style: "margin:1.2rem 0 .7rem" }, el("h2", { text: "Contenu populaire" })),
+      vids, el("div", { class: "grid2" }, fol, rated));
+    paintCharts();
+  }
+  window.addEventListener("resize", () => { if (dash && $("ch-signups")) paintCharts(); });
+  function setBadges(t) { for (const [id, n] of [["review", t.pending_requests], ["reports", t.open_reports]]) { const c = $("cnt-" + id); if (c) { c.textContent = n ? String(n) : ""; c.dataset.n = String(n || 0); } } }
+
+  // ---------- Utilisateurs ----------
+  async function users(query = "") {
+    const main = $("main"), input = el("input", { type: "search", id: "u-query", placeholder: "Email ou pseudo", value: query }), list = el("div", { id: "u-list" }, el("p", { class: "empty", text: "Chargement…" }));
+    main.replaceChildren(el("form", { class: "search", onsubmit: (e) => { e.preventDefault(); users(input.value); } }, input, el("button", { class: "btn", type: "submit", text: "Chercher" })), list);
+    const { data, error } = await sb.rpc("admin_list_users", { p_query: query || null });
+    if (error) { list.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
+    if (!data.length) { list.replaceChildren(el("p", { class: "empty", text: "Aucun utilisateur." })); return; }
+    list.replaceChildren(el("div", { class: "card" }, ...data.map((u) => el("div", { class: "row2", "data-user": u.id },
+      el("div", {}, el("b", { text: u.pseudo || "(pas de pseudo)" }), el("div", { class: "meta", text: `${u.email} · inscrit le ${fmt(u.created_at)}${u.last_sign_in_at ? " · dernière connexion " + fmt(u.last_sign_in_at) : ""}` })),
+      el("div", {}, u.is_merchant ? el("span", { class: "pill blue", text: "Commerce" }) : el("span", { class: "pill", text: "Personnel" }), " ", u.is_private ? el("span", { class: "pill", text: "Privé" }) : null, " ", el("span", { class: "meta", text: u.reviews + " avis" }))))));
+  }
+
+  // ---------- Avis (modération) ----------
+  async function reviewsList(query = "", status = "all") {
+    const main = $("main"), input = el("input", { type: "search", id: "rv-query", placeholder: "Texte, commerce ou pseudo", value: query });
+    const sel = el("select", { id: "rv-status", "aria-label": "Statut" }, ...[["all", "Tous"], ["published", "En ligne"], ["hidden", "Masqués"]].map(([v, l]) => el("option", { value: v, text: l })));
+    sel.value = status; const list = el("div", { id: "rv-list" }, el("p", { class: "empty", text: "Chargement…" }));
+    main.replaceChildren(el("form", { class: "search", onsubmit: (e) => { e.preventDefault(); reviewsList(input.value, sel.value); } }, input, sel, el("button", { class: "btn", type: "submit", text: "Chercher" })), list);
+    const { data, error } = await sb.rpc("admin_list_reviews", { p_query: query || null, p_status: status });
+    if (error) { list.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
+    if (!data.length) { list.replaceChildren(el("p", { class: "empty", text: "Aucun avis." })); return; }
+    list.replaceChildren(...data.map((r) => {
+      const err = el("p", { class: "err" }), hidden = r.status === "hidden", reload = () => reviewsList(input.value, sel.value);
+      return el("div", { class: "card", "data-review": r.id },
+        el("div", { class: "top" }, el("div", {}, el("h2", { text: r.business_name }), el("p", { class: "meta", text: `${r.pseudo || "?"} · ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)} · ${fmt(r.created_at)}${r.reports ? " · " + r.reports + " signalement(s)" : ""}` })),
+          hidden ? el("span", { class: "pill bad", text: "Masqué" }) : el("span", { class: "pill ok", text: "En ligne" })),
+        el("div", { class: "box", text: r.body }),
+        el("div", { class: "actions" },
+          hidden ? el("button", { class: "btn light", type: "button", "data-act": "restore", text: "Remettre en ligne", onclick: async () => { const x = await sb.rpc("admin_set_review_status", { p_review: r.id, p_status: "published" }); if (x.error) { err.textContent = fr(x.error); return; } reload(); } })
+            : el("button", { class: "btn light", type: "button", "data-act": "hide", text: "Masquer", onclick: async () => { const why = prompt("Raison du masquage (obligatoire) :"); if (!why) return; const x = await sb.rpc("admin_set_review_status", { p_review: r.id, p_status: "hidden", p_note: why }); if (x.error) { err.textContent = fr(x.error); return; } reload(); } }),
+          el("button", { class: "btn red", type: "button", "data-act": "delete-review", text: "Supprimer (définitif)", onclick: async () => {
+            const why = prompt("Raison de la suppression (obligatoire, gardée dans l'historique) :"); if (!why) return; if (!confirm("Supprimer DÉFINITIVEMENT cet avis ?")) return;
+            const x = await sb.rpc("admin_delete_review", { p_review: r.id, p_note: why }); if (x.error) { err.textContent = fr(x.error); return; } reload(); } })), err);
+    }));
   }
 
   // ---------- Demandes ----------
@@ -236,7 +435,6 @@
     const bar = el("div", { class: "actions", style: "margin:0 0 .8rem" },
       el("button", { class: "btn " + (filter === "open" ? "" : "light"), id: "rp-open", type: "button", text: "À traiter", onclick: () => reports("open") }),
       el("button", { class: "btn " + (filter === "all" ? "" : "light"), id: "rp-all", type: "button", text: "Historique", onclick: () => reports("all") }));
-    $("tab-reports").textContent = "Signalements";
     main.replaceChildren(bar, ...(data.length ? data.map(reportCard) : [el("p", { class: "empty", text: filter === "open" ? "Aucun signalement à traiter. 🎉" : "Aucun signalement." })]));
   }
   // Dans l'historique : supprimer définitivement un avis (même masqué)
