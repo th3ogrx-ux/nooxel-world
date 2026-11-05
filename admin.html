@@ -56,7 +56,7 @@
     .gate .qr { width: 210px; height: 210px; margin: .6rem auto; display: block; background: #fff; border-radius: 12px; padding: 6px; }
     .gate .secret { font-family: ui-monospace, monospace; word-break: break-all; background: rgba(255,255,255,.06); padding: .45rem .6rem; border-radius: 8px; font-size: .88rem; user-select: all; }
     .gate input[type=text] { text-align: center; font-size: 1.6rem; letter-spacing: .4em; padding: .6rem; margin-top: .6rem; }
-    .search { display: flex; gap: .5rem; margin-bottom: 1rem; } .search input { flex: 1; } .search select { border: 1px solid var(--line); border-radius: 12px; background: rgba(5,12,31,.7); color: var(--ink); padding: 0 .8rem; font: inherit; }
+    .search { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; } .search input { flex: 1; min-width: 160px; } .search select { border: 1px solid var(--line); border-radius: 12px; background: rgba(5,12,31,.7); color: var(--ink); padding: 0 .8rem; font: inherit; }
     /* tableau de bord */
     .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
     .kpi { position: relative; overflow: hidden; border-radius: 18px; padding: 1.1rem 1.2rem; border: 1px solid var(--line); background: linear-gradient(160deg, rgba(30,60,140,.5), rgba(10,20,48,.9)); box-shadow: 0 10px 30px rgba(0,0,0,.28); }
@@ -81,6 +81,7 @@
     .rank img, .rank .ph { width: 46px; height: 46px; border-radius: 12px; object-fit: cover; background: #14285a; flex: none; display: grid; place-items: center; font-weight: 700; color: #cfe0ff; }
     .rank .txt { flex: 1; min-width: 0; } .rank .txt b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rank .txt small { color: var(--mute); }
     .rank .val { font-weight: 700; color: var(--blue2); white-space: nowrap; }
+    .prog { height: 7px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; margin: .5rem 0 .2rem; } .prog i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2f7bff, #5a9bff); }
     .note { color: var(--mute); font-size: .8rem; margin-top: .6rem; }
     .row2 { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem 0; border-top: 1px solid var(--line); } .row2:first-child { border-top: 0; }
     @media (max-width: 880px) {
@@ -133,7 +134,7 @@
   }
   const fmt = (d) => d ? new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   const STATUS = { pending: ["En attente", "warn"], contested: ["Contestée", "warn"], approved: ["Approuvée", "ok"], rejected: ["Refusée", "bad"], rejected_final: ["Refus définitif", "bad"], cancelled: ["Annulée", ""] };
-  const LEVEL = { none: ["Non vérifié", ""], pending: ["En attente", "warn"], verified: ["Professionnel vérifié", "ok"] };
+  const LEVEL = { none: ["Non vérifié", ""], pending: ["En attente", "warn"], verified: ["Vérifié · visible", "ok"] };
   const ERR = {
     forbidden: "Accès refusé : ce compte n'est pas administrateur.", not_pending: "Cette demande a déjà été traitée.", not_contested: "Cette demande n'est pas en contestation.",
     reason_required: "Indiquez un motif (5 caractères minimum).", cannot_review_own_request: "Vous ne pouvez pas traiter votre propre demande.",
@@ -202,7 +203,7 @@
   }
 
   const TITLES = { dashboard: ["Tableau de bord", "Vue d'ensemble de Nooxel World"], review: ["À examiner", "Demandes de vérification de commerces en attente"], history: ["Historique", "Toutes les demandes de vérification"],
-    merchants: ["Commerçants", "Recherche et révocation de badge"], reports: ["Signalements", "Commerces, avis, profils et problèmes signalés"], reviews: ["Avis", "Modération : masquer ou supprimer"], users: ["Utilisateurs", "Comptes inscrits"] };
+    merchants: ["Commerçants", "Vérification, visibilité et badge de chaque compte"], reports: ["Signalements", "Commerces, avis, profils et problèmes signalés"], reviews: ["Avis", "Modération : masquer ou supprimer"], users: ["Utilisateurs", "Comptes inscrits"] };
   document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => show(b.id.replace("tab-", ""))));
   function show(t) {
     tab = t;
@@ -400,26 +401,35 @@
   }
 
   // ---------- Commerçants (recherche + révocation) ----------
-  async function merchants(query = "") {
+  async function merchants(query = "", filter = "all") {
     const main = $("main");
     const input = el("input", { type: "search", id: "m-query", placeholder: "Nom, email ou SIRET", value: query });
+    const sel = el("select", { id: "m-filter", "aria-label": "Filtre" }, ...[["all", "Tous"], ["none", "Non vérifiés (invisibles)"], ["pending", "En attente"], ["verified", "Vérifiés (visibles)"], ["badge", "Badge atteint"], ["near", "Vérifiés, badge pas atteint"]].map(([v, l]) => el("option", { value: v, text: l })));
+    sel.value = filter;
     const list = el("div", { id: "m-list" }, el("p", { class: "empty", text: "Chargement…" }));
-    main.replaceChildren(el("form", { class: "search", onsubmit: (e) => { e.preventDefault(); merchants(input.value); } }, input, el("button", { class: "btn", type: "submit", text: "Chercher" })), list);
-    const { data, error } = await sb.rpc("admin_list_merchants", { p_query: query || null });
+    main.replaceChildren(el("form", { class: "search", onsubmit: (e) => { e.preventDefault(); merchants(input.value, sel.value); } }, input, sel, el("button", { class: "btn", type: "submit", text: "Chercher" })), list);
+    const { data: all, error } = await sb.rpc("admin_list_merchants", { p_query: query || null });
     if (error) { list.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
+    const data = all.filter((m) => filter === "all" || (filter === "badge" ? m.badge_reached : filter === "near" ? m.verification === "verified" && !m.badge_reached : m.verification === filter));
     if (!data.length) { list.replaceChildren(el("p", { class: "empty", text: "Aucun commerçant." })); return; }
     list.replaceChildren(...data.map((m) => {
       const lv = LEVEL[m.verification] || [m.verification, ""], err = el("p", { class: "err" });
       const canRevoke = m.verification === "verified";
+      const pct = Math.min(100, Math.round(m.follower_count / m.badge_threshold * 100));
       const reason = el("input", { type: "text", class: "hidden", placeholder: "Motif de la révocation (obligatoire)", "data-reason": true });
       const go = el("button", { class: "btn red hidden", type: "button", "data-act": "revoke-confirm", text: "Confirmer la révocation", onclick: async () => {
         err.textContent = ""; if (reason.value.trim().length < 5) { err.textContent = ERR.reason_required; return; }
-        if (!confirm(`Retirer le badge de « ${m.business_name} » ? Son SIRET sera libéré.`)) return;
-        const { error } = await sb.rpc("admin_revoke", { p_merchant_id: m.id, p_reason: reason.value }); if (error) { err.textContent = fr(error); return; } merchants(input.value);
+        if (!confirm(`Retirer la vérification de « ${m.business_name} » ? Son compte redeviendra invisible et son SIRET sera libéré.`)) return;
+        const { error } = await sb.rpc("admin_revoke", { p_merchant_id: m.id, p_reason: reason.value }); if (error) { err.textContent = fr(error); return; } merchants(input.value, sel.value);
       } });
       return el("div", { class: "card", "data-merchant": m.id },
-        el("div", { class: "top" }, el("div", {}, el("h2", { text: m.business_name }), el("p", { class: "meta", text: `${m.owner_email}${m.siret ? " · SIRET " + m.siret : ""}` })), el("span", { class: "pill " + lv[1], text: lv[0] })),
-        canRevoke ? el("div", { class: "actions" }, el("button", { class: "btn light", type: "button", "data-act": "revoke", text: "Révoquer le badge", onclick: () => { reason.classList.remove("hidden"); go.classList.remove("hidden"); reason.focus(); } })) : null,
+        el("div", { class: "top" }, el("div", {}, el("h2", { text: m.business_name }), el("p", { class: "meta", text: `${m.kind === "mobile" ? "Indépendant" : "Commerce"} · ${m.owner_email}${m.siret ? " · SIRET " + m.siret : ""}` })),
+          el("div", { class: "pills" }, el("span", { class: "pill " + lv[1], "data-status": m.verification, text: lv[0] }), " ",
+            m.badge_reached ? el("span", { class: "pill blue", "data-badge": "yes", text: "✔ Badge atteint" }) : el("span", { class: "pill", "data-badge": "no", text: "Badge : non" }))),
+        el("p", { class: "meta", text: m.verification === "verified" ? "Visible partout et peut publier." : m.verification === "pending" ? "Invisible, ne peut rien publier : demande en cours d'examen." : "Invisible, ne peut rien publier : pas vérifié." }),
+        el("div", { class: "prog", "aria-label": "Progression vers le badge" }, el("i", { style: `width:${pct}%` })),
+        el("p", { class: "meta", text: `${m.follower_count.toLocaleString("fr-FR")} / ${m.badge_threshold.toLocaleString("fr-FR")} abonnés` + (m.badge_reached && m.verification !== "verified" ? " · seuil atteint mais NON vérifié : le compte reste invisible" : "") }),
+        canRevoke ? el("div", { class: "actions" }, el("button", { class: "btn light", type: "button", "data-act": "revoke", text: "Retirer la vérification", onclick: () => { reason.classList.remove("hidden"); go.classList.remove("hidden"); reason.focus(); } })) : null,
         reason, go, err);
     }));
   }

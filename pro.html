@@ -174,9 +174,10 @@
       app.append(el("div", { class: "banner b-pending", id: "status" }, el("b", { text: "En attente de validation" }),
         req?.status === "contested" ? "Votre contestation est en cours d'examen." : `Demande envoyée le ${fmtDate(req?.created_at)}. Nous examinons votre dossier à la main.`));
     } else if (v === "verified") {
-      app.append(el("div", { class: "banner b-ok", id: "status" }, el("b", { text: "Professionnel vérifié" }), "Votre profil a été validé par notre équipe. Il est visible en priorité et peut recevoir des avis."));
+      app.append(el("div", { class: "banner b-ok", id: "status" }, el("b", { text: "Commerce vérifié" }), "Votre profil est validé : il est visible partout dans l'application (carte, recherche, fils) et vous pouvez publier et recevoir des avis. Le badge vérifié s'ajoute à 1 000 abonnés.", el("div", { class: "hint", id: "badge-progress", text: "Badge vérifié : chargement…" })));
+      sb.from("merchant_profiles").select("follower_count").eq("id", state.merchant_id).single().then(({ data }) => { const n = (data && data.follower_count) || 0, p = $("badge-progress"); if (p) p.textContent = n >= 1000 ? `Badge vérifié obtenu (${n.toLocaleString("fr-FR")} abonnés).` : `Badge vérifié : ${n.toLocaleString("fr-FR")} / 1 000 abonnés.`; });
     } else {
-      app.append(el("div", { class: "banner b-none", id: "status" }, el("b", { text: "Non vérifié" }), "Votre profil existe mais avec une visibilité réduite, et il ne peut pas recevoir d'avis."));
+      app.append(el("div", { class: "banner b-none", id: "status" }, el("b", { text: "Non vérifié" }), "Tant que votre commerce n'est pas vérifié, votre profil reste invisible du public (carte, recherche, fils) et vous ne pouvez rien publier. Lancez la vérification ci-dessous."));
     }
     if (req && v !== "pending" && req.status === "rejected") app.append(rejectedBox(req));
     if (req && req.status === "rejected_final") app.append(el("div", { class: "banner b-bad" }, el("b", { text: "Refus définitif" }), "Après réexamen, votre demande n'a pas été acceptée. Motif : ", req.decision_reason || "—", ". Vous pouvez déposer une nouvelle demande avec de nouveaux éléments."));
@@ -220,7 +221,7 @@
     const err = el("p", { class: "err" }), ok = el("p", { class: "okmsg" });
     const name = el("input", { type: "text", id: "e-name", maxlength: 120, value: state.business_name });
     const desc = el("textarea", { id: "e-desc", maxlength: 1000 }); desc.value = "";
-    const badge = { verified: ["ok", "Professionnel vérifié"], pending: ["wait", "En attente"] }[state.verification] || ["none", "Non vérifié"];
+    const badge = { verified: ["ok", "Vérifié"], pending: ["wait", "En attente"] }[state.verification] || ["none", "Non vérifié"];
     const form = el("form", { class: "hidden", id: "edit-form", onsubmit: async (e) => {
       e.preventDefault(); err.textContent = ""; ok.textContent = "";
       const { error } = await sb.from("merchant_profiles").update({ business_name: name.value.trim(), description: desc.value.trim() || null }).eq("id", state.merchant_id);

@@ -78,7 +78,7 @@
     });
     const card_ = el("article", { class: "fp", "data-post": p.id },
       el("div", { class: "fp-head" }, logoBadge(p.logo_path, p.business_name, 58),
-        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, verifiedMark()), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"))), more),
+        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"))), more),
       p.image_path ? el("img", { class: "fp-img", src: imgUrl(p.image_path), alt: "Photo publiée par " + p.business_name, loading: "lazy", decoding: "async" }) : null,
       p.body ? el("p", { class: "fp-cap" + (p.image_path ? "" : " only"), text: p.body }) : null,
       el("div", { class: "fp-actions" }, heart, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));

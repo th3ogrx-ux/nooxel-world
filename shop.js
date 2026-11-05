@@ -100,7 +100,7 @@ function icon(name, size) {
 }
 function verifiedMark() {
   const t = document.createElement("template");
-  t.innerHTML = '<svg class="vcheck" viewBox="0 0 24 24" role="img" aria-label="Professionnel vérifié"><title>Professionnel vérifié</title><circle cx="12" cy="12" r="11" fill="#1a6bff"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  t.innerHTML = '<svg class="vcheck" viewBox="0 0 24 24" role="img" aria-label="Compte certifié (1 000 abonnés)"><title>Compte certifié (1 000 abonnés)</title><circle cx="12" cy="12" r="11" fill="#1a6bff"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   return t.content.firstChild;
 }
 // 2400 → « 2,4 k » ; 142 → « 142 »
