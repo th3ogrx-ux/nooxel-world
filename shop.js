@@ -149,7 +149,13 @@ function postCard(p, withShop) {
 }
 const ERR = { not_found: "Cette page n'existe pas ou n'est plus disponible.", not_authenticated: "Connectez-vous pour continuer.", cannot_follow_self: "Vous ne pouvez pas suivre votre propre page.", too_many_likes: "Vous avez atteint la limite de ♥ pour aujourd'hui." };
 const fr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
-async function currentSession() { if (!sb) return null; const { data } = await sb.auth.getSession(); return data && data.session; }
+
+// Compte les personnes actives par jour (un compte, un jour : rien d'autre n'est enregistré). Un seul appel par jour et par appareil.
+function logActivity() {
+  try { if (!sb) return; const d = new Date().toLocaleDateString("sv"); if (localStorage.getItem("nooxel_act") === d) return;
+    sb.rpc("log_activity").then((r) => { if (!r.error) try { localStorage.setItem("nooxel_act", d); } catch (e) {} }, () => {}); } catch (e) {}
+}
+async function currentSession() { if (!sb) return null; const { data } = await sb.auth.getSession(); if (data && data.session) logActivity(); return data && data.session; }
 
 // ---------- Signalement (page de commerce, avis, problème de l'application)
 const REPORT_REASONS = {

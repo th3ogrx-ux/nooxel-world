@@ -642,6 +642,7 @@
     async function render() {
       const session = await getSession();
       if (session && await needsMfa()) { showMfa(); return; }
+      if (session) { try { const d = new Date().toLocaleDateString("sv"); if (localStorage.getItem("nooxel_act") !== d && sb) sb.rpc("log_activity").then((r) => { if (!r.error) try { localStorage.setItem("nooxel_act", d); } catch (e) {} }, () => {}); } catch (e) {} }
       $("welcome").classList.toggle("hidden", !!session);
       $("layer").classList.toggle("hidden", !!session || !wantsLogin);
       $("home").classList.toggle("hidden", !session);
