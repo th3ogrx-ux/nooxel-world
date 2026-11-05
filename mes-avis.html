@@ -27,7 +27,7 @@
 </head>
 <body>
 <div class="shell"><main class="acc">
-  <header class="hd"><a href="parametres.html" id="back" aria-label="Retour"></a><h1>Mes avis laissés</h1><span></span></header>
+  <header class="hd"><a data-back href="parametres.html" id="back" aria-label="Retour"></a><h1>Mes avis laissés</h1><span></span></header>
   <div id="app"></div>
   <button class="big hidden" id="more" type="button" style="background:rgba(255,255,255,.08)">Voir plus</button>
 </main></div>
@@ -85,5 +85,6 @@
     if (await gateProfile()) return; load(true);
   })();
 </script>
+<script src="back.js"></script>
 </body>
 </html>

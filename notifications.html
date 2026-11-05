@@ -45,7 +45,7 @@
 <body>
 <div class="shell"><main>
   <header>
-    <a id="back" href="/" aria-label="Retour à la carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+    <a data-back id="back" href="/" aria-label="Retour à la carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
     <h1>Notifications</h1>
     <button type="button" id="read-all">Tout marquer comme lu</button>
   </header>
@@ -123,5 +123,6 @@
     load(true);
   })();
 </script>
+<script src="back.js"></script>
 </body>
 </html>

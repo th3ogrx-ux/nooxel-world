@@ -103,9 +103,10 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 .fav .ph { height: 84px; background: #14285a; } .fav .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fav .fb { padding: .55rem .7rem .7rem; } .fav b { display: block; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fav small { display: block; color: var(--mute); } .fav .rt { margin-top: .3rem; font-weight: 700; font-size: .92rem; } .fav .rt .gold { color: #f5b301; }
-.silhouette { display: inline-flex; flex: none; border-radius: 50%; background: #e3e6ea; overflow: hidden; align-items: flex-end; justify-content: center; }
+.silhouette { display: inline-flex; flex: none; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #2a5fc4, #0d2150 78%); box-shadow: inset 0 0 0 1.5px rgba(140,175,255,.35); overflow: hidden; align-items: center; justify-content: center; }
 .avatar-photo { display: block; width: 100px; height: 100px; margin: .2rem auto 0; border-radius: 50%; object-fit: cover; background: #14285a; }
-.silhouette svg { width: 82%; height: 82%; fill: #9aa0a8; }
+.silhouette svg { width: 100%; height: 100%; fill: none; stroke: none; }
+.silhouette svg .sh { fill: #cfe0ff; }
 
 footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--mute); }
 
@@ -135,3 +136,9 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 .hrs { border: 1px solid var(--line); background: var(--tint); border-radius: 16px; padding: .8rem 1rem; margin: .4rem 0 .9rem; } .hrs-top { display: flex; align-items: center; gap: .6rem; } .hrs-top b { flex: 1; }
 .hrs .hours td { color: var(--navy); padding: .25rem 0; font-size: .95rem; } .hrs .hours td:last-child { text-align: right; }
 .desc { color: #c3d0ee; margin: .6rem 0 1rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Fermeture exceptionnelle / vacances */
+.banner.closure { display: flex; align-items: center; gap: .6rem; font-weight: 600; }
+.banner.closure svg.i { width: 22px; height: 22px; flex: none; }
+.banner.closure.now { background: rgba(255,90,60,.16); color: #ff9c86; }
+.banner.closure.soon { background: rgba(255,200,80,.12); color: #ffd98a; }
+.rcard .who a.rv-pseudo { display: block; }

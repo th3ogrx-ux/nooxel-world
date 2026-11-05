@@ -10,7 +10,6 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .who { text-align: center; margin: .6rem 0 1rem; }
 .ring { display: inline-flex; width: 118px; height: 118px; border-radius: 50%; border: 3px solid #2a6fe8; padding: 4px; box-shadow: 0 0 22px rgba(42,111,232,.45); background: #06122b; }
 .ring img, .ring .silhouette { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-.ring .silhouette svg { width: 78%; height: 78%; }
 .who h2 { margin: .7rem 0 0; font-size: 1.4rem; } .who p { margin: .2rem 0 0; color: var(--dim); font-size: .95rem; }
 .pillbtn { display: flex; align-items: center; gap: .7rem; width: 100%; margin: .6rem 0 .3rem; padding: .85rem 1rem; border: 1.5px solid rgba(80,140,255,.55); border-radius: 16px; background: rgba(42,111,232,.08); color: var(--txt); font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
 .pillbtn .t { flex: 1; text-align: center; margin-left: -1.2rem; }
