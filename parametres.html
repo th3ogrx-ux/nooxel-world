@@ -28,6 +28,7 @@
     .account { padding: 1rem; margin-top: .3rem; } .account .av { width: 54px; height: 54px; border-radius: 50%; background: #2a5fc4; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
     .account .av svg.i { color: #fff; width: 28px; height: 28px; } .account .t { font-size: 1.1rem; } .account .t small { font-size: .85rem; }
     .switch { width: 50px; height: 30px; border-radius: 999px; background: var(--blue); position: relative; flex: none; }
+    .switch.off { background: #34456f; } .switch.off::after { right: auto; left: 3px; }
     .switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; }
     .danger { margin-top: .2rem; } .danger .row { color: var(--red); background: none; padding: .7rem .3rem; border-top: 0; } .danger .row svg.i, .danger .row .chev { color: var(--red); }
     .ver { text-align: center; color: var(--mute); font-size: .8rem; margin: 1.3rem 0 0; }
@@ -56,7 +57,7 @@
   // Les lignes dont la fonction n'existe pas encore mènent à un écran de test vide (bientot.html).
   const soon = (name) => "bientot.html?page=" + encodeURIComponent(name);
   const SECTIONS = [
-    { title: "Mon activité", rows: [["news", "Fil d'actualité", "fil.html"], ["heart", "Mes favoris", "compte.html?tab=fav"], ["star", "Mes avis laissés", "mes-avis.html"]] },
+    { title: "Mon activité", rows: [["news", "Fil d'actualité", "fil.html"], ["heart", "Mes favoris", "mes-favoris.html", "Voir et retirer mes commerces favoris"], ["star", "Mes avis laissés", "mes-avis.html"]] },
     { title: "Professionnel", rows: [["briefcase", "Espace professionnel", "pro.html", "Gérer ma page commerçant / Devenir professionnel"]] },
     { title: "Paramètres du compte", rows: [["bell", "Notifications", "toggle"], ["lock", "Confidentialité", "confidentialite.html"]] },
     { title: "Assistance", rows: [["alert", "Signaler un problème", "signaler.html"], ["download", "Installer l'application", "/?install=1", "Ajouter Nooxel World à l'écran d'accueil"], ["help", "Centre d'aide", "aide.html"]] },
@@ -72,15 +73,34 @@
   let tt = null;
   function toast(msg) { let t = $("toast"); if (!t) { t = el("p", { id: "toast", role: "status" }); document.body.append(t); } t.textContent = msg; clearTimeout(tt); tt = setTimeout(() => t.remove(), 2600); }
 
-  function boot() {
+  // Profil privé / public (utilisateurs sans commerce)
+  function privacyRow(priv) {
+    const b = el("button", { class: "row", type: "button", role: "switch", id: "privacy-toggle", "aria-checked": String(priv), "data-row": "Profil privé" },
+      icon("lock"), el("span", { class: "t" }, "Profil privé", el("small", { id: "privacy-hint" })), el("span", { class: "switch" }));
+    const paint = () => { b.querySelector(".switch").classList.toggle("off", b.getAttribute("aria-checked") !== "true");
+      $("privacy-hint").textContent = b.getAttribute("aria-checked") === "true" ? "Privé : les autres ne voient ni vos avis, ni votre activité, ni vos favoris." : "Public : vos avis et vos favoris sont visibles sur votre profil."; };
+    b.addEventListener("click", async () => {
+      const next = b.getAttribute("aria-checked") !== "true"; b.disabled = true;
+      const { error } = await sb.rpc("set_profile_privacy", { p_private: next }); b.disabled = false;
+      if (error) { toast("Le changement n'a pas pu être enregistré. Réessayez."); return; }
+      b.setAttribute("aria-checked", String(next)); paint(); toast(next ? "Votre profil est maintenant privé." : "Votre profil est maintenant public.");
+    });
+    queueMicrotask(paint); return b;
+  }
+  async function boot() {
     $("back").append(icon("back", 26));
+    let privRow = null;
+    try {
+      if (sb) { const [st, sm] = await Promise.all([sb.rpc("my_verification_status"), sb.rpc("my_profile_summary")]);
+        if (st.data && !st.data.has_profile && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private); }
+    } catch (e) {}
     const app = $("app");
     const c = chev(); c.classList.add("chev");
     app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "mon-compte.html", "data-row": "Mon compte", style: "padding:0" },
       el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
     const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;      // déjà installée : la ligne disparaît
     if (installed) for (const s of SECTIONS) s.rows = s.rows.filter(r => r[1] !== "Installer l'application");
-    for (const s of SECTIONS) app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...s.rows.map(row)));
+    for (const s of SECTIONS) { const kids = s.rows.map(row); if (privRow && s.title === "Paramètres du compte") kids.push(privRow); app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...kids)); }
     const out = el("button", { class: "row", type: "button", id: "logout", "data-row": "Se déconnecter" }, icon("logout"), el("span", { class: "t", text: "Se déconnecter" })); const c2 = chev(); c2.classList.add("chev"); out.append(c2);
     const del = el("button", { class: "row", type: "button", id: "delete-account", "data-row": "Supprimer mon compte" }, icon("trash"), el("span", { class: "t", text: "Supprimer mon compte" }));
     app.append(el("h2", { text: "Zone de danger" }), el("div", { class: "danger" }, out, del));

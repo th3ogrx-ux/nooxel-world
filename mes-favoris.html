@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mes favoris — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="tabbar.css">
+  <style>
+    .fv { display: flex; align-items: center; gap: .8rem; background: var(--row); border: 1px solid var(--edge); border-radius: 18px; padding: .7rem .8rem; margin: 0 0 .7rem; }
+    .fv.sel { border-color: #3b82f6; background: rgba(59,130,246,.12); }
+    .fv input { width: 24px; height: 24px; accent-color: #3b82f6; flex: none; }
+    .fv .thumb { width: 56px; height: 56px; flex: none; border-radius: 14px; background: #14285a; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #e8efff; font-weight: 700; font-size: 1.3rem; }
+    .fv .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .fv .main { flex: 1; min-width: 0; } .fv .main a { color: var(--txt); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; } .fv .main small { display: block; color: var(--dim); }
+    .bar2 { display: flex; gap: .6rem; align-items: center; margin: .2rem 0 .9rem; }
+    .bar2 button { border: 1.5px solid rgba(80,140,255,.55); border-radius: 999px; background: none; color: #a9c8ff; font: inherit; font-size: .92rem; padding: .45rem .9rem; cursor: pointer; }
+    .bar2 .rm { margin-left: auto; border-color: #ff5a5a; color: #ff7a7a; } .bar2 .rm:disabled { opacity: .4; }
+    .none { text-align: center; color: #cfd9f2; padding: 3rem 1rem; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+<div class="shell"><main class="acc">
+  <header class="hd"><a data-back href="parametres.html" id="back" aria-label="Retour"></a><h1>Mes favoris</h1><span></span></header>
+  <div id="bar" class="bar2 hidden"></div>
+  <div id="app"></div>
+  <p class="msg" id="msg" role="status"></p>
+  <button class="big hidden" id="more" type="button" style="background:rgba(255,255,255,.08)">Voir plus</button>
+</main></div>
+<script src="assets/vendor/supabase.js"></script>
+<script src="categories.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script src="tabbar.js" data-active="account"></script>
+<script>
+  $("back").append(icon("back", 26));
+  let before = null; const rows = new Map();      // merchant_id → { box, input }
+  const nSel = () => [...rows.values()].filter((r) => r.input.checked).length;
+  function paintBar() {
+    const n = nSel(), all = rows.size && n === rows.size;
+    $("bar").classList.toggle("hidden", !rows.size);
+    $("fv-all").textContent = all ? "Tout désélectionner" : "Tout sélectionner";
+    $("fv-remove").textContent = n ? `Retirer (${n})` : "Retirer"; $("fv-remove").disabled = !n;
+  }
+  function row(m) {
+    const input = el("input", { type: "checkbox", "data-fav-check": m.merchant_id, "aria-label": "Sélectionner " + m.business_name });
+    const box = el("div", { class: "fv", "data-fav": m.merchant_id },
+      input, el("span", { class: "thumb" }, m.logo_path || m.cover_path ? el("img", { src: imgUrl(m.logo_path || m.cover_path), alt: "", loading: "lazy" }) : (m.business_name || "?").charAt(0).toUpperCase()),
+      el("div", { class: "main" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(m.merchant_id), text: m.business_name }), el("small", { text: catLabel(m.category) || " " })));
+    input.addEventListener("change", () => { box.classList.toggle("sel", input.checked); paintBar(); });
+    rows.set(m.merchant_id, { box, input }); return box;
+  }
+  function empty() { if (!rows.size) $("app").replaceChildren(el("p", { class: "none", id: "no-fav", text: "Vous ne suivez encore aucun commerce. Appuyez sur « Suivre » sur la page d'un commerce." })); paintBar(); }
+  async function load(first) {
+    $("more").disabled = true;
+    const { data, error } = await sb.rpc("my_following", { p_before: before, p_limit: 20 });
+    $("more").disabled = false;
+    if (error) { $("msg").textContent = fr(error); return; }
+    if (first) $("app").replaceChildren();
+    for (const m of data) $("app").append(row(m));
+    if (data.length) before = data[data.length - 1].followed_at; $("more").classList.toggle("hidden", data.length < 20);
+    if (!rows.size) empty(); else paintBar();
+  }
+  $("bar").append(el("button", { type: "button", id: "fv-all", onclick: () => { const all = nSel() === rows.size; for (const r of rows.values()) { r.input.checked = !all; r.box.classList.toggle("sel", !all); } paintBar(); } }),
+    el("button", { type: "button", class: "rm", id: "fv-remove", onclick: async () => {
+      const ids = [...rows].filter(([, r]) => r.input.checked).map(([id]) => id); if (!ids.length) return;
+      if (!confirm(ids.length === 1 ? "Retirer ce commerce de vos favoris ?" : `Retirer ces ${ids.length} commerces de vos favoris ?`)) return;
+      $("msg").textContent = ""; $("fv-remove").disabled = true; let failed = 0;
+      for (const id of ids) { const { error } = await sb.rpc("unfollow_merchant", { p_merchant: id }); if (error) failed++; else { rows.get(id).box.remove(); rows.delete(id); } }
+      if (failed) $("msg").textContent = `${failed} commerce(s) n'ont pas pu être retirés. Réessayez.`;
+      if (!rows.size) { if (before) { before = null; load(true); } else empty(); } else paintBar();
+    } }));
+  $("more").addEventListener("click", () => load());
+  (async function boot() {
+    if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir vos favoris. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return; load(true);
+  })();
+</script>
+<script src="back.js"></script>
+</body>
+</html>

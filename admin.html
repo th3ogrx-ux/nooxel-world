@@ -226,8 +226,8 @@
   }
 
   // ---------- Signalements (commerces, avis, application) ----------
-  const KIND = { merchant: "Page de commerce", review: "Avis", app: "Application" };
-  const REASON = { false_info: "Informations fausses", scam: "Arnaque", inappropriate: "Contenu inapproprié", other: "Autre", bug: "Bug" };
+  const KIND = { merchant: "Page de commerce", review: "Avis", user: "Profil utilisateur", app: "Application" };
+  const REASON = { fake_account: "Faux compte", false_info: "Informations fausses", scam: "Arnaque", inappropriate: "Contenu inapproprié", other: "Autre", bug: "Bug" };
   const RSTATUS = { open: ["À traiter", "warn"], resolved: ["Traité", "ok"], dismissed: ["Sans suite", ""] };
   async function reports(filter) {
     const main = $("main"); main.replaceChildren(el("p", { class: "empty", text: "Chargement…" }));
@@ -239,9 +239,17 @@
     $("tab-reports").textContent = "Signalements";
     main.replaceChildren(bar, ...(data.length ? data.map(reportCard) : [el("p", { class: "empty", text: filter === "open" ? "Aucun signalement à traiter. 🎉" : "Aucun signalement." })]));
   }
+  // Dans l'historique : supprimer définitivement un avis (même masqué)
+  function delReviewBox(r, err, done) {
+    return el("div", { class: "actions" }, el("button", { class: "btn red", type: "button", "data-act": "delete-review", text: "Supprimer l'avis (définitif)", onclick: async () => {
+      const why = prompt("Raison de la suppression (obligatoire, gardée dans l'historique) :"); if (!why) return;
+      if (!confirm("Supprimer DÉFINITIVEMENT cet avis ? Cette action est irréversible.")) return;
+      const x = await sb.rpc("admin_delete_review", { p_review: r.review.id, p_note: why }); if (x.error) { err.textContent = fr(x.error); return; } done();
+    } }));
+  }
   function reportCard(r) {
     const st = RSTATUS[r.status] || [r.status, ""], err = el("p", { class: "err" }), open = r.status === "open";
-    const target = r.kind === "app" ? "Problème dans l'application" : (r.merchant_id ? null : "Élément supprimé");
+    const target = r.kind === "app" ? "Problème dans l'application" : r.kind === "user" ? (r.reported_user && r.reported_user.exists ? `Profil de ${r.reported_user.pseudo} (${r.reported_user.email || "email inconnu"})` : "Profil supprimé") : (r.merchant_id ? null : "Élément supprimé");
     const c = el("div", { class: "card", "data-report": r.id },
       el("div", { class: "top" }, el("div", {}, el("h2", { text: `n° ${r.ref} · ${KIND[r.kind] || r.kind}` }),
         el("p", { class: "meta", text: `Motif : ${REASON[r.reason] || r.reason} · signalé par ${r.reporter_email || "compte supprimé"}` })),
@@ -258,6 +266,7 @@
       if (r.review && r.review.status === "hidden") c.append(el("div", { class: "actions" }, el("button", { class: "btn light", type: "button", "data-act": "restore", text: "Remettre l'avis en ligne", onclick: async () => {
         if (!confirm("Remettre cet avis en ligne ?")) return; const x = await sb.rpc("admin_restore_review", { p_review: r.review.id }); if (x.error) { err.textContent = fr(x.error); return; } reports("all");
       } })));
+      if (r.review) c.append(delReviewBox(r, err, () => reports("all")));
       c.append(err); return c;
     }
     const note = el("textarea", { rows: 2, "data-reason": true, placeholder: "Note de traitement (obligatoire, gardée dans l'historique)" });
@@ -267,6 +276,11 @@
       const x = await sb.rpc("admin_handle_report", { p_id: r.id, p_outcome: outcome, p_note: note.value, p_hide_review: !!hide }); if (x.error) { err.textContent = fr(x.error); return; } reports("open");
     };
     c.append(note, el("div", { class: "actions" },
+      r.review ? el("button", { class: "btn red", type: "button", "data-act": "delete-review", text: "Supprimer l'avis (définitif)", onclick: async () => {
+        err.textContent = ""; if (note.value.trim().length < 5) { err.textContent = ERR.reason_required; return; }
+        if (!confirm("Supprimer DÉFINITIVEMENT cet avis ? Cette action est irréversible.")) return;
+        const x = await sb.rpc("admin_delete_review", { p_review: r.review.id, p_note: note.value }); if (x.error) { err.textContent = fr(x.error); return; } reports("open");
+      } }) : null,
       r.review && r.review.status === "published" ? el("button", { class: "btn red", type: "button", "data-act": "hide", text: "Masquer l'avis", onclick: () => run("resolved", true) }) : null,
       el("button", { class: "btn green", type: "button", "data-act": "resolve", text: "Traité", onclick: () => run("resolved", false) }),
       el("button", { class: "btn light", type: "button", "data-act": "dismiss", text: "Sans suite", onclick: () => run("dismissed", false) })), err);

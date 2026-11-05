@@ -61,10 +61,10 @@ async function geoIfGranted() {
     return await new Promise((ok) => navigator.geolocation.getCurrentPosition((p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude }), () => ok(null), { maximumAge: 300000, timeout: 6000 }));
   } catch (e) { return null; }
 }
-// Photo de profil par défaut : petit bonhomme gris (contenu fixe, aucune donnée venant d'un utilisateur).
+// Photo de profil par défaut : silhouette claire sur fond bleu marine (contenu fixe, aucune donnée venant d'un utilisateur).
 function silhouette(size) {
   const w = document.createElement("span"); w.className = "silhouette"; w.style.width = w.style.height = size + "px";
-  w.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>';
+  w.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle class="sh" cx="24" cy="18.5" r="7.6"/><path class="sh" d="M9.5 43c.9-8.4 6.6-13 14.5-13s13.6 4.6 14.5 13z"/></svg>';
   return w;
 }
 // Logo rond d'un commerce, ou son initiale s'il n'en a pas.
@@ -154,6 +154,8 @@ async function currentSession() { if (!sb) return null; const { data } = await s
 // ---------- Signalement (page de commerce, avis, problème de l'application)
 const REPORT_REASONS = {
   content: [["false_info", "Informations fausses"], ["scam", "Arnaque"], ["inappropriate", "Contenu inapproprié"], ["other", "Autre"]],
+  merchant: [["fake_account", "Faux compte / fausse entreprise"], ["scam", "Arnaque"], ["inappropriate", "Contenu inapproprié"], ["false_info", "Informations fausses"], ["other", "Autre"]],
+  user: [["fake_account", "Faux compte"], ["inappropriate", "Contenu inapproprié"], ["scam", "Arnaque"], ["other", "Autre"]],
   app: [["bug", "Un bug : quelque chose ne marche pas"], ["other", "Autre problème"]],
 };
 const REPORT_ERR = {
@@ -161,14 +163,15 @@ const REPORT_ERR = {
   already_reported: "Vous avez déjà signalé cet élément : notre équipe l'examine.",
   too_many_reports: "Vous avez atteint la limite de 10 signalements par jour.",
   own_page: "Vous ne pouvez pas signaler votre propre page.",
+  own_profile: "Vous ne pouvez pas signaler votre propre profil.",
   own_review: "Vous ne pouvez pas signaler votre propre avis.",
   email_not_confirmed: "Confirmez d'abord votre adresse email.",
   not_found: "Cet élément n'existe plus.",
   invalid_reason: "Choisissez un motif.",
 };
-// Formulaire : kind = "merchant" | "review" | "app". onDone() est appelé après l'accusé de réception affiché.
-function reportForm({ kind, merchant = null, review = null, title, page = null, onDone }) {
-  const reasons = REPORT_REASONS[kind === "app" ? "app" : "content"];
+// Formulaire : kind = "merchant" | "review" | "user" | "app". onDone() est appelé après l'accusé de réception affiché.
+function reportForm({ kind, merchant = null, review = null, pseudo = null, title, page = null, onDone }) {
+  const reasons = REPORT_REASONS[kind === "app" ? "app" : kind === "user" ? "user" : kind === "merchant" ? "merchant" : "content"];
   const err = el("p", { class: "err", id: "rp-err" });
   const details = el("textarea", { id: "rp-details", maxlength: 1000, placeholder: kind === "app" ? "Que s'est-il passé ? Sur quel écran ? Quel téléphone ?" : "Précisez si vous le souhaitez (obligatoire pour « Autre »)" });
   const send = el("button", { class: "btn", id: "rp-send", type: "button", text: "Envoyer le signalement" });
@@ -180,7 +183,8 @@ function reportForm({ kind, merchant = null, review = null, title, page = null, 
   send.addEventListener("click", async () => {
     err.textContent = ""; send.disabled = true;
     const reason = box.querySelector("input[name=rp-reason]:checked").value;
-    const { data, error } = await sb.rpc("submit_report", { p_kind: kind, p_merchant: merchant, p_review: review, p_reason: reason, p_details: details.value, p_page: kind === "app" ? (page || null) : null });
+    const { data, error } = kind === "user" ? await sb.rpc("submit_user_report", { p_pseudo: pseudo, p_reason: reason, p_details: details.value })
+      : await sb.rpc("submit_report", { p_kind: kind, p_merchant: merchant, p_review: review, p_reason: reason, p_details: details.value, p_page: kind === "app" ? (page || null) : null });
     if (error) { const k = Object.keys(REPORT_ERR).find((c) => String(error.message).includes(c)); err.textContent = k ? REPORT_ERR[k] : "Envoi impossible pour le moment. Réessayez dans un instant."; send.disabled = false; return; }
     const note = el("p", { id: "rp-mail", class: "hint" });
     box.replaceChildren(el("h2", { text: "Signalement reçu" }),

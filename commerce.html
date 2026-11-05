@@ -51,7 +51,7 @@
       el("a", { id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }), el("a", { id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
       s.kind === "mobile" ? el("a", { id: "manage-plan", href: "pro.html#schedule-card", text: "Planning de passage" }) : null,
       el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "parametres.html", text: "Paramètres" })]
-      : [el("button", { type: "button", id: "report-btn", text: "⚑ Signaler cette page", onclick: () => { menu.classList.add("hidden"); openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler cette page" }); } })];
+      : [el("button", { type: "button", id: "report-btn", text: "⚑ Signaler ce profil", onclick: () => { menu.classList.add("hidden"); openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler ce profil" }); } })];
     const menu = el("div", { id: "more-menu", class: "hidden", role: "menu" }, ...items.filter(Boolean));
     return menu;
   }
@@ -237,7 +237,7 @@
 
   function reviewCard(r) {
     const card = el("article", { class: "rcard", "data-review": r.id },
-      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, el("b", { class: "rv-pseudo", text: r.pseudo || "Utilisateur" }),
+      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, (r.pseudo ? el("a", { class: "rv-pseudo", href: r.mine ? "compte.html" : "user.html?p=" + encodeURIComponent(r.pseudo), "data-user": r.pseudo, style: "font-weight:700;color:inherit;text-decoration:none", text: r.pseudo }) : el("b", { class: "rv-pseudo", text: "Utilisateur" })),
         el("span", { class: "stars-line" }, stars(r.rating), el("span", { class: "score", text: rateStr(r.rating) }))), el("span", { class: "date", text: dateFr(r.created_at) })),
       r.visited ? el("p", { class: "tag", style: "margin:.4rem 0 0;color:#0d6b3a;font-size:.85rem", text: "✓ A déclaré y être allé(e) (non vérifié)" }) : null,
       el("p", { class: "txt", text: r.body }));
@@ -292,7 +292,7 @@
     const scroller = el("div", { class: "reel-scroll", id: "reel-scroll" });
     const close = el("button", { class: "reel-btn", id: "reel-close", type: "button", "aria-label": "Fermer", text: "✕", onclick: closeReel });
     const mute = el("button", { class: "reel-btn", id: "reel-mute", type: "button", "aria-label": "Son", text: reelMuted ? "🔇" : "🔊", onclick: () => { reelMuted = !reelMuted; mute.textContent = reelMuted ? "🔇" : "🔊"; box.querySelectorAll("video").forEach((v) => { v.muted = reelMuted; }); } });
-    const rep = el("button", { class: "reel-btn", id: "reel-report", type: "button", "aria-label": "Signaler", text: "⚑", onclick: () => { closeReel(); openReportDialog({ kind: "merchant", merchant: shop.id, title: "Signaler cette page" }); } });
+    const rep = el("button", { class: "reel-btn", id: "reel-report", type: "button", "aria-label": "Signaler", text: "⚑", onclick: () => { closeReel(); openReportDialog({ kind: "merchant", merchant: shop.id, title: "Signaler ce profil" }); } });
     box.append(scroller, el("div", { class: "reel-top" }, close, el("span", { class: "reel-name", text: shop.business_name }), mute, shop.is_owner ? null : rep));
     document.body.append(box); document.body.classList.add("noscroll");
     const addSlides = (list) => list.forEach((v) => {
