@@ -22,6 +22,7 @@
     .fp-who { flex: 1; min-width: 0; } .fp-who a { color: #fff; font-weight: 700; font-size: 1.08rem; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
     .fp-who .vcheck { width: 18px; height: 18px; }
     .fp-tag { margin-left: .3rem; padding: .05rem .55rem; border-radius: 999px; background: rgba(75,149,255,.18); color: #7fb4ff; font-size: .72rem; font-weight: 700; }
+    .fp-tag.fp-follow { background: rgba(52,211,153,.16); color: #4be0a8; }
     .fp-sub { margin: .1rem 0 0; color: #8ea3d0; font-size: .92rem; display: flex; align-items: center; gap: .3rem; } .fp-sub svg.i { width: 14px; height: 14px; }
     .fp-more { border: 0; background: none; color: #e8efff; width: 40px; height: 40px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .fp-img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 14px; background: #14285a; }
@@ -81,7 +82,7 @@
     });
     const card_ = el("article", { class: "fp", "data-post": p.id },
       el("div", { class: "fp-head" }, logoBadge(p.logo_path, p.business_name, 58),
-        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"), p.discover ? el("span", { class: "fp-tag", "data-discover": "1", text: "Suggestion" }) : null)), more),
+        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"), p.discover ? el("span", { class: "fp-tag", "data-discover": "1", text: "Suggestion" }) : el("span", { class: "fp-tag fp-follow", "data-following": "1", text: "✓ Abonné" }))), more),
       p.image_path ? el("img", { class: "fp-img", "data-track-post": p.id, "data-track-merchant": p.merchant_id, src: imgUrl(p.image_path), alt: "Photo publiée par " + p.business_name, loading: "lazy", decoding: "async" }) : null,
       p.body ? el("p", { class: "fp-cap" + (p.image_path ? "" : " only"), text: p.body }) : null,
       el("div", { class: "fp-actions" }, heart, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));
