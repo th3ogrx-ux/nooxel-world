@@ -95,21 +95,17 @@
   }), { threshold: [0.6] }) : null;
   new MutationObserver(() => { if (photoIO) document.querySelectorAll("img[data-track-post]:not([data-seen])").forEach((im) => { im.dataset.seen = "1"; photoIO.observe(im); }); }).observe(document.body, { childList: true, subtree: true });
 
-  // Fil « façon Instagram » : à l'ouverture, 5 publications des commerces suivis puis des suggestions ; en descendant, uniquement des suggestions.
+  // Fil « façon Instagram » : à l'ouverture, les 5 publications les plus récentes des commerces suivis puis des suggestions ; en descendant, uniquement des suggestions.
   // Un nouveau fil est refait à chaque ouverture, quand on tire l'écran vers le bas, ou après un long moment en arrière-plan.
-  const PRIOR_KEY = "nooxel_feed_seen";
-  const prior = () => { try { return JSON.parse(localStorage.getItem(PRIOR_KEY) || "[]").slice(-200); } catch (e) { return []; } };
-  const remember = () => { try { localStorage.setItem(PRIOR_KEY, JSON.stringify(prior().concat(seen).slice(-200))); } catch (e) {} };
   let loading = false, finished = false, gen = 0;
   async function load(first) {
     if (loading || (finished && !first)) return; loading = true; const my = gen;
-    const { data, error } = await sb.rpc("feed_mix", first ? { p_seen: [], p_followed: 5, p_discover: 4, p_prior: prior() } : { p_seen: seen.slice(-400), p_followed: 0, p_discover: 8, p_prior: [] });
+    const { data, error } = await sb.rpc("feed_mix", first ? { p_seen: [], p_followed: 5, p_discover: 4 } : { p_seen: seen.slice(-400), p_followed: 0, p_discover: 8 });
     loading = false; if (my !== gen) return;
     const app = $("app");
     if (first) { app.replaceChildren(); count = 0; }
     if (error) { app.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
     for (const p of data) { app.append(card(p)); seen.push(p.id); count++; }
-    if (first) remember();
     if (!data.length || (!first && data.length < 3)) { finished = true; $("sentinel").classList.add("hidden"); }
     if (!count) app.replaceChildren(el("p", { class: "empty", id: "feed-empty" }, "Aucune publication pour le moment. Suivez des commerces pour voir leurs nouveautés ici. ", el("a", { href: "/", text: "Chercher sur la carte" })));
     else if (finished) app.append(el("p", { class: "empty", id: "feed-end", text: "Vous avez tout vu pour le moment." }));
