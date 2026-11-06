@@ -42,6 +42,10 @@
     .badge.ok { background: #d8f6e5; color: #0d6b3a; } .badge.pro { background: #dbe8ff; color: #0b3fa8; } .badge.none { background: #eceff3; color: #5f6368; } .badge.wait { background: #fff0d1; color: #8a5a00; }
     .row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
     .err { color: #b3261e; font-size: .92rem; margin: .5rem 0 0; min-height: 1.2em; }
+    .err:not(:empty) { color: #b3261e !important; display: flex; gap: .5rem; align-items: flex-start; background: #fdecea; border: 1.5px solid #e5483d; border-radius: 12px; padding: .7rem .85rem; font-weight: 600; margin: .8rem 0 0; }
+    .err:not(:empty)::before { content: "⚠"; flex: none; font-size: 1.05rem; line-height: 1.25; }
+    input.bad, textarea.bad, select.bad { border-color: #e5483d !important; background: #fff5f4 !important; box-shadow: 0 0 0 3px rgba(229,72,61,.22); }
+    label.bad { color: #b3261e; } label.check.bad { background: #fdecea; border-radius: 10px; outline: 2px solid #e5483d; padding: .4rem .5rem; }
     .hint { color: var(--mute); font-size: .85rem; margin: .3rem 0 0; min-height: 1.2em; }
     .okmsg { color: #0d6b3a; font-size: .92rem; margin: .5rem 0 0; }
     #siret-ok { color: #8ae6b0; }
@@ -58,6 +62,12 @@
     .kindcard input { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; margin: 0; padding: 0; border: 0; background: none; appearance: auto; -webkit-appearance: radio; color-scheme: light; accent-color: var(--blue); }
     .kindcard b { display: block; font-size: 1.02rem; } .kindcard small { display: block; color: var(--mute); font-size: .8rem; line-height: 1.35; margin-top: .25rem; }
     @media (max-width: 420px) { .kindrow { grid-template-columns: 1fr; } }
+    .waiting { min-height: 52vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem 1rem; }
+    .waiting .wico { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #2a5fc4, #0d2150 80%); box-shadow: 0 0 0 1.5px rgba(140,175,255,.4), 0 10px 30px rgba(0,50,255,.3); margin-bottom: 1.2rem; }
+    .waiting .wico svg { width: 48px; height: 48px; fill: none; stroke: #cfe0ff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .waiting h2 { margin: 0 0 .5rem; font-size: 1.5rem; color: #e8efff; } .waiting p { color: #9db4e8; max-width: 22rem; margin: 0 0 1.4rem; line-height: 1.5; }
+    .waiting .linkbtn2 { border: 0; background: none; color: #8ea3d0; text-decoration: underline; font: inherit; font-size: .9rem; cursor: pointer; }
+    .waiting .err:not(:empty) { background: rgba(229,72,61,.14); color: #ffb4a6; }
     .flash { animation: flash 1.6s ease-out 1; } @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(47,123,255,.0); } 20% { box-shadow: 0 0 0 4px rgba(47,123,255,.55); } 100% { box-shadow: 0 0 0 0 rgba(47,123,255,0); } }
     .sugg { list-style: none; margin: .3rem 0 0; padding: 0; }
     .sugg li { padding: .55rem .7rem; border-radius: 10px; cursor: pointer; color: var(--ink); font-size: .92rem; }
@@ -176,6 +186,7 @@
     if (!state.has_profile) { app.append(createCard()); return; }
 
     const req = state.request, v = state.verification;
+    if (v === "pending") { app.append(waitingScreen(req)); return; }      // demande envoyée : un seul écran, au milieu
     // — bandeau de statut
     if (v === "pending") {
       app.append(el("div", { class: "banner b-pending", id: "status" }, el("b", { text: "En attente de validation" }),
@@ -198,6 +209,22 @@
     if (state.history?.length) app.append(historyCard());
     if (location.hash.length > 1) setTimeout(() => { const t = document.getElementById(location.hash.slice(1)); if (t) { t.scrollIntoView(); if (/[?&]add=/.test(location.search)) { t.classList.add("flash"); const f = t.querySelector("input[type=file]"); if (f) f.focus({ preventScroll: true }); } } }, 400);
   }
+
+  // Erreur bien visible : message rouge + champ concerné entouré de rouge, amené à l'écran et sélectionné
+  function flag(field, msg, errEl) {
+    errEl.textContent = msg;
+    const box = field.type === "checkbox" ? field.closest("label") : field; box.classList.add("bad");
+    const clear = () => box.classList.remove("bad"); field.addEventListener("input", clear, { once: true }); field.addEventListener("change", clear, { once: true });
+    try { box.scrollIntoView({ block: "center", behavior: "smooth" }); if (field.type !== "checkbox") field.focus({ preventScroll: true }); } catch (e) {}
+    return false;
+  }
+  const FIELD_OF = { invalid_phone: "f-phone", invalid_social_url: "f-social", invalid_siret: "siret", invalid_referral_code: "f-ref" };
+  function flagFromError(error, errEl) {
+    const m = String(error && error.message || ""), k = Object.keys(FIELD_OF).find((c) => m.includes(c)), f = k && document.getElementById(FIELD_OF[k]);
+    if (f) flag(f, fr(error), errEl); else { errEl.textContent = fr(error); try { errEl.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }
+  }
+  const PHONE_OK = (v) => /^\+?[0-9]{8,15}$/.test(String(v).replace(/[\s.\-()]/g, "").replace(/^00/, "+"));
+  const SOCIAL_OK = (v) => /^https:\/\/([a-z0-9-]+\.)?(instagram\.com|facebook\.com|tiktok\.com)\/[^\s]+$/i.test(String(v).trim());
 
   // ---- création du profil + demande de vérification : UNE seule page
   function createCard() {
@@ -225,13 +252,16 @@
     const btn = el("button", { class: "btn", id: "req-btn", type: "submit", text: "Créer mon profil et demander la vérification" });
     let createdId = null;          // si l'envoi échoue après la création du profil, on réessaie sans le recréer
     const kind = () => document.querySelector("input[name=kind]:checked").value;
-    const f = el("form", { class: "card", id: "create-form", onsubmit: async (e) => {
+    const f = el("form", { class: "card", id: "create-form", novalidate: true, onsubmit: async (e) => {
       e.preventDefault(); err.textContent = ""; sOk.textContent = "";
       const n = name.value.trim(), digits = siret.value.replace(/\s/g, "");
-      if (n.length < 2) { err.textContent = "Indiquez le nom de votre commerce (2 caractères minimum)."; return; }
-      if (kind() === "shop" && addr.lat == null && !createdId) { err.textContent = "Choisissez l'adresse de votre commerce dans la liste de suggestions : elle sert à le placer sur la carte."; return; }
+      if (n.length < 2) return flag(name, "Indiquez le nom de votre commerce (2 caractères minimum).", err);
+      if (kind() === "shop" && addr.lat == null && !createdId) return flag(aInput, "Choisissez l'adresse de votre commerce dans la liste de suggestions : elle sert à le placer sur la carte.", err);
       if (!me.email_confirmed_at) { err.textContent = ERR.email_not_confirmed; return; }
-      if (!cons.checked) { err.textContent = "Cochez la case pour autoriser l'examen de votre demande."; return; }
+      if (digits && digits.length !== 14) return flag(siret, ERR.invalid_siret, err);
+      if (!PHONE_OK(phone.value)) return flag(phone, "Indiquez le téléphone du commerce (par exemple 06 12 34 56 78).", err);
+      if (!SOCIAL_OK(social.value)) return flag(social, social.value.trim() ? ERR.invalid_social_url : "Indiquez le lien de votre page Instagram, Facebook ou TikTok (https://…).", err);
+      if (!cons.checked) return flag(cons, "Cochez la case pour autoriser l'examen de votre demande.", err);
       btn.disabled = true; btn.textContent = "Envoi…";
       const fail = (m) => { err.textContent = m; btn.disabled = false; btn.textContent = "Créer mon profil et demander la vérification"; };
       if (!createdId) {
@@ -248,7 +278,7 @@
         sOk.textContent = "✓ Entreprise trouvée" + (data.company ? " : " + data.company : "") + ".";
       }
       const r = await sb.rpc("submit_pro_request", { p_phone: phone.value, p_social_url: social.value.trim(), p_siret: digits || null, p_referral_code: ref.value.trim() || null });
-      if (r.error) return fail(fr(r.error));
+      if (r.error) { fail(""); flagFromError(r.error, err); return; }
       await load();
     } },
       el("h2", { text: "Créer mon profil professionnel" }),
@@ -318,6 +348,21 @@
     return card;
   }
 
+  // ---- demande envoyée : écran simple, centré
+  function waitingScreen(req) {
+    const err = el("p", { class: "err" });
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg"); icon.setAttribute("viewBox", "0 0 24 24"); icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>';
+    const box = el("div", { class: "waiting", id: "status" }, el("span", { class: "wico" }, icon), el("h2", { text: "En attente de validation" }),
+      el("p", { text: req && req.status === "contested" ? "Votre contestation est en cours d'examen." : `Demande envoyée le ${fmtDate(req && req.created_at)}. Nous examinons votre dossier à la main : réponse sous quelques jours.` }));
+    if (req && req.status === "pending") box.append(el("button", { class: "linkbtn2", id: "cancel-btn", type: "button", text: "Annuler ma demande", onclick: async () => {
+      if (!confirm("Annuler la demande ? Le téléphone et le lien envoyés seront effacés.")) return;
+      const { error } = await sb.rpc("cancel_verification", { p_request_id: req.id });
+      if (error) { err.textContent = fr(error); return; } await load();
+    } }));
+    box.append(err); return box;
+  }
+
   // ---- demande en cours
   function pendingCard(req) {
     const err = el("p", { class: "err" });
@@ -374,11 +419,13 @@
     btn.addEventListener("click", async () => {
       err.textContent = "";
       if (!me.email_confirmed_at) { err.textContent = ERR.email_not_confirmed; return; }
-      if (digits() && digits() !== checked) { err.textContent = ERR.siret_not_checked; return; }
-      if (!cons.checked) { err.textContent = "Cochez la case pour autoriser l'examen de votre demande."; return; }
+      if (digits() && digits() !== checked) return flag(siret, ERR.siret_not_checked, err);
+      if (!PHONE_OK(phone.value)) return flag(phone, "Indiquez le téléphone du commerce (par exemple 06 12 34 56 78).", err);
+      if (!SOCIAL_OK(social.value)) return flag(social, social.value.trim() ? ERR.invalid_social_url : "Indiquez le lien de votre page Instagram, Facebook ou TikTok (https://…).", err);
+      if (!cons.checked) return flag(cons, "Cochez la case pour autoriser l'examen de votre demande.", err);
       btn.disabled = true; btn.textContent = "Envoi…";
       const s = await sb.rpc("submit_pro_request", { p_phone: phone.value, p_social_url: social.value.trim(), p_siret: digits() || null, p_referral_code: ref.value.trim() || null });
-      if (s.error) { err.textContent = fr(s.error); btn.disabled = false; btn.textContent = "Envoyer ma demande"; return; }
+      if (s.error) { btn.disabled = false; btn.textContent = "Envoyer ma demande"; flagFromError(s.error, err); return; }
       await load();
     });
     return el("div", { class: "card", id: "request-card" }, el("h2", { text: "Faire vérifier mon commerce" }),
