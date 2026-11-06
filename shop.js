@@ -148,6 +148,28 @@ function postCard(p, withShop) {
     el("p", { class: "post-body", text: p.body }),
     el("p", { class: "post-date", text: ago(p.created_at) }));
 }
+// ---------- Badges de progression des utilisateurs (selon le nombre d'avis laissés)
+const REVIEW_BADGES = { contributor: "Contributeur", local_expert: "Expert local", top_expert: "Top Expert" };
+function reviewBadge(level) {
+  if (!REVIEW_BADGES[level]) return null;
+  const b = document.createElement("span"); b.className = "rbadge " + level; b.setAttribute("data-badge", level); b.title = "Badge : " + REVIEW_BADGES[level];
+  b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.8 5.7 21.4l1.5-7.1L1.8 9.4 9 8.6z"/></svg>';
+  b.append(REVIEW_BADGES[level]); return b;
+}
+// Indicateur « 12/20 avis pour débloquer Expert local » (données de my_review_badge)
+function badgeProgress(b) {
+  if (!b || !b.applies) return null;
+  const box = el("div", { class: "bprog", id: "badge-progress-card" });
+  const cur = b.level ? reviewBadge(b.level) : null;
+  if (b.next_level) {
+    const nm = REVIEW_BADGES[b.next_level], pct = Math.min(100, Math.round(b.count / b.next_at * 100));
+    let txt = `${b.count}/${b.next_at} avis pour débloquer ${nm}`;
+    if (b.next_level === "top_expert" && b.count >= b.next_at) txt = `Top Expert : il faut des avis plus détaillés (${b.avg_len} caractères en moyenne, 60 minimum)` + (b.hidden > 2 ? " et moins d'avis retirés par la modération" : "");
+    else if (b.next_level === "top_expert") txt += " (avis détaillés)";
+    box.append(el("div", { class: "bprog-top" }, el("b", { text: cur ? "Votre niveau" : "Nouveau membre" }), cur), el("div", { class: "bprog-bar" }, el("i", { style: `width:${pct}%` })), el("p", { id: "badge-progress-text", text: txt }));
+  } else box.append(el("div", { class: "bprog-top" }, el("b", { text: "Votre niveau" }), cur), el("p", { id: "badge-progress-text", text: "Bravo, vous avez atteint le niveau le plus élevé !" }));
+  return box;
+}
 const ERR = { not_found: "Cette page n'existe pas ou n'est plus disponible.", not_authenticated: "Connectez-vous pour continuer.", cannot_follow_self: "Vous ne pouvez pas suivre votre propre page.", too_many_likes: "Vous avez atteint la limite de ♥ pour aujourd'hui." };
 const fr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
 

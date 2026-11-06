@@ -141,4 +141,4 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 .banner.closure svg.i { width: 22px; height: 22px; flex: none; }
 .banner.closure.now { background: rgba(255,90,60,.16); color: #ff9c86; }
 .banner.closure.soon { background: rgba(255,200,80,.12); color: #ffd98a; }
-.rcard .who a.rv-pseudo { display: block; }
+.rcard .who .rv-line { display: flex; align-items: center; flex-wrap: wrap; } .rcard .who a.rv-pseudo, .rcard .who .rv-line b { display: inline-block; }

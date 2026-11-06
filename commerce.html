@@ -240,7 +240,7 @@
 
   function reviewCard(r) {
     const card = el("article", { class: "rcard", "data-review": r.id },
-      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, (r.pseudo ? el("a", { class: "rv-pseudo", href: r.mine ? "compte.html" : "user.html?p=" + encodeURIComponent(r.pseudo), "data-user": r.pseudo, style: "font-weight:700;color:inherit;text-decoration:none", text: r.pseudo }) : el("b", { class: "rv-pseudo", text: "Utilisateur" })),
+      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, el("div", { class: "rv-line" }, (r.pseudo ? el("a", { class: "rv-pseudo", href: r.mine ? "compte.html" : "user.html?p=" + encodeURIComponent(r.pseudo), "data-user": r.pseudo, style: "font-weight:700;color:inherit;text-decoration:none", text: r.pseudo }) : el("b", { class: "rv-pseudo", text: "Utilisateur" })), r.badge ? reviewBadge(r.badge) : null),
         el("span", { class: "stars-line" }, stars(r.rating), el("span", { class: "score", text: rateStr(r.rating) }))), el("span", { class: "date", text: dateFr(r.created_at) })),
       r.visited ? el("p", { class: "tag", style: "margin:.4rem 0 0;color:#0d6b3a;font-size:.85rem", text: "✓ A déclaré y être allé(e) (non vérifié)" }) : null,
       el("p", { class: "txt", text: r.body }));
