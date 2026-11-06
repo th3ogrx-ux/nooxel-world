@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Conversation — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+  <style>
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+    #chat { position: fixed; inset: 0; display: flex; flex-direction: column; max-width: 560px; margin: 0 auto; }
+    #top { display: flex; align-items: center; gap: .7rem; padding: calc(env(safe-area-inset-top, 0px) + .6rem) .8rem .6rem .5rem; border-bottom: 1px solid var(--edge); background: rgba(3,8,22,.85); backdrop-filter: blur(8px); flex: none; }
+    #back { color: var(--txt); width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+    #top .av { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #14285a; display: grid; place-items: center; color: #e8efff; font-weight: 700; border: 1.5px solid #2a5fc4; overflow: hidden; flex: none; } #top .av.silhouette { display: inline-flex; }
+    #top a.who { text-align: left; flex: 1; min-width: 0; color: var(--txt); text-decoration: none; } #top .who b { display: block; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #top .who small { color: #8ea3d0; font-size: .8rem; }
+    #thread { flex: 1; overflow-y: auto; padding: 1rem .9rem .5rem; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .35rem; }
+    .day { align-self: center; margin: .8rem 0 .3rem; padding: .15rem .8rem; border-radius: 999px; background: rgba(255,255,255,.07); color: #9db4e8; font-size: .78rem; }
+    .b { max-width: 80%; padding: .6rem .85rem .35rem; border-radius: 20px; font-size: 1rem; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .b time { display: block; margin-top: .15rem; font-size: .68rem; opacity: .65; text-align: right; }
+    .b.me { align-self: flex-end; background: linear-gradient(180deg, #3b86ff, #2260e0); color: #fff; border-bottom-right-radius: 6px; }
+    .b.them { align-self: flex-start; background: #0f2150; border: 1px solid rgba(120,160,255,.22); color: #e8efff; border-bottom-left-radius: 6px; }
+    #empty { margin: auto; text-align: center; color: #8ea3d0; padding: 2rem 1.2rem; line-height: 1.5; }
+    #ro { margin: .4rem .9rem; padding: .7rem .9rem; border-radius: 14px; background: rgba(255,200,80,.1); color: #ffd98a; font-size: .9rem; flex: none; text-align: center; }
+    #compose { display: flex; align-items: flex-end; gap: .6rem; padding: .6rem .8rem calc(.6rem + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--edge); flex: none; background: rgba(3,8,22,.9); }
+    #msg { flex: 1; min-width: 0; max-height: 120px; min-height: 48px; resize: none; border-radius: 24px; border: 1.5px solid rgba(120,160,255,.35); background: transparent; color: #e8efff; font: inherit; font-size: 16px; padding: .75rem 1.1rem; outline: none; line-height: 1.3; } #msg:focus { border-color: #4b95ff; } #msg::placeholder { color: #8ea3d0; }
+    #send { width: 50px; height: 50px; border-radius: 50%; border: 0; background: #2a56b8; color: #fff; display: grid; place-items: center; cursor: pointer; flex: none; } #send:disabled { opacity: .5; } #send svg { width: 24px; height: 24px; fill: #fff; }
+    #err { color: #ff8a72; font-size: .85rem; padding: 0 1rem .2rem; flex: none; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div id="chat">
+  <div id="top"><a data-back id="back" href="messages.html" aria-label="Retour"></a><span id="top-av"></span><a class="who" id="who" href="#"><b id="name">…</b><small id="sub"></small></a></div>
+  <div id="thread"><p id="empty">Chargement…</p></div>
+  <div id="ro" class="hidden"></div>
+  <p id="err" role="alert"></p>
+  <form id="compose" class="hidden"><textarea id="msg" rows="1" maxlength="2000" placeholder="Écrire un message…" enterkeyhint="send"></textarea><button id="send" type="submit" aria-label="Envoyer"></button></form>
+</div>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script>
+  $("back").append(icon("back", 26));
+  $("send").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 11.2 21 3.3c.8-.3 1.5.4 1.2 1.2l-7.9 18.5c-.4.9-1.7.8-2-.1l-2.3-6.6-6.6-2.3c-.9-.3-1-1.6-.1-1.8z"/></svg>';
+  const qs = new URLSearchParams(location.search); let convId = qs.get("c"), merchantId = qs.get("merchant"), info = null, count = -1, sending = false;
+  const MSG = { message_insult: "Ce message contient un mot interdit. Restez respectueux.", message_gibberish: "Ce message n'a pas l'air d'un vrai message.", message_empty: "Écrivez quelque chose avant d'envoyer.",
+    message_too_long: "Message trop long (2 000 caractères maximum).", too_many_messages: "Vous écrivez trop vite : réessayez dans un moment.", too_many_conversations: "Trop de nouvelles conversations aujourd'hui. Réessayez demain.",
+    messages_disabled: "Ce commerce n'accepte plus de messages pour le moment.", merchants_cannot_start: "Un compte commerce ne peut pas écrire en premier.", email_not_confirmed: "Confirmez d'abord votre adresse email.", not_found: "Cette conversation n'existe plus." };
+  const errMsg = (e) => { const m = String(e && e.message || e || ""), k = Object.keys(MSG).find((c) => m.includes(c)); return k ? MSG[k] : "Envoi impossible pour le moment. Réessayez dans un instant."; };
+  const hhmm2 = (d) => new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  function dayLabel(d) { const t = new Date(d), n = new Date(), z = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), diff = Math.round((z(n) - z(t)) / 864e5);
+    return diff <= 0 ? "Aujourd'hui" : diff === 1 ? "Hier" : t.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" }); }
+  function avatarNode(i) {
+    if (i.avatar_path) return el("img", { class: "av", src: i.role === "user" ? imgUrl(i.avatar_path) : avatarUrl(i.avatar_path), alt: "" });
+    if (i.role === "merchant") { const s = silhouette(44); s.classList.add("av"); s.style.width = s.style.height = ""; return s; }
+    return el("span", { class: "av", text: (i.name || "?").trim().charAt(0).toUpperCase() });
+  }
+  function header(i) {
+    $("top-av").replaceChildren(avatarNode(i)); $("name").textContent = i.name || "Utilisateur"; document.title = (i.name || "Conversation") + " — Nooxel World";
+    if (i.role === "user") { $("who").href = "commerce.html?id=" + encodeURIComponent(i.merchant_id); $("sub").textContent = "Voir la page"; }
+    else if (i.user_pseudo) { $("who").href = "user.html?p=" + encodeURIComponent(i.user_pseudo); $("sub").textContent = "Voir le profil"; } else $("who").removeAttribute("href");
+  }
+  function paintMode(i) {
+    $("compose").classList.toggle("hidden", !i.can_send); const ro = $("ro");
+    ro.classList.toggle("hidden", i.can_send);
+    ro.textContent = i.role === "merchant" ? "Vous avez désactivé les messages : réactivez-les dans Paramètres pour pouvoir répondre. L'historique reste visible." : "Ce commerce n'accepte plus de messages pour le moment. Vous pouvez relire l'historique.";
+  }
+  function paintThread(msgs) {
+    const th = $("thread"), nearBottom = th.scrollHeight - th.scrollTop - th.clientHeight < 120 || count < 0; th.replaceChildren();
+    if (!msgs.length) { th.append(el("p", { id: "empty", text: info.can_send ? "Écrivez votre premier message à " + (info.name || "ce commerce") + "." : "Aucun message." })); count = 0; return; }
+    let day = ""; for (const m of msgs) { const dl = dayLabel(m.created_at); if (dl !== day) { day = dl; th.append(el("div", { class: "day", text: dl })); }
+      th.append(el("div", { class: "b " + (m.mine ? "me" : "them"), "data-msg": m.id }, m.body, el("time", { datetime: m.created_at, text: hhmm2(m.created_at) }))); }
+    count = msgs.length; if (nearBottom) th.scrollTop = th.scrollHeight;
+  }
+  async function refresh() {
+    if (!convId) return;
+    const { data, error } = await sb.rpc("open_conversation", { p_conversation: convId });
+    if (error) { if (!info) $("thread").replaceChildren(el("p", { id: "empty", text: errMsg(error) })); return; }
+    const changed = !info || data.messages.length !== count || data.can_send !== info.can_send; info = { ...data };
+    header(info); paintMode(info); if (changed) paintThread(data.messages);
+  }
+  async function boot() {
+    if (!sb || !(await currentSession())) { $("thread").replaceChildren(el("p", { id: "empty" }, "Connectez-vous pour voir vos messages. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return;
+    if (!convId && merchantId) {
+      const ex = await sb.rpc("conversation_for_merchant", { p_merchant: merchantId });
+      if (ex.data) { convId = ex.data; history.replaceState(null, "", "conversation.html?c=" + encodeURIComponent(convId)); }
+      else {
+        const { data, error } = await sb.rpc("get_merchant_page", { p_id: merchantId });
+        if (error || !data || !data.can_message) { $("thread").replaceChildren(el("p", { id: "empty", text: "Ce commerce n'accepte pas de messages pour le moment." })); return; }
+        info = { role: "user", name: data.business_name, avatar_path: data.logo_path, merchant_id: data.id, can_send: true }; header(info); paintMode(info); paintThread([]); return finishBoot();
+      }
+    }
+    if (!convId) { $("thread").replaceChildren(el("p", { id: "empty", text: "Conversation introuvable." })); return; }
+    await refresh(); finishBoot();
+  }
+  function finishBoot() { setInterval(() => { if (!document.hidden && convId) refresh(); }, 6000); }
+  $("msg").addEventListener("input", () => { const t = $("msg"); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; });
+  $("msg").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("compose").requestSubmit(); } });
+  $("compose").addEventListener("submit", async (e) => {
+    e.preventDefault(); if (sending) return; const body = $("msg").value.trim(); $("err").textContent = ""; if (!body) return;
+    sending = true; $("send").disabled = true;
+    const r = convId ? await sb.rpc("send_in_conversation", { p_conversation: convId, p_body: body }) : await sb.rpc("start_message", { p_merchant: merchantId, p_body: body });
+    sending = false; $("send").disabled = false;
+    if (r.error) { $("err").textContent = errMsg(r.error); return; }
+    $("msg").value = ""; $("msg").style.height = "auto";
+    if (!convId) { convId = r.data.conversation_id; history.replaceState(null, "", "conversation.html?c=" + encodeURIComponent(convId)); }
+    await refresh(); const th = $("thread"); th.scrollTop = th.scrollHeight;
+  });
+  boot();
+</script>
+<script src="back.js"></script>
+</body>
+</html>

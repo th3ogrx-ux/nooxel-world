@@ -21,6 +21,8 @@
     .fp-head .logo { width: 58px; height: 58px; border: 2px solid #2a5fc4; background: #0d2150; color: #e8efff; font-size: 1.4rem; }
     .fp-who { flex: 1; min-width: 0; } .fp-who a { color: #fff; font-weight: 700; font-size: 1.08rem; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
     .fp-who .vcheck { width: 18px; height: 18px; }
+    .fp-tag { margin-left: .3rem; padding: .05rem .55rem; border-radius: 999px; background: rgba(75,149,255,.18); color: #7fb4ff; font-size: .72rem; font-weight: 700; }
+    .fp-tag.fp-follow { background: rgba(52,211,153,.16); color: #4be0a8; }
     .fp-sub { margin: .1rem 0 0; color: #8ea3d0; font-size: .92rem; display: flex; align-items: center; gap: .3rem; } .fp-sub svg.i { width: 14px; height: 14px; }
     .fp-more { border: 0; background: none; color: #e8efff; width: 40px; height: 40px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .fp-img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 14px; background: #14285a; }
@@ -31,11 +33,11 @@
     .fp-act.liked svg { fill: #ff5a7a; stroke: #ff5a7a; }
     .fp-page { margin-left: auto; display: inline-flex; align-items: center; gap: .3rem; border: 1px solid rgba(160,190,255,.4); border-radius: 999px; padding: .5rem 1rem; color: #e8efff; text-decoration: none; font-size: .98rem; }
     .fp-page svg.i { width: 16px; height: 16px; }
-    #more-btn { display: block; margin: 0 auto 1rem; }
+    #ptr { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #8ea3d0; font-size: .85rem; transition: height .2s; } #ptr .r, #ptr .s { display: none; } #ptr.on .r { display: inline; } #ptr.on span:first-child, #ptr.spin span:first-child, #ptr.on .s { display: none; } #ptr.spin { height: 40px !important; } #ptr.spin .s { display: inline; } #ptr.spin .r { display: none; }
     .menu { position: absolute; right: .6rem; top: 3.3rem; z-index: 5; background: #0d2150; border: 1px solid rgba(120,160,255,.25); border-radius: 14px; padding: .3rem; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
     .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; color: #e8efff; font: inherit; padding: .7rem .9rem; border-radius: 10px; cursor: pointer; white-space: nowrap; }
     .empty { text-align: center; color: #8ea3d0; padding: 3rem 1rem; }
-    #toast2 { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem); transform: translateX(-50%); background: #fff; color: #0f2a5c; padding: .6rem 1.1rem; border-radius: 999px; font-size: .92rem; z-index: 20; }
+    #toast2 { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem); transform: translateX(-50%); background: rgba(13,33,80,.97); color: #e8efff; border: 1px solid rgba(120,160,255,.38); box-shadow: 0 8px 26px rgba(0,0,0,.5); width: max-content; max-width: 88vw; padding: .6rem 1.1rem; border-radius: 999px; font-size: .92rem; z-index: 20; }
   </style>
 </head>
 <body>
@@ -44,15 +46,18 @@
     <h1>Fil</h1>
     <div><button class="ic" id="ic-search" type="button" aria-label="Rechercher" tabindex="-1"></button><button class="ic" id="ic-filter" type="button" aria-label="Filtrer" tabindex="-1"></button></div>
   </header>
+  <div id="ptr" aria-hidden="true"><span>↓ Tirez pour rafraîchir</span><span class="r">Relâchez pour rafraîchir</span><span class="s">Nouveau fil…</span></div>
   <div id="app"><p class="empty">Chargement…</p></div>
-  <button class="btn ghost hidden" id="more-btn" type="button">Voir plus</button>
+  <div id="sentinel" style="height:1px"></div>
 </main></div>
 <script src="assets/vendor/supabase.js"></script>
 <script src="shop.js"></script>
+<script src="track.js"></script>
+<script src="comments.js"></script>
 <script src="tabbar.js" data-active="feed"></script>
 <script>
   $("ic-search").append(icon("search")); $("ic-filter").append(icon("sliders"));
-  let before = null, count = 0, openMenu = null;
+  const seen = []; let count = 0, openMenu = null;
   const toast = (m) => { let t = $("toast2"); if (!t) { t = el("p", { id: "toast2", role: "status" }); document.body.append(t); } t.textContent = m; clearTimeout(toast.t); toast.t = setTimeout(() => t.remove(), 2400); };
   document.addEventListener("click", () => { if (openMenu) { openMenu.remove(); openMenu = null; } });
 
@@ -66,7 +71,9 @@
       liked.n = data; paint();
     });
     const paint = () => { heart.classList.toggle("liked", liked.v); heart.setAttribute("aria-pressed", String(liked.v)); heart.querySelector(".n").textContent = String(liked.n); };
-    const share = el("button", { class: "fp-act", type: "button", "aria-label": "Partager", onclick: async () => {
+    const commentBtn = el("button", { class: "fp-act", type: "button", "data-comment-btn": p.id, "aria-label": "Commentaires" }, icon("comment"), el("span", { class: "n", text: String(p.comment_count || 0) }));
+    commentBtn.addEventListener("click", () => openComments({ kind: "post", id: p.id, count: p.comment_count || 0, onCount: (n) => { p.comment_count = n; commentBtn.querySelector(".n").textContent = String(n); } }));
+    const share = el("button", { class: "fp-act", type: "button", "aria-label": "Partager", onclick: async () => { nxTrack("share_click", p.merchant_id);
       const url = new URL("commerce.html?id=" + encodeURIComponent(p.merchant_id), location.href).href;
       try { if (navigator.share) { await navigator.share({ title: p.business_name, url }); return; } await navigator.clipboard.writeText(url); toast("Lien copié"); } catch (e) {}
     } }, icon("share"));
@@ -78,25 +85,49 @@
     });
     const card_ = el("article", { class: "fp", "data-post": p.id },
       el("div", { class: "fp-head" }, logoBadge(p.logo_path, p.business_name, 58),
-        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, verifiedMark()), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"))), more),
-      p.image_path ? el("img", { class: "fp-img", src: imgUrl(p.image_path), alt: "Photo publiée par " + p.business_name, loading: "lazy", decoding: "async" }) : null,
+        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"), p.discover ? el("span", { class: "fp-tag", "data-discover": "1", text: "Suggestion" }) : el("span", { class: "fp-tag fp-follow", "data-following": "1", text: "✓ Abonné" }))), more),
+      p.image_path ? el("img", { class: "fp-img", "data-track-post": p.id, "data-track-merchant": p.merchant_id, src: imgUrl(p.image_path), alt: "Photo publiée par " + p.business_name, loading: "lazy", decoding: "async" }) : null,
       p.body ? el("p", { class: "fp-cap" + (p.image_path ? "" : " only"), text: p.body }) : null,
-      el("div", { class: "fp-actions" }, heart, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));
+      el("div", { class: "fp-actions" }, heart, commentBtn, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));
     return card_;
   }
 
+  // Vue d'une photo : elle est comptée quand elle est bien visible à l'écran (une fois par jour et par personne)
+  const photoIO = "IntersectionObserver" in window ? new IntersectionObserver((entries) => entries.forEach((en) => {
+    if (en.isIntersecting && en.intersectionRatio >= 0.6) { nxTrack("photo_view", en.target.dataset.trackMerchant, en.target.dataset.trackPost); photoIO.unobserve(en.target); }
+  }), { threshold: [0.6] }) : null;
+  new MutationObserver(() => { if (photoIO) document.querySelectorAll("img[data-track-post]:not([data-seen])").forEach((im) => { im.dataset.seen = "1"; photoIO.observe(im); }); }).observe(document.body, { childList: true, subtree: true });
+
+  // Fil « façon Instagram » : à l'ouverture, les 5 publications les plus récentes des commerces suivis puis des suggestions ; en descendant, uniquement des suggestions.
+  // Un nouveau fil est refait à chaque ouverture, quand on tire l'écran vers le bas, ou après un long moment en arrière-plan.
+  let loading = false, finished = false, gen = 0;
   async function load(first) {
-    const more = $("more-btn"); more.disabled = true;
-    const { data, error } = await sb.rpc("my_feed", { p_before: before, p_limit: 12 });
-    more.disabled = false; const app = $("app");
-    if (first) app.replaceChildren();
+    if (loading || (finished && !first)) return; loading = true; const my = gen;
+    const { data, error } = await sb.rpc("feed_mix", first ? { p_seen: [], p_followed: 5, p_discover: 4 } : { p_seen: seen.slice(-400), p_followed: 0, p_discover: 8 });
+    loading = false; if (my !== gen) return;
+    const app = $("app");
+    if (first) { app.replaceChildren(); count = 0; }
     if (error) { app.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
-    for (const p of data) { app.append(card(p)); count++; }
-    if (data.length) before = data[data.length - 1].created_at;
-    more.classList.toggle("hidden", data.length < 12);
-    if (!count) app.replaceChildren(el("p", { class: "empty", id: "feed-empty" }, "Votre fil est vide. Suivez des commerces pour voir leurs publications ici. ", el("a", { href: "/", text: "Chercher sur la carte" })));
+    for (const p of data) { app.append(card(p)); seen.push(p.id); count++; }
+    if (!data.length || (!first && data.length < 3)) { finished = true; $("sentinel").classList.add("hidden"); }
+    if (!count) app.replaceChildren(el("p", { class: "empty", id: "feed-empty" }, "Aucune publication pour le moment. Suivez des commerces pour voir leurs nouveautés ici. ", el("a", { href: "/", text: "Chercher sur la carte" })));
+    else if (finished) app.append(el("p", { class: "empty", id: "feed-end", text: "Vous avez tout vu pour le moment." }));
+    $("ptr").classList.remove("on", "spin"); $("ptr").style.height = "0";
+    setTimeout(() => { if (!finished && count && $("sentinel").getBoundingClientRect().top < innerHeight + 700) load(false); }, 60);      // écran pas encore rempli : on ajoute des suggestions
   }
-  $("more-btn").addEventListener("click", () => load());
+  // Nouveau fil (tirer pour rafraîchir, retour après une longue absence)
+  async function refresh() { gen++; loading = false; finished = false; seen.length = 0; $("sentinel").classList.remove("hidden"); $("ptr").classList.add("spin"); await load(true); const sh = document.querySelector(".shell"); if (sh) sh.scrollTop = 0; }
+  // Défilement infini : quand le bas du fil approche, on ajoute des suggestions
+  new IntersectionObserver((en) => { if (en[0].isIntersecting && count) load(false); }, { rootMargin: "700px" }).observe($("sentinel"));
+  // Tirer vers le bas quand on est tout en haut
+  (() => {
+    const sh = document.querySelector(".shell"), ptr = $("ptr"); let y0 = null, dy = 0;
+    sh.addEventListener("touchstart", (e) => { y0 = sh.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+    sh.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (sh.scrollTop > 0) { y0 = null; return; } ptr.style.height = Math.min(70, dy * .5) + "px"; ptr.classList.toggle("on", dy > 110); }, { passive: true });
+    sh.addEventListener("touchend", () => { if (y0 == null) return; const go = dy > 110; y0 = null; if (go) refresh(); else { ptr.style.height = "0"; ptr.classList.remove("on"); } }, { passive: true });
+  })();
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000 && count) { hiddenAt = 0; refresh(); } });
   (async function boot() {
     if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "empty" }, "Connectez-vous pour voir votre fil. ", el("a", { href: "/", text: "Se connecter" }))); return; }
     if (await gateProfile()) return;

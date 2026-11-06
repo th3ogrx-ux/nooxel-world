@@ -28,6 +28,7 @@
 <body>
 <div class="shell"><main class="acc">
   <header class="hd"><a data-back href="parametres.html" id="back" aria-label="Retour"></a><h1>Mes avis laissés</h1><span></span></header>
+  <div id="badge-slot"></div>
   <div id="app"></div>
   <button class="big hidden" id="more" type="button" style="background:rgba(255,255,255,.08)">Voir plus</button>
 </main></div>
@@ -83,6 +84,7 @@
   (async function boot() {
     if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir vos avis. ", el("a", { href: "/", text: "Se connecter" }))); return; }
     if (await gateProfile()) return; load(true);
+    sb.rpc("my_review_badge").then(({ data }) => { const pc = badgeProgress(data); if (pc) $("badge-slot").replaceChildren(pc); });
   })();
 </script>
 <script src="back.js"></script>

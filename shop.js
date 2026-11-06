@@ -75,7 +75,10 @@ function logoBadge(path, name, size) {
 }
 // Icônes en traits fins (contenu fixe du code, aucune donnée d'utilisateur).
 const ICONS = {
-  back: '<path d="M15 5l-7 7 7 7"/>', more: '<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', photo: '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/>', video: '<rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10l5-3v10l-5-3z"/>',
+  comment: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/>',
+  chart: '<path d="M4 20V11"/><path d="M10 20V5"/><path d="M16 20v-6"/><path d="M22 20H2"/>', more: '<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   route: '<path d="M3 11l19-9-9 19-2-8-8-2z"/>', phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
   pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>', clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
@@ -100,7 +103,7 @@ function icon(name, size) {
 }
 function verifiedMark() {
   const t = document.createElement("template");
-  t.innerHTML = '<svg class="vcheck" viewBox="0 0 24 24" role="img" aria-label="Professionnel vérifié"><title>Professionnel vérifié</title><circle cx="12" cy="12" r="11" fill="#1a6bff"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  t.innerHTML = '<svg class="vcheck" viewBox="0 0 24 24" role="img" aria-label="Compte certifié (1 000 abonnés)"><title>Compte certifié (1 000 abonnés)</title><circle cx="12" cy="12" r="11" fill="#1a6bff"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   return t.content.firstChild;
 }
 // 2400 → « 2,4 k » ; 142 → « 142 »
@@ -147,6 +150,30 @@ function postCard(p, withShop) {
     el("p", { class: "post-body", text: p.body }),
     el("p", { class: "post-date", text: ago(p.created_at) }));
 }
+// ---------- Badges de progression des utilisateurs (selon le nombre d'avis laissés)
+const REVIEW_BADGES = { contributor: "Contributeur", local_expert: "Expert local", top_expert: "Top Expert" };
+function reviewBadge(level) {
+  if (!REVIEW_BADGES[level]) return null;
+  const b = document.createElement("span"); b.className = "rbadge " + level; b.setAttribute("data-badge", level); b.title = "Badge : " + REVIEW_BADGES[level];
+  b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.8 5.7 21.4l1.5-7.1L1.8 9.4 9 8.6z"/></svg>';
+  b.append(REVIEW_BADGES[level]); return b;
+}
+// Indicateur « 12/20 avis pour débloquer Expert local » (données de my_review_badge)
+function badgeProgress(b) {
+  if (!b || !b.applies) return null;
+  const box = el("div", { class: "bprog", id: "badge-progress-card" });
+  const cur = b.level ? reviewBadge(b.level) : null;
+  if (b.next_level) {
+    const nm = REVIEW_BADGES[b.next_level], pct = Math.min(100, Math.round(b.count / b.next_at * 100));
+    let txt = `${b.count}/${b.next_at} avis pour débloquer ${nm}`;
+    if (b.next_level === "top_expert" && b.count >= b.next_at) txt = `Top Expert : il faut des avis plus détaillés (${b.avg_len} caractères en moyenne, 60 minimum)` + (b.hidden > 2 ? " et moins d'avis retirés par la modération" : "");
+    else if (b.next_level === "top_expert") txt += " (avis détaillés)";
+    box.append(el("div", { class: "bprog-top" }, el("b", { text: cur ? "Votre niveau" : "Nouveau membre" }), cur), el("div", { class: "bprog-bar" }, el("i", { style: `width:${pct}%` })), el("p", { id: "badge-progress-text", text: txt }));
+  } else box.append(el("div", { class: "bprog-top" }, el("b", { text: "Votre niveau" }), cur), el("p", { id: "badge-progress-text", text: "Bravo, vous avez atteint le niveau le plus élevé !" }));
+  return box;
+}
+// Nombre de messages non lus (pastille sur les accès « Messages »)
+async function unreadMessages() { try { const { data } = await sb.rpc("unread_messages_count"); return Number(data) || 0; } catch (e) { return 0; } }
 const ERR = { not_found: "Cette page n'existe pas ou n'est plus disponible.", not_authenticated: "Connectez-vous pour continuer.", cannot_follow_self: "Vous ne pouvez pas suivre votre propre page.", too_many_likes: "Vous avez atteint la limite de ♥ pour aujourd'hui." };
 const fr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
 

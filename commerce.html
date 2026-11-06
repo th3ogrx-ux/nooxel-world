@@ -19,6 +19,7 @@
 <script src="assets/vendor/supabase.js"></script>
 <script src="categories.js"></script>
 <script src="shop.js"></script>
+<script src="track.js"></script>
 <script>
   const id = new URLSearchParams(location.search).get("id") || "";
   let shop = null, before = null; const mode = "grid";
@@ -33,9 +34,11 @@
     const { data, error } = await sb.rpc("get_merchant_page", { p_id: id });
     if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
     shop = data; document.title = shop.business_name + " — Nooxel World";
+    if (!shop.is_owner) nxTrack("profile_view", shop.id);
     render();
   }
 
+  const nfmt = (n) => Number(n).toLocaleString("fr-FR");
   const starFill = (avg) => el("span", { class: "stars5", "aria-hidden": "true", style: `--p:${Math.max(0, Math.min(100, (Number(avg) || 0) / 5 * 100)).toFixed(0)}%`, text: "★★★★★" });      // étoiles remplies à la proportion de la note (4,7 → 94 %)
   const rateNode = () => shop.review_count ? [starFill(shop.rating_avg), " ", el("b", { text: rateStr(shop.rating_avg) }), ` (${compact(shop.review_count)} avis)`] : ["Aucun avis"];
   const paintRating = () => $("shop-rating").replaceChildren(...rateNode());
@@ -50,7 +53,7 @@
     const items = s.is_owner ? [
       el("a", { id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }), el("a", { id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
       s.kind === "mobile" ? el("a", { id: "manage-plan", href: "pro.html#schedule-card", text: "Planning de passage" }) : null,
-      el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "parametres.html", text: "Paramètres" })]
+      el("a", { id: "manage-messages", href: "messages.html", text: "Messages" }), el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "parametres.html", text: "Paramètres" })]
       : [el("button", { type: "button", id: "report-btn", text: "⚑ Signaler ce profil", onclick: () => { menu.classList.add("hidden"); openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler ce profil" }); } })];
     const menu = el("div", { id: "more-menu", class: "hidden", role: "menu" }, ...items.filter(Boolean));
     return menu;
@@ -120,17 +123,29 @@
     const mobile = s.kind === "mobile";
     const menu = moreMenu(s);
     const moreBtn = el("button", { class: "round", id: "more-btn", type: "button", "aria-label": "Plus d'options", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); } }, icon("more"));
-    document.addEventListener("click", () => menu.classList.add("hidden"));
+    // Propriétaire d'un commerce vérifié : bouton « + » (Publier) à côté de « ⋯ »
+    const canPublish = s.is_owner && s.verified;
+    const goAdd = (kind) => { location.href = kind === "video" ? "pro.html?add=video#videos-card" : "pro.html?add=photo#posts-card"; };
+    const addMenu = !canPublish ? null : el("div", { id: "add-menu", class: "hidden", role: "menu" },
+      el("button", { type: "button", id: "add-photo", role: "menuitem", onclick: () => goAdd("photo") }, icon("photo"), "Ajouter une photo"), el("button", { type: "button", id: "add-video", role: "menuitem", onclick: () => goAdd("video") }, icon("video"), "Ajouter une vidéo"));
+    const addBtn = !canPublish ? null : el("button", { class: "round", id: "add-btn", type: "button", "aria-label": "Publier", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.add("hidden"); addMenu.classList.toggle("hidden"); } }, icon("plus"));
+    moreBtn.addEventListener("click", () => { if (addMenu) addMenu.classList.add("hidden"); });
+    window.nxGoAdd = goAdd;
+    document.addEventListener("click", () => { menu.classList.add("hidden"); if (addMenu) addMenu.classList.add("hidden"); });
     const hero = el("div", { class: "hero", id: "shop-cover" }, s.cover_path ? el("img", { src: imgUrl(s.cover_path), alt: "" }) : null,
-      el("div", { class: "bar" }, el("a", { class: "round", id: "back", href: "/", "data-back": "", "aria-label": "Retour" }, icon("back")), moreBtn), menu);
+      el("div", { class: "bar" }, el("a", { class: "round", id: "back", href: "/", "data-back": "", "aria-label": "Retour" }, icon("back")), el("span", { class: "rgrp" }, addBtn, moreBtn)), menu, addMenu);
     const idrow = el("div", { class: "idrow" }, el("span", { id: "shop-logo" }, logoBadge(s.logo_path, s.business_name, 112)),
-      el("div", { class: "idinfo" }, el("h2", {}, el("span", { id: "shop-name", text: s.business_name }), s.verified ? el("span", { id: "shop-badge", title: s.badge }, verifiedMark()) : null),
+      el("div", { class: "idinfo" }, el("h2", {}, el("span", { id: "shop-name", text: s.business_name }), s.has_badge ? el("span", { id: "shop-badge", title: "Compte certifié (" + nfmt(s.badge_threshold) + " abonnés et plus)" }, verifiedMark()) : null),
         s.category ? el("p", { class: "cat", id: "shop-cat", text: catLabel(s.category) }) : null, el("p", { class: "rate", id: "shop-rating" }, ...rateNode())));
-    const shareBtn = el("button", { class: "sq", id: "share-btn", type: "button", "aria-label": "Partager", onclick: async () => { const url = new URL("commerce.html?id=" + encodeURIComponent(s.id), location.href).href; try { if (navigator.share) await navigator.share({ title: s.business_name, url }); else { await navigator.clipboard.writeText(url); err.textContent = ""; $("share-ok").textContent = "Lien copié"; setTimeout(() => { $("share-ok").textContent = ""; }, 2000); } } catch (e) {} } }, icon("share"));
+    const shareBtn = el("button", { class: "sq", id: "share-btn", type: "button", "aria-label": "Partager", onclick: async () => { if (!s.is_owner) nxTrack("share_click", s.id); const url = new URL("commerce.html?id=" + encodeURIComponent(s.id), location.href).href; try { if (navigator.share) await navigator.share({ title: s.business_name, url }); else { await navigator.clipboard.writeText(url); err.textContent = ""; $("share-ok").textContent = "Lien copié"; setTimeout(() => { $("share-ok").textContent = ""; }, 2000); } } catch (e) {} } }, icon("share"));
     // « Message » et le cœur sont affichés comme sur la maquette, sans action pour l'instant.
-    const msgBtn = s.is_owner ? null : el("button", { class: "btn-ghost", id: "msg-btn", type: "button", "aria-disabled": "true", text: "Message" });
+    // « Message » : seulement pour une personne (compte personnel) et si le commerce accepte les messages
+    const msgBtn = !s.can_message ? null : el("button", { class: "btn-ghost", id: "msg-btn", type: "button", text: "Message", onclick: () => { nxTrack("message_click", s.id); location.href = "conversation.html?merchant=" + encodeURIComponent(s.id); } });
     const heartBtn = s.is_owner ? null : el("button", { class: "sq", id: "heart-btn", type: "button", "aria-disabled": "true", "aria-label": "Aimer" }, icon("heart"));
-    const actions = el("div", { class: "actions", id: "actions" }, s.is_owner ? null : fbtn, msgBtn, el("i", { class: "sep" }), shareBtn, heartBtn ? el("i", { class: "sep" }) : null, heartBtn);
+    // Propriétaire : « Messages » (liste de toutes les conversations), avec le nombre de messages non lus
+    const ownerMsg = !s.is_owner ? null : el("a", { class: "btn-ghost owner-msg", id: "owner-msg", href: "messages.html" }, "Messages", el("b", { class: "ucount", id: "owner-msg-count", hidden: true }));
+    if (ownerMsg) unreadMessages().then((n) => { const c = $("owner-msg-count"); if (c && n) { c.hidden = false; c.textContent = n > 99 ? "99+" : String(n); } });
+    const actions = el("div", { class: "actions", id: "actions" }, s.is_owner ? null : fbtn, s.is_owner ? ownerMsg : msgBtn, el("i", { class: "sep" }), shareBtn, heartBtn ? el("i", { class: "sep" }) : null, heartBtn);
     const owner = s.is_owner && !s.verified ? el("div", { class: "banner", id: "owner-banner" }, "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;
     const secs = el("div", { class: "utabs", role: "group", "aria-label": "Sections de la page" },
       ...[["posts", "Photos"], ["videos", "Vidéos"], ["reviews", "Avis"], ["infos", "Infos"]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
@@ -237,7 +252,7 @@
 
   function reviewCard(r) {
     const card = el("article", { class: "rcard", "data-review": r.id },
-      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, (r.pseudo ? el("a", { class: "rv-pseudo", href: r.mine ? "compte.html" : "user.html?p=" + encodeURIComponent(r.pseudo), "data-user": r.pseudo, style: "font-weight:700;color:inherit;text-decoration:none", text: r.pseudo }) : el("b", { class: "rv-pseudo", text: "Utilisateur" })),
+      el("div", { class: "top" }, silhouette(48), el("div", { class: "who" }, el("div", { class: "rv-line" }, (r.pseudo ? el("a", { class: "rv-pseudo", href: r.mine ? "compte.html" : "user.html?p=" + encodeURIComponent(r.pseudo), "data-user": r.pseudo, style: "font-weight:700;color:inherit;text-decoration:none", text: r.pseudo }) : el("b", { class: "rv-pseudo", text: "Utilisateur" })), r.badge ? reviewBadge(r.badge) : null),
         el("span", { class: "stars-line" }, stars(r.rating), el("span", { class: "score", text: rateStr(r.rating) }))), el("span", { class: "date", text: dateFr(r.created_at) })),
       r.visited ? el("p", { class: "tag", style: "margin:.4rem 0 0;color:#0d6b3a;font-size:.85rem", text: "✓ A déclaré y être allé(e) (non vérifié)" }) : null,
       el("p", { class: "txt", text: r.body }));
@@ -307,6 +322,7 @@
     reelIO = new IntersectionObserver((entries) => entries.forEach((e) => {
       const video = e.target.querySelector("video"), btn = e.target.querySelector(".reel-play");
       if (e.isIntersecting && e.intersectionRatio >= 0.7) {
+        if (!shop.is_owner) nxTrack("video_view", shop.id, video.dataset.vid);
         if (!video.getAttribute("src")) { video.src = videoUrl(vids.find((x) => x.id === video.dataset.vid).video_path); }   // chargement à la demande
         if (lowData()) { btn.classList.remove("hidden"); } else { btn.classList.add("hidden"); video.play().catch(() => btn.classList.remove("hidden")); }
         const i = vids.findIndex((x) => x.id === video.dataset.vid);
@@ -350,7 +366,7 @@
 
   function tile(p) {
     return el("button", { class: "tile", type: "button", "data-post": p.id, "aria-label": "Ouvrir la publication", onclick: () => {
-      const dlg = $("post-dialog");
+      const dlg = $("post-dialog"); if (p.image_path && !shop.is_owner) nxTrack("photo_view", shop.id, p.id);
       dlg.replaceChildren(el("button", { class: "btn ghost close", type: "button", text: "Fermer", onclick: () => dlg.close() }), postCard(p, false));
       dlg.showModal();
     } }, p.image_path ? el("img", { src: imgUrl(p.image_path), alt: "", loading: "lazy", decoding: "async" }) : el("span", { text: p.body }));

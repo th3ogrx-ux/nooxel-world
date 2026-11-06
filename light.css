@@ -141,4 +141,14 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 .banner.closure svg.i { width: 22px; height: 22px; flex: none; }
 .banner.closure.now { background: rgba(255,90,60,.16); color: #ff9c86; }
 .banner.closure.soon { background: rgba(255,200,80,.12); color: #ffd98a; }
-.rcard .who a.rv-pseudo { display: block; }
+.rcard .who .rv-line { display: flex; align-items: center; flex-wrap: wrap; } .rcard .who a.rv-pseudo, .rcard .who .rv-line b { display: inline-block; }
+
+/* Propriétaire : bouton « Messages » à côté du bouton partager */
+.owner-msg { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; text-decoration: none; }
+.owner-msg .ucount { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .75rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(47,123,255,.2); } .owner-msg .ucount[hidden] { display: none; }
+
+/* Propriétaire : bouton « + » dans l'en-tête et tuile « + » dans les grilles */
+.hero .bar .rgrp { display: flex; gap: .5rem; }
+#add-menu { position: absolute; right: .6rem; top: calc(env(safe-area-inset-top, 0px) + 3.4rem); z-index: 5; min-width: 220px; background: #0d2150; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.5); padding: .3rem; }
+#add-menu button { display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left; padding: .75rem .8rem; border: 0; background: none; border-radius: 10px; color: #e8efff; font: inherit; font-size: .95rem; cursor: pointer; }
+#add-menu button:hover { background: rgba(120,160,255,.14); } #add-menu svg.i { width: 22px; height: 22px; color: #6fa8ff; }

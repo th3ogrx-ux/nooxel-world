@@ -13,18 +13,20 @@
     * { box-sizing: border-box; }
     body { margin: 0; background: radial-gradient(120% 80% at 50% 0%, #0c2152, #061330 60%) no-repeat #061330; background-attachment: fixed; color: var(--navy); font: 16px/1.4 system-ui, -apple-system, sans-serif; }
     main { max-width: 560px; margin: 0 auto; padding: 0 1rem 8rem; }
-    header { display: flex; align-items: center; gap: .8rem; padding: calc(env(safe-area-inset-top, 0px) + .8rem) 0 .6rem; }
+    header { display: flex; align-items: center; gap: .4rem; padding: calc(env(safe-area-inset-top, 0px) + .8rem) 0 .6rem; }
     #back { color: var(--navy); width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; margin-left: -.5rem; }
     #back svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    h1 { margin: 0; font-size: 1.7rem; flex: 1; }
+    h1 { margin: 0; font-size: 1.5rem; flex: 1; }
+    #msg-link { position: relative; margin-left: auto; color: #e8efff; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; } #msg-link svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    #msg-dot { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .68rem; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #050d22; } #msg-dot[hidden] { display: none; }
     #read-all { border: 0; background: none; color: #7fb0ff; font: inherit; font-size: .82rem; white-space: nowrap; cursor: pointer; padding: .4rem 0; }
     #read-all:disabled { color: #4b5f8f; cursor: default; }
     h2 { margin: 1.4rem .2rem .6rem; font-size: 1.1rem; font-weight: 500; color: var(--mute); }
     .n { display: flex; gap: .9rem; align-items: flex-start; padding: .85rem; border-radius: 16px; margin: 0 0 .7rem; background: #0d2150; border: 1px solid rgba(120,160,255,.12); position: relative; }
     .n.unread { background: #17398a; border-color: rgba(120,170,255,.35); }
     .av { position: relative; width: 56px; height: 56px; flex: none; }
-    .av .face { width: 56px; height: 56px; border-radius: 50%; background: #e3e6ea; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
-    .av .face svg { width: 82%; height: 82%; fill: #9aa0a8; }
+    .av .face { width: 56px; height: 56px; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #2a5fc4, #0d2150 78%); box-shadow: inset 0 0 0 1.5px rgba(140,175,255,.35); display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+    .av .face svg { width: 82%; height: 82%; fill: #cfe0ff; }
     .av .face.shop { align-items: center; background: #1a3270; color: #e8efff; font-weight: 700; font-size: 1.5rem; }
     .av .face.app { align-items: center; }
     .av .face.app svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
@@ -47,6 +49,7 @@
   <header>
     <a data-back id="back" href="/" aria-label="Retour à la carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
     <h1>Notifications</h1>
+    <a id="msg-link" href="messages.html" aria-label="Messages"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/></svg><b id="msg-dot" hidden></b></a>
     <button type="button" id="read-all">Tout marquer comme lu</button>
   </header>
   <div id="app"></div>
@@ -55,15 +58,16 @@
 <script src="shop.js"></script>
 <script src="tabbar.js" data-active="notifications"></script>
 <script>
+  unreadMessages().then((n) => { const d = document.getElementById("msg-dot"); if (n) { d.hidden = false; d.textContent = n > 9 ? "9+" : String(n); } });
   const C = (cls, ...kids) => el("span", { class: cls }, ...kids);
   const svgEl = (inner) => { const t = document.createElement("template"); t.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`; return t.content.firstChild; };
-  const PERSON = '<circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/>', SHIELD = '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>';
-  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'], reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
+  const PERSON = '<circle cx="12" cy="9.2" r="3.9"/><path d="M5.2 21c.5-4.6 3.4-7 6.8-7s6.3 2.4 6.8 7z"/>', SHIELD = '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>';
+  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'], reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'], message: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
   function avatar(n) {
     const box = C("av");
     if (n.kind === "report_done") box.append(C("face app green", svgEl(SHIELD)));
     else if (n.kind === "verified") box.append(C("face app blue", svgEl(SHIELD)));
-    else if (n.kind === "post" || n.kind === "reply") box.append(C("face shop", (n.name || "?").charAt(0).toUpperCase()));
+    else if (n.kind === "post" || n.kind === "reply" || (n.kind === "message" && n.from_merchant)) box.append(C("face shop", (n.name || "?").charAt(0).toUpperCase()));
     else box.append(C("face", svgEl(PERSON)));
     const b = BADGES[n.kind]; if (b) box.append(C("badge " + b[0], svgEl(b[1])));
     return box;
@@ -75,6 +79,7 @@
       case "review": return [name, ` a laissé un avis ${n.rating} étoile${n.rating > 1 ? "s" : ""} sur votre page : “${n.snippet || ""}”`];
       case "reply": return [name, " a répondu à votre avis"];
       case "post": return [name, " a fait une nouvelle publication"];
+      case "message": return [name, " vous a envoyé un message", n.snippet ? ` : “${n.snippet}”` : ""];
       case "report_done": return [el("b", { text: "Votre signalement a été traité" })];
       case "verified": return [el("b", { text: "Votre profil professionnel" }), el("br"), "a été vérifié"];
     }
@@ -85,7 +90,7 @@
   const groupOf = (d) => { const days = (Date.now() - d.getTime()) / 864e5; return sameDay(d, new Date()) ? 0 : days < 7 ? 1 : 2; };
   const TITLES = ["Aujourd'hui", "Cette semaine", "Plus ancien"];
   let items = [], before = null;
-  const dest = (n) => ({ post: "commerce.html?id=" + n.merchant_id, reply: "commerce.html?id=" + n.merchant_id, review: "compte.html", follow: "compte.html", verified: "compte.html" })[n.kind] || null;
+  const dest = (n) => ({ post: "commerce.html?id=" + n.merchant_id, reply: "commerce.html?id=" + n.merchant_id, message: "conversation.html?c=" + n.ref_id, review: "compte.html", follow: "compte.html", verified: "compte.html" })[n.kind] || null;
 
   function render() {
     const app = $("app"); app.replaceChildren();
