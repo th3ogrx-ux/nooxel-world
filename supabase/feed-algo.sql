@@ -1,5 +1,5 @@
 -- Nooxel World — Algorithme du fil d'actualité
--- À coller dans Supabase → SQL Editor → Run, APRÈS badge-1000.sql. Peut être relancé sans danger.
+-- À coller dans Supabase → SQL Editor → Run, APRÈS badge-1000.sql ET comments.sql. Peut être relancé sans danger.
 --
 -- Fonctionnement « façon Instagram » :
 --   • À l'ouverture du fil (et quand on tire l'écran vers le bas pour rafraîchir) : les 5 publications les PLUS RÉCENTES des commerces
@@ -48,7 +48,7 @@ begin
   return coalesce((
     select jsonb_agg(jsonb_build_object('id', p.id, 'body', p.body, 'image_path', p.image_path, 'created_at', p.created_at,
              'merchant_id', p.merchant_id, 'business_name', m.business_name, 'logo_path', m.logo_path,
-             'has_badge', m.follower_count >= public.badge_threshold(), 'like_count', p.like_count,
+             'has_badge', m.follower_count >= public.badge_threshold(), 'like_count', p.like_count, 'comment_count', p.comment_count,
              'liked', exists (select 1 from public.post_likes l where l.post_id = p.id and l.user_id = v_uid),
              'discover', p.id = any(ids_d)) order by o.ord)
     from unnest(ids_f || ids_d || ids_x) with ordinality as o(id, ord)

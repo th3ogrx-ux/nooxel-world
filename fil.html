@@ -53,6 +53,7 @@
 <script src="assets/vendor/supabase.js"></script>
 <script src="shop.js"></script>
 <script src="track.js"></script>
+<script src="comments.js"></script>
 <script src="tabbar.js" data-active="feed"></script>
 <script>
   $("ic-search").append(icon("search")); $("ic-filter").append(icon("sliders"));
@@ -70,6 +71,8 @@
       liked.n = data; paint();
     });
     const paint = () => { heart.classList.toggle("liked", liked.v); heart.setAttribute("aria-pressed", String(liked.v)); heart.querySelector(".n").textContent = String(liked.n); };
+    const commentBtn = el("button", { class: "fp-act", type: "button", "data-comment-btn": p.id, "aria-label": "Commentaires" }, icon("comment"), el("span", { class: "n", text: String(p.comment_count || 0) }));
+    commentBtn.addEventListener("click", () => openComments({ kind: "post", id: p.id, count: p.comment_count || 0, onCount: (n) => { p.comment_count = n; commentBtn.querySelector(".n").textContent = String(n); } }));
     const share = el("button", { class: "fp-act", type: "button", "aria-label": "Partager", onclick: async () => { nxTrack("share_click", p.merchant_id);
       const url = new URL("commerce.html?id=" + encodeURIComponent(p.merchant_id), location.href).href;
       try { if (navigator.share) { await navigator.share({ title: p.business_name, url }); return; } await navigator.clipboard.writeText(url); toast("Lien copié"); } catch (e) {}
@@ -85,7 +88,7 @@
         el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"), p.discover ? el("span", { class: "fp-tag", "data-discover": "1", text: "Suggestion" }) : el("span", { class: "fp-tag fp-follow", "data-following": "1", text: "✓ Abonné" }))), more),
       p.image_path ? el("img", { class: "fp-img", "data-track-post": p.id, "data-track-merchant": p.merchant_id, src: imgUrl(p.image_path), alt: "Photo publiée par " + p.business_name, loading: "lazy", decoding: "async" }) : null,
       p.body ? el("p", { class: "fp-cap" + (p.image_path ? "" : " only"), text: p.body }) : null,
-      el("div", { class: "fp-actions" }, heart, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));
+      el("div", { class: "fp-actions" }, heart, commentBtn, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));
     return card_;
   }
 

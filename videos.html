@@ -50,6 +50,7 @@
 <script src="assets/vendor/supabase.js"></script>
 <script src="shop.js"></script>
 <script src="track.js"></script>
+<script src="comments.js"></script>
 <script src="tabbar.js" data-active="videos"></script>
 <script>
   const vids = []; let kind = null, gen = 0, before = null, loading = false, done = false, muted = true, io = null, here = null;
@@ -75,7 +76,9 @@
       if (error) { st.liked = was; st.n += was ? 1 : -1; paint(); toast(fr(error)); return; }
       st.n = data; paint();
     });
-    const side = el("div", { class: "v-side" }, heart, el("a", { class: "v-btn", href: "commerce.html?id=" + encodeURIComponent(v.merchant_id), "data-page": v.merchant_id }, icon("shop"), el("span", { text: "Voir la page" })));
+    const cbtn = el("button", { class: "v-btn", type: "button", "data-comment-btn": v.id, "aria-label": "Commentaires" }, icon("comment"), el("span", { class: "n", text: String(v.comment_count || 0) }));
+    cbtn.addEventListener("click", () => openComments({ kind: "video", id: v.id, count: v.comment_count || 0, onCount: (n) => { v.comment_count = n; cbtn.querySelector(".n").textContent = String(n); } }));
+    const side = el("div", { class: "v-side" }, heart, cbtn, el("a", { class: "v-btn", href: "commerce.html?id=" + encodeURIComponent(v.merchant_id), "data-page": v.merchant_id }, icon("shop"), el("span", { text: "Voir la page" })));
     const fol = v.is_owner ? null : el("button", { class: "v-follow", type: "button", "data-follow": v.merchant_id });
     if (fol) {
       const pf = () => { fol.textContent = v.is_following ? "Abonné ✓" : "Suivre"; fol.setAttribute("aria-pressed", String(!!v.is_following)); };
