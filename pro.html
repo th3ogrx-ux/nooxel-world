@@ -87,6 +87,47 @@
     .catpick { display: flex; align-items: center; gap: .6rem; width: 100%; padding: .7rem .8rem; border: 1px solid #c4c7c5; border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 16px; text-align: left; } .catpick svg { color: #0b2a6b; }
     dialog.catdlg { border: 0; border-radius: 20px; padding: 1rem; background: #0b1a3d; color: #e8efff; width: min(94vw, 460px); max-height: 86vh; overflow: auto; } dialog.catdlg::backdrop { background: rgba(0,4,16,.8); } dialog.catdlg h3 { margin: 0 0 .6rem; }
     .catgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: .6rem; } .cattile { display: grid; justify-items: center; gap: .3rem; padding: .7rem .3rem; border: 1px solid rgba(120,160,255,.25); border-radius: 14px; background: rgba(255,255,255,.04); color: #e8efff; font: inherit; font-size: .78rem; line-height: 1.15; cursor: pointer; text-align: center; } .cattile.on { background: rgba(42,111,232,.35); border-color: #4a8bff; }
+    /* ===== Espace d'un commerce vérifié : thème bleu marine « premium » ===== */
+    .premium .card { background: linear-gradient(165deg, rgba(40,80,190,.26), rgba(10,22,56,.84)); color: #e8efff; border: 1px solid rgba(140,170,255,.18); border-radius: 24px; box-shadow: 0 14px 40px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.06); padding: 1.2rem 1.2rem; }
+    .premium .card h2 { color: #fff; font-size: 1.2rem; letter-spacing: -.01em; } .premium .card p, .premium label, .premium .hint, .premium .kinds legend { color: #a9bce6; }
+    .premium .card .ink { color: #fff; }
+    .premium input[type=text], .premium input[type=url], .premium input[type=tel], .premium input[type=number], .premium input[type=datetime-local], .premium select, .premium textarea, .premium .hslots input[type=time], .premium .catpick { background: rgba(5,12,31,.72); color: #e8efff; border: 1px solid rgba(140,170,255,.28); }
+    .premium input:focus, .premium textarea:focus, .premium select:focus { outline: none; border-color: #4b95ff; box-shadow: 0 0 0 3px rgba(47,123,255,.25); }
+    .premium input::placeholder, .premium textarea::placeholder { color: #6f86b8; }
+    .premium .btn { background: linear-gradient(180deg, #3b8bff, #1f63e6); box-shadow: 0 6px 18px rgba(47,123,255,.35); }
+    .premium .btn.ghost { background: rgba(47,123,255,.16); color: #8fbaff; box-shadow: none; } .premium .btn.danger { background: rgba(229,72,61,.16); color: #ff8a80; box-shadow: none; }
+    .premium .check, .premium .hist li, .premium .slot, .premium .hslots, .premium .sugg li { color: #dbe6ff; }
+    .premium .hist li, .premium .slot, .premium .hrow { border-top-color: rgba(140,170,255,.15); } .premium .hist li span:last-child, .premium .slot small { color: #8ea3d0; }
+    .premium .sugg li:hover { background: rgba(120,160,255,.14); } .premium .thumb { border-color: rgba(140,170,255,.3); }
+    .premium .code { background: rgba(47,123,255,.16); color: #9fc3ff; } .premium .okmsg { color: #6fe0a0; }
+    .premium .err:not(:empty) { background: rgba(229,72,61,.14); color: #ffb4a6 !important; border-color: rgba(229,72,61,.55); }
+    .premium .kindcard, .premium .kindcard:has(input:checked) { color: #e8efff; } .premium .kindcard { background: rgba(255,255,255,.04); border-color: rgba(140,170,255,.25); } .premium .kindcard:has(input:checked) { background: rgba(47,123,255,.18); border-color: #4b95ff; }
+    .premium .kindcard small { color: #9db4e8; }
+    .premium .check input, .premium .catpick svg { color-scheme: dark; }
+    /* en-tête */
+    .bizhero { padding: 0 !important; overflow: hidden; }
+    .bh-cover { height: 132px; background: radial-gradient(120% 140% at 20% 0%, #2f6df0 0%, #123a9c 45%, #071433 100%) center / cover; }
+    .bh-id { display: flex; gap: 1rem; align-items: flex-end; padding: 0 1.2rem; margin-top: -42px; position: relative; }
+    .bh-logo { width: 88px; height: 88px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-size: 2.2rem; font-weight: 700; color: #fff; background: linear-gradient(145deg, #2a5fc4, #0d2150); border: 3px solid #0a1a45; box-shadow: 0 0 0 2px rgba(111,168,255,.55), 0 10px 26px rgba(0,0,0,.45); }
+    .bh-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .bh-name { min-width: 0; padding-bottom: .2rem; } .bh-name h2 { margin: 0 0 .3rem; font-size: 1.35rem; overflow-wrap: anywhere; }
+    .bh-pill { display: inline-flex; align-items: center; padding: .12rem .7rem; border-radius: 999px; font-size: .76rem; font-weight: 700; background: rgba(52,211,153,.16); color: #4be0a8; }
+    .bh-cat { margin: .35rem 0 0 !important; color: #9db4e8 !important; font-size: .88rem !important; }
+    .bh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; padding: 1.1rem 1.2rem 0; }
+    .bh-stat { text-align: center; padding: .7rem .3rem; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(140,170,255,.14); } .bh-stat b { display: block; font-size: 1.35rem; line-height: 1.2; } .bh-stat span { color: #8ea3d0; font-size: .78rem; }
+    .bh-prog { padding: 1rem 1.2rem 0; } .bh-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,.09); overflow: hidden; } .bh-bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #2f7bff, #6bb0ff); transition: width .6s ease; }
+    .bh-prog span { display: block; margin-top: .45rem; color: #a9bce6; font-size: .84rem; }
+    .bizhero > .btn { margin: 1rem 1.2rem 0; } .bh-form { padding: 0 1.2rem; } .bizhero { padding-bottom: 1.2rem !important; }
+    /* raccourcis */
+    .btiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem; margin: 0 0 1rem; }
+    .bt { position: relative; display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .95rem .4rem .8rem; border-radius: 20px; text-decoration: none; color: #e8efff; text-align: center; background: linear-gradient(165deg, rgba(40,80,190,.3), rgba(10,22,56,.84)); border: 1px solid rgba(140,170,255,.2); box-shadow: 0 10px 26px rgba(0,0,0,.3); transition: transform .15s; }
+    .bt:active { transform: scale(.97); } .bt b { font-size: .95rem; } .bt small { color: #8ea3d0; font-size: .72rem; line-height: 1.2; }
+    .bt-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; margin-bottom: .3rem; background: rgba(75,149,255,.18); color: #7fb4ff; } .bt-ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .bt-dot { position: absolute; top: 8px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .72rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(47,123,255,.25); }
+    /* rubriques repliables */
+    .acc { border-top: 1px solid rgba(140,170,255,.16); margin-top: .8rem; } .acc summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .9rem .1rem; cursor: pointer; color: #fff; } .acc summary::-webkit-details-marker { display: none; }
+    .acc-t b { display: block; font-size: 1.02rem; } .acc-t small { color: #8ea3d0; font-size: .8rem; font-weight: 400; }
+    .acc-chev { color: #7fb4ff; font-size: 1.6rem; line-height: 1; transition: transform .2s; } .acc[open] .acc-chev { transform: rotate(90deg); } .acc-body { padding: 0 0 .6rem; }
     .hidden { display: none !important; }
     details summary { cursor: pointer; font-weight: 600; color: var(--blue); }
     .banner details summary { color: inherit; text-decoration: underline; }
@@ -181,13 +222,20 @@
   }
 
   function render() {
-    const app = $("app"); app.replaceChildren();
+    const app = $("app"); app.replaceChildren(); app.classList.remove("premium"); $("lead").classList.remove("hidden");
     $("lead").textContent = "Gérez votre commerce et sa vérification.";
     if (!me.email_confirmed_at) app.append(el("div", { class: "banner b-pending" }, el("b", { text: "Email non confirmé" }), "Confirmez votre adresse email pour pouvoir demander une vérification."));
     if (!state.has_profile) { app.append(createCard()); return; }
 
     const req = state.request, v = state.verification;
-    if (v === "pending") { app.append(waitingScreen(req)); return; }      // demande envoyée : un seul écran, au milieu
+    if (v === "pending") { app.append(waitingScreen(req)); return; }
+    if (v === "verified") {      // commerce vérifié : tableau de bord premium
+      app.classList.add("premium"); $("lead").classList.add("hidden");
+      app.append(bizHero(), bizTiles(), pageCard(), closureCard(), scheduleCard(), referralCard());
+      if (state.history?.length) app.append(historyCard());
+      if (location.hash.length > 1) setTimeout(() => { const t = document.getElementById(location.hash.slice(1)); if (t) { t.scrollIntoView(); if (/[?&]add=/.test(location.search)) { t.classList.add("flash"); const f = t.querySelector("input[type=file]"); if (f) f.focus({ preventScroll: true }); } } }, 400);
+      return;
+    }      // demande envoyée : un seul écran, au milieu
     // — bandeau de statut
     if (v === "pending") {
       app.append(el("div", { class: "banner b-pending", id: "status" }, el("b", { text: "En attente de validation" }),
@@ -491,14 +539,58 @@
       el("label", { class: "check" }, on, " Activer la fermeture exceptionnelle"), fields, err, ok, save);
   }
 
+  // ---- tableau de bord d'un commerce vérifié : en-tête premium
+  function bizHero() {
+    const cover = el("div", { class: "bh-cover" }), logo = el("div", { class: "bh-logo", id: "bh-logo" });
+    const title = el("h2", { id: "p-name", text: state.business_name }), cat = el("p", { class: "bh-cat", id: "bh-cat" });
+    const stat = (id, label) => el("div", { class: "bh-stat" }, el("b", { id, text: "—" }), el("span", { text: label }));
+    const fol = stat("bh-followers", "abonnés"), rate = stat("bh-rating", "note"), reviews = stat("bh-reviews", "avis");
+    const bar = el("i"), prog = el("div", { class: "bh-prog", id: "badge-progress-box" }, el("div", { class: "bh-bar" }, bar), el("span", { id: "badge-progress", text: "Badge vérifié : chargement…" }));
+    const err = el("p", { class: "err" }), ok = el("p", { class: "okmsg" });
+    const name = el("input", { type: "text", id: "e-name", maxlength: 120, value: state.business_name }), desc = el("textarea", { id: "e-desc", maxlength: 1000 });
+    const form = el("form", { class: "hidden bh-form", id: "edit-form", onsubmit: async (e) => {
+      e.preventDefault(); err.textContent = ""; ok.textContent = "";
+      const { error } = await sb.from("merchant_profiles").update({ business_name: name.value.trim(), description: desc.value.trim() || null }).eq("id", state.merchant_id);
+      if (error) { err.textContent = "Modification impossible."; return; }
+      ok.textContent = "Enregistré."; state.business_name = name.value.trim(); title.textContent = state.business_name;
+    } }, el("label", {}, "Nom du commerce", name), el("label", {}, "Description", desc), err, ok, el("button", { class: "btn small", type: "submit", text: "Enregistrer" }));
+    const hero = el("div", { class: "bizhero card", id: "status" }, cover,
+      el("div", { class: "bh-id" }, logo, el("div", { class: "bh-name" }, title, el("span", { class: "bh-pill" }, "✔ Commerce vérifié"), cat)),
+      el("div", { class: "bh-stats" }, fol, rate, reviews), prog,
+      el("button", { class: "btn ghost small", id: "edit-name-btn", type: "button", text: "Modifier le nom et la description", onclick: () => form.classList.toggle("hidden") }), form);
+    sb.from("merchant_profiles").select("logo_path,cover_path,category,follower_count,review_count,rating_sum,description").eq("id", state.merchant_id).single().then(({ data }) => {
+      if (!data) return; desc.value = data.description || "";
+      if (data.cover_path) cover.style.backgroundImage = `linear-gradient(180deg, rgba(4,11,28,.15), rgba(4,11,28,.85)), url("${mediaUrl(data.cover_path)}")`;
+      if (data.logo_path) logo.append(el("img", { src: mediaUrl(data.logo_path), alt: "" })); else logo.textContent = (state.business_name || "?").trim().charAt(0).toUpperCase();
+      if (data.category) cat.textContent = catLabel(data.category);
+      const n = data.follower_count || 0; $("bh-followers").textContent = n.toLocaleString("fr-FR");
+      $("bh-rating").textContent = data.review_count ? (Math.round(data.rating_sum / data.review_count * 10) / 10).toLocaleString("fr-FR") + " ★" : "—"; $("bh-reviews").textContent = String(data.review_count || 0);
+      bar.style.width = Math.min(100, n / 10) + "%";
+      $("badge-progress").textContent = n >= 1000 ? `Badge vérifié obtenu (${n.toLocaleString("fr-FR")} abonnés).` : `Badge vérifié : ${n.toLocaleString("fr-FR")} / 1 000 abonnés.`;
+    });
+    return hero;
+  }
+  // ---- raccourcis : ma page, messages, statistiques
+  function bizTiles() {
+    const ico = (inner) => { const t = document.createElementNS("http://www.w3.org/2000/svg", "svg"); t.setAttribute("viewBox", "0 0 24 24"); t.setAttribute("aria-hidden", "true"); t.innerHTML = inner; return t; };
+    const tile = (id, href, label, sub, inner) => el("a", { class: "bt", id, href }, el("span", { class: "bt-ico" }, ico(inner)), el("b", { text: label }), el("small", { text: sub }));
+    const msg = tile("tile-messages", "messages.html", "Messages", "Vos conversations", '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/>');
+    sb.rpc("unread_messages_count").then(({ data }) => { if (data) msg.append(el("span", { class: "bt-dot", id: "tile-messages-count", text: data > 99 ? "99+" : String(data) })); });
+    return el("div", { class: "btiles", id: "biz-tiles" }, tile("tile-page", "commerce.html?id=" + encodeURIComponent(state.merchant_id), "Ma page", "Voir comme un client", '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5 12v8h14v-8"/>'), msg,
+      tile("tile-stats", "mes-statistiques.html", "Statistiques", "Audience et clics", '<path d="M4 20V11M10 20V5M16 20v-6M22 20H2"/>'));
+  }
+
   function pageCard() {
     const card = el("div", { class: "card", id: "page-card" }, el("h2", { text: "Ma page publique" }),
-      el("p", { text: "Votre page est visible par tous les utilisateurs." }),
-      el("a", { class: "btn ghost small", id: "view-page", href: "commerce.html?id=" + encodeURIComponent(state.merchant_id), text: "Voir ma page" }));
+      el("p", { text: "Tout ce que vos clients voient sur votre page. Touchez une rubrique pour la modifier." }));
     const body = el("div", { id: "page-body" }); card.append(body);
     const load = async () => {
       const { data } = await sb.from("merchant_profiles").select("address,profile_kind,zone_label,zone_radius_km,category,logo_path,cover_path,website,contact_phone,opening_hours,timezone").eq("id", state.merchant_id).single();
-      state.kind = (data && data.profile_kind) || "shop"; body.replaceChildren(typePicker(data || {}), state.kind === "mobile" ? zoneEditor(data) : addressEditor(data || {}), identityEditor(data || {}));
+      state.kind = (data && data.profile_kind) || "shop";
+      const sec = (id, title, sub, open, ...kids) => el("details", { class: "acc", id, open: open || null },
+        el("summary", {}, el("span", { class: "acc-t" }, el("b", { text: title }), el("small", { text: sub })), el("span", { class: "acc-chev", "aria-hidden": "true", text: "›" })), el("div", { class: "acc-body" }, ...kids));
+      body.replaceChildren(sec("sec-place", "Type et emplacement", state.kind === "mobile" ? "Indépendant · zone d'intervention" : "Commerce · adresse sur la carte", true, typePicker(data || {}), state.kind === "mobile" ? zoneEditor(data) : addressEditor(data || {})),
+        sec("sec-identity", "Identité et horaires", "Logo, couverture, métier, contact, horaires d'ouverture", false, identityEditor(data || {})));
     };
     const typePicker = (d) => {
       const sel = el("select", { id: "kind-select" }, el("option", { value: "shop", text: "Commerce avec une adresse" }), el("option", { value: "mobile", text: "Indépendant ou itinérant (zone d'intervention)" }));
