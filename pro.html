@@ -58,6 +58,7 @@
     .kindcard input { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; margin: 0; padding: 0; border: 0; background: none; appearance: auto; -webkit-appearance: radio; color-scheme: light; accent-color: var(--blue); }
     .kindcard b { display: block; font-size: 1.02rem; } .kindcard small { display: block; color: var(--mute); font-size: .8rem; line-height: 1.35; margin-top: .25rem; }
     @media (max-width: 420px) { .kindrow { grid-template-columns: 1fr; } }
+    .flash { animation: flash 1.6s ease-out 1; } @keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(47,123,255,.0); } 20% { box-shadow: 0 0 0 4px rgba(47,123,255,.55); } 100% { box-shadow: 0 0 0 0 rgba(47,123,255,0); } }
     .sugg { list-style: none; margin: .3rem 0 0; padding: 0; }
     .sugg li { padding: .55rem .7rem; border-radius: 10px; cursor: pointer; color: var(--ink); font-size: .92rem; }
     .sugg li:hover { background: #eef3ff; }
@@ -194,7 +195,7 @@
     else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
     if (v === "none") app.append(requestCard());
     if (state.history?.length) app.append(historyCard());
-    if (location.hash.length > 1) setTimeout(() => { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }, 400);
+    if (location.hash.length > 1) setTimeout(() => { const t = document.getElementById(location.hash.slice(1)); if (t) { t.scrollIntoView(); if (/[?&]add=/.test(location.search)) { t.classList.add("flash"); const f = t.querySelector("input[type=file]"); if (f) f.focus({ preventScroll: true }); } } }, 400);
   }
 
   // ---- création du profil + demande de vérification : UNE seule page

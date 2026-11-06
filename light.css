@@ -146,3 +146,12 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 /* Propriétaire : bouton « Messages » à côté du bouton partager */
 .owner-msg { display: inline-flex; align-items: center; justify-content: center; gap: .6rem; text-decoration: none; }
 .owner-msg .ucount { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .75rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(47,123,255,.2); } .owner-msg .ucount[hidden] { display: none; }
+
+/* Propriétaire : bouton « + » dans l'en-tête et tuile « + » dans les grilles */
+.hero .bar .rgrp { display: flex; gap: .5rem; }
+#add-menu { position: absolute; right: .6rem; top: calc(env(safe-area-inset-top, 0px) + 3.4rem); z-index: 5; min-width: 220px; background: #0d2150; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.5); padding: .3rem; }
+#add-menu button { display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left; padding: .75rem .8rem; border: 0; background: none; border-radius: 10px; color: #e8efff; font: inherit; font-size: .95rem; cursor: pointer; }
+#add-menu button:hover { background: rgba(120,160,255,.14); } #add-menu svg.i { width: 22px; height: 22px; color: #6fa8ff; }
+.add-tile { display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; background: rgba(47,123,255,.08) !important; border: 2px dashed rgba(111,168,255,.55) !important; color: #9db4e8 !important; cursor: pointer; font: inherit; }
+.add-tile svg.i { width: 34px; height: 34px; color: #6fa8ff; stroke-width: 2; } .add-tile b { font-size: .82rem; font-weight: 600; }
+.add-tile:active { background: rgba(47,123,255,.18) !important; }
