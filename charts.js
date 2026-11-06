@@ -24,7 +24,7 @@ function nxBuckets(days, g) {
     for (let k = 0; k <= 4; k++) { const v = niceTop * k / 4, y = Y(v);
       svg.append(nxSvg("line", { x1: pad.l, x2: W - pad.r, y1: y, y2: y, stroke: "rgba(140,170,255,.13)", "stroke-dasharray": k ? "3 4" : "" }));
       const t = nxSvg("text", { x: pad.l - 7, y: y + 4, "text-anchor": "end", fill: "#7388b8", "font-size": 10.5 }); t.textContent = nxNum(Math.round(v * 10) / 10); svg.append(t); }
-    const every = Math.max(1, Math.ceil(n / 6)); labels.forEach((l, i) => { if ((i % every === 0 && (n - 1 - i >= every * 0.6 || i === n - 1)) || i === n - 1) { const t = nxSvg("text", { x: X(i), y: H - 8, "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle", fill: "#7388b8", "font-size": 10.5 }); t.textContent = l; svg.append(t); } });
+    const every = Math.max(1, Math.ceil(n / 6)); labels.forEach((l, i) => { if ((i % every === 0 && (n - 1 - i >= every || i === n - 1)) || i === n - 1) { const t = nxSvg("text", { x: X(i), y: H - 8, "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle", fill: "#7388b8", "font-size": 10.5 }); t.textContent = l; svg.append(t); } });
     series.forEach((s, k) => {
       const pts = s.values.map((v, i) => [X(i), Y(v)]), d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
       svg.append(nxSvg("path", { d: d + ` L${pts[n - 1][0].toFixed(1)} ${Y(0)} L${pts[0][0].toFixed(1)} ${Y(0)} Z`, fill: `url(#${uid}${k})` }));
@@ -46,3 +46,28 @@ function nxBuckets(days, g) {
     svg.append(over);
   }
 
+
+// Mini courbe (sans axes) pour une carte de chiffre clé
+function nxSpark(box, values, color) {
+  box.replaceChildren(); const W = Math.max(60, box.clientWidth || 120), H = 38, n = values.length, max = Math.max(1, ...values);
+  const X = (i) => n === 1 ? W / 2 : 2 + (W - 4) * i / (n - 1), Y = (v) => H - 4 - (H - 8) * v / max;
+  const svg = nxSvg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, "aria-hidden": "true" }), uid = "s" + Math.random().toString(36).slice(2, 7);
+  const defs = nxSvg("defs"), g = nxSvg("linearGradient", { id: uid, x1: 0, y1: 0, x2: 0, y2: 1 });
+  g.append(nxSvg("stop", { offset: "0%", "stop-color": color, "stop-opacity": .4 }), nxSvg("stop", { offset: "100%", "stop-color": color, "stop-opacity": 0 })); defs.append(g); svg.append(defs);
+  const d = values.map((v, i) => (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1)).join(" ");
+  svg.append(nxSvg("path", { d: d + ` L${X(n - 1).toFixed(1)} ${H} L${X(0).toFixed(1)} ${H} Z`, fill: `url(#${uid})` }), nxSvg("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  box.append(svg);
+}
+// Anneau (jauge ou répartition) : parts = [{ value, color }]
+function nxRing(box, parts, centerTop, centerBottom, size = 150) {
+  box.replaceChildren(); const r = size / 2 - 12, c = 2 * Math.PI * r, total = parts.reduce((a, p) => a + p.value, 0);
+  const svg = nxSvg("svg", { viewBox: `0 0 ${size} ${size}`, width: size, height: size, role: "img" });
+  svg.append(nxSvg("circle", { cx: size / 2, cy: size / 2, r, fill: "none", stroke: "rgba(140,170,255,.14)", "stroke-width": 14 }));
+  let off = 0;
+  if (total > 0) for (const p of parts) { const len = c * p.value / total; if (len <= 0) continue;
+    svg.append(nxSvg("circle", { cx: size / 2, cy: size / 2, r, fill: "none", stroke: p.color, "stroke-width": 14, "stroke-linecap": parts.length === 1 ? "round" : "butt",
+      "stroke-dasharray": `${Math.max(0, len - (parts.length > 1 ? 2 : 0))} ${c}`, "stroke-dashoffset": -off, transform: `rotate(-90 ${size / 2} ${size / 2})` })); off += len; }
+  const t1 = nxSvg("text", { x: size / 2, y: size / 2 + 2, "text-anchor": "middle", fill: "#fff", "font-size": 26, "font-weight": 700 }); t1.textContent = centerTop;
+  const t2 = nxSvg("text", { x: size / 2, y: size / 2 + 20, "text-anchor": "middle", fill: "#8ea3d0", "font-size": 11 }); t2.textContent = centerBottom || "";
+  svg.append(t1, t2); box.append(svg);
+}

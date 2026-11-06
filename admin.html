@@ -244,7 +244,7 @@
     for (let k = 0; k <= 4; k++) { const v = niceTop * k / 4, y = Y(v);
       svg.append(svgEl("line", { x1: pad.l, x2: W - pad.r, y1: y, y2: y, stroke: "rgba(140,170,255,.13)", "stroke-dasharray": k ? "3 4" : "" }));
       const t = svgEl("text", { x: pad.l - 7, y: y + 4, "text-anchor": "end", fill: "#7388b8", "font-size": 10.5 }); t.textContent = nf(Math.round(v * 10) / 10); svg.append(t); }
-    const every = Math.max(1, Math.ceil(n / 6)); labels.forEach((l, i) => { if ((i % every === 0 && (n - 1 - i >= every * 0.6 || i === n - 1)) || i === n - 1) { const t = svgEl("text", { x: X(i), y: H - 8, "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle", fill: "#7388b8", "font-size": 10.5 }); t.textContent = l; svg.append(t); } });
+    const every = Math.max(1, Math.ceil(n / 6)); labels.forEach((l, i) => { if ((i % every === 0 && (n - 1 - i >= every || i === n - 1)) || i === n - 1) { const t = svgEl("text", { x: X(i), y: H - 8, "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle", fill: "#7388b8", "font-size": 10.5 }); t.textContent = l; svg.append(t); } });
     series.forEach((s, k) => {
       const pts = s.values.map((v, i) => [X(i), Y(v)]), d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
       svg.append(svgEl("path", { d: d + ` L${pts[n - 1][0].toFixed(1)} ${Y(0)} L${pts[0][0].toFixed(1)} ${Y(0)} Z`, fill: `url(#${uid}${k})` }));
