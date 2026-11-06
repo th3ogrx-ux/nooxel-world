@@ -17,11 +17,10 @@
     .swipe.open .acts, .swipe.dragging .acts { visibility: visible; }
     .swipe .act { flex: 1; border: 0; border-radius: 18px; color: #fff; font: inherit; font-size: .78rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; cursor: pointer; }
     .swipe .act svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-    .swipe .act.pin { background: #2a6fe8; } .swipe .act.del { background: #e5483d; }
+    .swipe .act.pin { background: #2a6fe8; } .swipe .act.pin.full { background: #26335c; color: #8ea3d0; cursor: default; } .swipe .act.del { background: #e5483d; }
     .swipe .conv { -webkit-user-drag: none; position: relative; margin: 0; touch-action: pan-y; transition: transform .22s ease; user-select: none; -webkit-user-select: none; }
     .swipe .conv.drag { transition: none; }
     .conv .pinned { width: 14px; height: 14px; fill: #7fb4ff; stroke: none; vertical-align: -2px; margin-right: .25rem; }
-    #toast2 { position: fixed; left: 50%; bottom: 9rem; transform: translateX(-50%); background: rgba(13,33,80,.97); color: #e8efff; border: 1px solid rgba(120,160,255,.38); box-shadow: 0 8px 26px rgba(0,0,0,.5); width: max-content; max-width: 88vw; padding: .6rem 1.1rem; border-radius: 999px; font-size: .92rem; z-index: 20; max-width: 90vw; text-align: center; }
     .conv { display: flex; align-items: center; gap: .9rem; padding: .85rem .9rem; margin: 0 0 .6rem; border-radius: 18px; border: 1px solid var(--edge); background: var(--row); color: var(--txt); text-decoration: none; }
     .conv:active { background: rgba(120,160,255,.1); }
     .conv .av { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; background: #14285a; display: grid; place-items: center; color: #e8efff; font-weight: 700; font-size: 1.3rem; border: 1.5px solid #2a5fc4; overflow: hidden; }
@@ -64,13 +63,14 @@
   const svgI = (inner, cls) => { const t = document.createElementNS("http://www.w3.org/2000/svg", "svg"); t.setAttribute("viewBox", "0 0 24 24"); t.setAttribute("aria-hidden", "true"); if (cls) t.setAttribute("class", cls); t.innerHTML = inner; return t; };
   const W = 192; let openRow = null;
   const closeRow = (w) => { if (!w) return; w.querySelector(".conv").style.transform = ""; w.classList.remove("open"); w.classList.add("dragging"); setTimeout(() => w.classList.remove("dragging"), 240); if (openRow === w) openRow = null; };
-  let tt = null; function toast(m) { let t = document.getElementById("toast2"); if (!t) { t = el("p", { id: "toast2", role: "status" }); document.body.append(t); } t.textContent = m; clearTimeout(tt); tt = setTimeout(() => t.remove(), 2800); }
   let pinnedCount = 0;
-  async function act(fn) { const { error } = await fn(); if (error) { toast(/too_many_pins/.test(error.message || "") ? "5 conversations épinglées au maximum." : "Action impossible pour le moment. Réessayez."); return; } await load(); }
+  async function act(fn) { await fn(); await load(); }
   function row(c) {
     const prefix = c.last_from_me ? "Vous : " : "";
     const link = rowLink(c, prefix);
-    const pinBtn = el("button", { class: "act pin", type: "button", "data-pin": c.id, onclick: () => { if (!c.pinned && pinnedCount >= 5) { toast("5 conversations épinglées au maximum."); closeRow(wrap); return; } act(() => sb.rpc("pin_conversation", { p_conversation: c.id, p_pinned: !c.pinned })); } }, svgI(PIN), c.pinned ? "Désépingler" : "Épingler");
+    const full = !c.pinned && pinnedCount >= 5;      // 5 épingles au maximum : le bouton est grisé, sans message
+    const pinBtn = el("button", { class: "act pin", type: "button", "data-pin": c.id, onclick: () => { if (full) return; act(() => sb.rpc("pin_conversation", { p_conversation: c.id, p_pinned: !c.pinned })); } }, svgI(PIN), c.pinned ? "Désépingler" : full ? "5 max." : "Épingler");
+    if (full) { pinBtn.classList.add("full"); pinBtn.setAttribute("aria-disabled", "true"); }
     const delBtn = el("button", { class: "act del", type: "button", "data-del": c.id, onclick: () => { if (confirm("Supprimer cette conversation ? Elle disparaît de votre liste ; l'autre personne la garde.")) act(() => sb.rpc("delete_conversation", { p_conversation: c.id })); } }, svgI(TRASH), "Supprimer");
     link.draggable = false; link.addEventListener("dragstart", (e) => e.preventDefault());
     const wrap = el("div", { class: "swipe", "data-swipe": c.id }, el("div", { class: "acts" }, pinBtn, delBtn), link);
