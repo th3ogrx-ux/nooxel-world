@@ -290,7 +290,6 @@
     const { data, error } = await sb.rpc("list_merchant_videos", { p_merchant: shop.id, p_before: vBefore, p_limit: 12 });
     more.disabled = false;
     if (error) { $("no-videos").textContent = fr(error); $("no-videos").classList.remove("hidden"); return []; }
-    if (first && shop.is_owner && shop.verified && !$("add-video-tile")) $("vgrid").append(addTile("video"));
     for (const v of data) { vids.push(v); $("vgrid").append(el("button", { class: "vtile", type: "button", "data-video": v.id, "aria-label": "Lire la vidéo" + (v.caption ? " : " + v.caption : ""), onclick: () => openReel(vids.indexOf(v)) },
       el("img", { src: imgUrl(v.poster_path), alt: "", loading: "lazy", decoding: "async" }), el("span", { class: "vdur", text: dur(v.duration_s) }))); }
     if (data.length) vBefore = data[data.length - 1].created_at;
@@ -359,18 +358,12 @@
     const box = $("posts");
     if (mode === "grid" && !box.classList.contains("grid")) box.classList.add("grid");
     if (mode === "list") box.classList.remove("grid");
-    if (first && shop.is_owner && shop.verified && !$("add-photo-tile")) box.append(addTile("photo"));
     for (const p of data) box.append(mode === "grid" ? tile(p) : postCard(p, false));
     if (data.length) before = data[data.length - 1].created_at;
     more.classList.toggle("hidden", data.length < 12);
     if (first) $("no-posts").classList.toggle("hidden", data.length > 0);
   }
 
-  // Tuile « + » (propriétaire, onglets Photos et Vidéos) : lance l'ajout d'une photo / d'une vidéo
-  function addTile(kind) {
-    return el("button", { class: kind === "video" ? "vtile add-tile" : "tile add-tile", id: "add-" + kind + "-tile", type: "button", "aria-label": kind === "video" ? "Ajouter une vidéo" : "Ajouter une photo", onclick: () => window.nxGoAdd(kind) },
-      icon("plus"));
-  }
   function tile(p) {
     return el("button", { class: "tile", type: "button", "data-post": p.id, "aria-label": "Ouvrir la publication", onclick: () => {
       const dlg = $("post-dialog"); if (p.image_path && !shop.is_owner) nxTrack("photo_view", shop.id, p.id);
