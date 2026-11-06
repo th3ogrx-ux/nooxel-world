@@ -134,7 +134,10 @@
     // « Message » : seulement pour une personne (compte personnel) et si le commerce accepte les messages
     const msgBtn = !s.can_message ? null : el("button", { class: "btn-ghost", id: "msg-btn", type: "button", text: "Message", onclick: () => { nxTrack("message_click", s.id); location.href = "conversation.html?merchant=" + encodeURIComponent(s.id); } });
     const heartBtn = s.is_owner ? null : el("button", { class: "sq", id: "heart-btn", type: "button", "aria-disabled": "true", "aria-label": "Aimer" }, icon("heart"));
-    const actions = el("div", { class: "actions", id: "actions" }, s.is_owner ? null : fbtn, msgBtn, s.is_owner ? null : el("i", { class: "sep" }), shareBtn, heartBtn ? el("i", { class: "sep" }) : null, heartBtn);
+    // Propriétaire : « Messages » (liste de toutes les conversations), avec le nombre de messages non lus
+    const ownerMsg = !s.is_owner ? null : el("a", { class: "btn-ghost owner-msg", id: "owner-msg", href: "messages.html" }, "Messages", el("b", { class: "ucount", id: "owner-msg-count", hidden: true }));
+    if (ownerMsg) unreadMessages().then((n) => { const c = $("owner-msg-count"); if (c && n) { c.hidden = false; c.textContent = n > 99 ? "99+" : String(n); } });
+    const actions = el("div", { class: "actions", id: "actions" }, s.is_owner ? null : fbtn, s.is_owner ? ownerMsg : msgBtn, el("i", { class: "sep" }), shareBtn, heartBtn ? el("i", { class: "sep" }) : null, heartBtn);
     const owner = s.is_owner && !s.verified ? el("div", { class: "banner", id: "owner-banner" }, "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;
     const secs = el("div", { class: "utabs", role: "group", "aria-label": "Sections de la page" },
       ...[["posts", "Photos"], ["videos", "Vidéos"], ["reviews", "Avis"], ["infos", "Infos"]].map(([k, label]) => el("button", { type: "button", id: "sec-" + k, "aria-pressed": String(k === "posts"), text: label, onclick: () => showSection(k) })));
