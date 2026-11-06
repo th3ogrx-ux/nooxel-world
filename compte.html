@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
+  <script>try { const c = JSON.parse(localStorage.getItem("nooxel_biz")), j = JSON.parse(localStorage.getItem("sb-smjbgjolteovcwkoxcar-auth-token")); if (c && c.biz && j && j.user && c.u === j.user.id) location.replace("commerce.html?id=" + encodeURIComponent(c.biz)); } catch (e) {}</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mon compte — Nooxel World</title>
@@ -37,7 +38,8 @@
 
   async function boot() {
     const app = $("app");
-    if (!sb || !(await currentSession())) {
+    const sess = sb ? await currentSession() : null;
+    if (!sess) {
       app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir votre profil." }), el("a", { href: "/", text: "Aller à la connexion" })));
       return;
     }
@@ -45,6 +47,7 @@
     const st = await sb.rpc("my_verification_status");
     const pro = st.data || {};
     // Commerce vérifié : l'espace Compte devient la page du commerce (avec ses boutons de gestion).
+    try { localStorage.setItem("nooxel_biz", JSON.stringify({ u: sess.user.id, biz: pro.has_profile && pro.verification === "verified" ? pro.merchant_id : null, t: Date.now() })); } catch (e) {}
     if (pro.has_profile && pro.verification === "verified" && pro.merchant_id) { location.replace("commerce.html?id=" + encodeURIComponent(pro.merchant_id)); return; }
     const { data, error } = await sb.rpc("my_profile_summary");
     if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Profil indisponible" }), el("p", { text: fr(error) }))); return; }

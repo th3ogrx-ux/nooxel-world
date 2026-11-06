@@ -10,8 +10,14 @@
     ["notifications", "tab-notifs", "notifications.html", "Notifications", svg('<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>')],
     ["account", "tab-account", "compte.html", "Compte", svg('<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0z"/>')],
   ];
+  // Compte professionnel vérifié : « Compte » mène directement à la page du commerce (sans passer par l'écran Compte puis une redirection)
+  const AUTH_KEY = "sb-smjbgjolteovcwkoxcar-auth-token", BIZ_KEY = "nooxel_biz";
+  const myId = () => { try { const j = JSON.parse(localStorage.getItem(AUTH_KEY)); return (j && j.user && j.user.id) || null; } catch (e) { return null; } };
+  const bizCache = () => { try { const c = JSON.parse(localStorage.getItem(BIZ_KEY)), u = myId(); return c && u && c.u === u ? c : null; } catch (e) { return null; } };
+  const accountHref = () => { const c = bizCache(); return c && c.biz ? "commerce.html?id=" + encodeURIComponent(c.biz) : "compte.html"; };
   const nav = document.createElement("nav"); nav.id = "tabbar"; nav.setAttribute("aria-label", "Navigation principale");
-  for (const [key, id, href, label, icon] of TABS) {
+  for (let [key, id, href, label, icon] of TABS) {
+    if (key === "account") href = accountHref();
     const a = document.createElement(href ? "a" : "button"); a.id = id; if (href) a.href = href; else a.type = "button";
     if (label) { a.className = "tab" + (key === active ? " on" : ""); a.innerHTML = icon + "<span>" + label + "</span>"; } else { a.setAttribute("aria-label", "Ma position"); a.innerHTML = icon; }
     if (key === active) a.setAttribute("aria-current", "page");
@@ -56,6 +62,13 @@
     try { const c = typeof sb !== "undefined" ? sb : null; if (c) { const { data, error } = await c.rpc("my_unread_count"); if (!error && typeof data === "number") window.setNotifBadge(data); } } catch (e) {}
     busy = false;
   };
-  addEventListener("load", () => setTimeout(refresh, 400)); document.addEventListener("visibilitychange", refresh); setInterval(refresh, 60000);
+  // Met à jour (au plus toutes les 10 min) le raccourci « Compte → ma page » selon l'état réel du compte
+  const refreshBiz = async () => {
+    const u = myId(), c = bizCache(); if (!u || (c && Date.now() - c.t < 600000)) return;
+    try { const cl = typeof sb !== "undefined" ? sb : null; if (!cl) return; const { data, error } = await cl.rpc("my_verification_status"); if (error || !data) return;
+      const biz = data.has_profile && data.verification === "verified" && data.merchant_id ? data.merchant_id : null;
+      localStorage.setItem(BIZ_KEY, JSON.stringify({ u, biz, t: Date.now() })); const a = nav.querySelector("#tab-account"); if (a) a.href = accountHref(); } catch (e) {}
+  };
+  addEventListener("load", () => { setTimeout(refreshBiz, 700); setTimeout(refresh, 400); }); document.addEventListener("visibilitychange", refresh); setInterval(refresh, 60000);
   window.addEventListener("notifs-changed", refresh);
 })();

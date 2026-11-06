@@ -30,11 +30,18 @@
       app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Connexion requise" }), el("p", { text: "Connectez-vous à votre compte Nooxel pour voir cette page." }), el("a", { href: "/", text: "Aller à la connexion" })));
       return;
     }
+    // Affichage immédiat avec la dernière version vue (le temps de charger la nouvelle), et chargement en parallèle de la vérification du profil
+    const ck = "nooxel_page_" + id; let cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(ck)); } catch (e) {}
+    if (cached && cached.id === id) { shop = cached; document.title = shop.business_name + " — Nooxel World"; render(); } else cached = null;
+    const pageReq = sb.rpc("get_merchant_page", { p_id: id });
     if (await gateProfile()) return;
-    const { data, error } = await sb.rpc("get_merchant_page", { p_id: id });
-    if (error || !data) { app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
+    const { data, error } = await pageReq;
+    if (error || !data) { if (!cached) app.replaceChildren(el("div", { class: "card" }, el("h2", { text: "Page introuvable" }), el("p", { text: fr(error) }))); return; }
+    try { sessionStorage.setItem(ck, JSON.stringify(data)); } catch (e) {}
+    if (!data.is_owner) nxTrack("profile_view", data.id);
+    if (cached && JSON.stringify(cached) === JSON.stringify(data)) return;      // rien n'a changé : on garde l'affichage déjà en place
     shop = data; document.title = shop.business_name + " — Nooxel World";
-    if (!shop.is_owner) nxTrack("profile_view", shop.id);
     render();
   }
 
