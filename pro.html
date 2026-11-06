@@ -52,6 +52,12 @@
     .check { display: flex; gap: .6rem; align-items: flex-start; margin-top: .8rem; color: var(--ink); font-size: .9rem; }
     .check input { width: 20px; height: 20px; margin-top: .15rem; flex: none; accent-color: var(--blue); }
     .thumb { max-width: 120px; max-height: 90px; border-radius: 8px; margin-top: .4rem; border: 1px solid #dadce0; }
+    .kindrow { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin: .8rem 0 .2rem; }
+    .kindcard { position: relative; display: block; padding: .8rem .9rem .8rem 2.3rem; border: 1.5px solid var(--line); border-radius: 14px; cursor: pointer; background: #fff; }
+    .kindcard:has(input:checked) { border-color: var(--blue); background: #eef4ff; }
+    .kindcard input { position: absolute; left: .8rem; top: 1rem; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; background: none; appearance: auto; -webkit-appearance: radio; color-scheme: light; accent-color: var(--blue); }
+    .kindcard b { display: block; } .kindcard small { display: block; color: var(--mute); font-size: .78rem; line-height: 1.3; margin-top: .15rem; }
+    @media (max-width: 420px) { .kindrow { grid-template-columns: 1fr; } }
     .sugg { list-style: none; margin: .3rem 0 0; padding: 0; }
     .sugg li { padding: .55rem .7rem; border-radius: 10px; cursor: pointer; color: var(--ink); font-size: .92rem; }
     .sugg li:hover { background: #eef3ff; }
@@ -191,11 +197,15 @@
     if (location.hash.length > 1) setTimeout(() => { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }, 400);
   }
 
-  // ---- création du profil
+  // ---- création du profil + demande de vérification : UNE seule page
   function createCard() {
-    const err = el("p", { class: "err", id: "c-err" }); const name = el("input", { type: "text", id: "c-name", maxlength: 120, autocomplete: "organization", required: true });
+    const err = el("p", { class: "err", id: "c-err" }), sOk = el("p", { class: "okmsg", id: "siret-ok" });
+    const kindRadio = (id, value, title, sub, checked) => el("label", { class: "kindcard" }, el("input", { type: "radio", name: "kind", id, value, checked }), el("span", {}, el("b", { text: title }), el("small", { text: sub })));
+    const kinds = el("div", { class: "kindrow", id: "kind-choice" },
+      kindRadio("k-shop", "shop", "Commerce", "Boutique, restaurant, atelier… avec une adresse", true),
+      kindRadio("k-mobile", "mobile", "Indépendant", "Sans boutique : zone d'intervention, jamais d'adresse personnelle", false));
+    const name = el("input", { type: "text", id: "c-name", maxlength: 120, autocomplete: "organization", required: true });
     const desc = el("textarea", { id: "c-desc", maxlength: 1000, placeholder: "Ce que vous proposez, vos horaires…" });
-    const btn = el("button", { class: "btn", type: "submit", text: "Créer mon profil" });
     // Adresse (commerce avec boutique) : sert à placer le commerce sur la carte
     const addr = { label: null, lat: null, lng: null };
     const aInput = el("input", { type: "text", id: "c-address", placeholder: "Rechercher l'adresse du commerce", autocomplete: "off", maxlength: 200 });
@@ -205,27 +215,52 @@
       return el("li", { role: "button", tabindex: "0", text: label, onclick: () => { addr.label = label.slice(0, 200); addr.lat = c[1]; addr.lng = c[0]; aChosen.textContent = "📍 " + addr.label; err.textContent = ""; aList.replaceChildren(); aInput.value = ""; } });
     });
     const aBox = el("div", { id: "c-address-box" }, el("label", {}, "Adresse du commerce", aInput), aList, aChosen, el("p", { class: "hint", text: "Elle place votre commerce sur la carte une fois vérifié. Vous pourrez la modifier ensuite." }));
+    const siret = el("input", { type: "text", id: "siret", inputmode: "numeric", autocomplete: "off", placeholder: "14 chiffres (facultatif)", maxlength: 20 });
+    const phone = el("input", { type: "tel", id: "f-phone", autocomplete: "tel", placeholder: "06 12 34 56 78", maxlength: 24 });
+    const social = el("input", { type: "url", id: "f-social", placeholder: "https://instagram.com/votre_commerce", maxlength: 300 });
+    const ref = el("input", { type: "text", id: "f-ref", placeholder: "Facultatif", maxlength: 12, autocapitalize: "characters" });
+    const cons = el("input", { type: "checkbox", id: "f-consent" });
+    const btn = el("button", { class: "btn", id: "req-btn", type: "submit", text: "Créer mon profil et demander la vérification" });
+    let createdId = null;          // si l'envoi échoue après la création du profil, on réessaie sans le recréer
+    const kind = () => document.querySelector("input[name=kind]:checked").value;
     const f = el("form", { class: "card", id: "create-form", onsubmit: async (e) => {
-      e.preventDefault(); err.textContent = ""; btn.disabled = true;
-      const n = name.value.trim();
-      if (n.length < 2) { err.textContent = "Indiquez le nom de votre commerce (2 caractères minimum)."; btn.disabled = false; return; }
-      const kind = document.querySelector("input[name=kind]:checked").value;
-      if (kind === "shop" && addr.lat == null) { err.textContent = "Choisissez l'adresse de votre commerce dans la liste de suggestions : elle sert à le placer sur la carte."; btn.disabled = false; return; }
-      const { data: created, error } = await sb.from("merchant_profiles").insert({ owner_id: me.id, business_name: n, description: desc.value.trim() || null, profile_kind: kind }).select().single();
-      if (error) { btn.disabled = false; err.textContent = /duplicate|unique/i.test(error.message) ? "Vous avez déjà un profil professionnel." : "Impossible de créer le profil."; return; }
-      if (kind === "shop" && created) await sb.from("merchant_profiles").update({ address: addr.label, lat: addr.lat, lng: addr.lng }).eq("id", created.id);   // si cela échoue, l'adresse se saisit dans « Ma page publique »
-      btn.disabled = false;
+      e.preventDefault(); err.textContent = ""; sOk.textContent = "";
+      const n = name.value.trim(), digits = siret.value.replace(/\s/g, "");
+      if (n.length < 2) { err.textContent = "Indiquez le nom de votre commerce (2 caractères minimum)."; return; }
+      if (kind() === "shop" && addr.lat == null && !createdId) { err.textContent = "Choisissez l'adresse de votre commerce dans la liste de suggestions : elle sert à le placer sur la carte."; return; }
+      if (!me.email_confirmed_at) { err.textContent = ERR.email_not_confirmed; return; }
+      if (!cons.checked) { err.textContent = "Cochez la case pour autoriser l'examen de votre demande."; return; }
+      btn.disabled = true; btn.textContent = "Envoi…";
+      const fail = (m) => { err.textContent = m; btn.disabled = false; btn.textContent = "Créer mon profil et demander la vérification"; };
+      if (!createdId) {
+        const { data: created, error } = await sb.from("merchant_profiles").insert({ owner_id: me.id, business_name: n, description: desc.value.trim() || null, profile_kind: kind() }).select().single();
+        if (error) return fail(/duplicate|unique/i.test(error.message) ? "Vous avez déjà un profil professionnel." : "Impossible de créer le profil.");
+        createdId = created && created.id;
+        if (kind() === "shop" && createdId) await sb.from("merchant_profiles").update({ address: addr.label, lat: addr.lat, lng: addr.lng }).eq("id", createdId);   // si cela échoue, l'adresse se saisit dans « Ma page publique »
+        [name, desc, aInput, ...kinds.querySelectorAll("input")].forEach((x) => { x.disabled = true; });
+      }
+      if (digits) {
+        const { data, error } = await sb.functions.invoke("verify-siret", { body: { siret: siret.value } });
+        if (error) return fail(await fnMessage(error));
+        if (!data?.ok) return fail(data?.message || "Contrôle du SIRET impossible.");
+        sOk.textContent = "✓ Entreprise trouvée" + (data.company ? " : " + data.company : "") + ".";
+      }
+      const r = await sb.rpc("submit_pro_request", { p_phone: phone.value, p_social_url: social.value.trim(), p_siret: digits || null, p_referral_code: ref.value.trim() || null });
+      if (r.error) return fail(fr(r.error));
       await load();
     } },
       el("h2", { text: "Créer mon profil professionnel" }),
-      el("p", { text: "Aucun justificatif n'est demandé pour créer le profil. Tant que votre commerce n'est pas vérifié, il reste invisible du public et vous ne pouvez rien publier." }),
-      el("label", {}, "Nom du commerce", name), el("label", {}, "Description (facultatif)", desc),
-      el("fieldset", { class: "kinds" }, el("legend", { text: "Type de profil" }),
-        el("label", { class: "check" }, el("input", { type: "radio", name: "kind", id: "k-shop", value: "shop", checked: true }), el("span", { text: "Commerce avec une adresse (boutique, restaurant, atelier…)" })),
-        el("label", { class: "check" }, el("input", { type: "radio", name: "kind", id: "k-mobile", value: "mobile" }), el("span", { text: "Indépendant ou itinérant, sans boutique (coiffeur à domicile, food truck, artisan, freelance…) : vous indiquez une zone d'intervention, jamais une adresse personnelle." }))),
-      aBox, err, btn);
-    const syncKind = () => aBox.classList.toggle("hidden", document.querySelector("input[name=kind]:checked").value !== "shop");
-    f.addEventListener("change", (e) => { if (e.target.name === "kind") syncKind(); });
+      el("p", { text: "Aucune pièce d'identité n'est demandée. Un membre de notre équipe examine votre demande à la main. Tant que votre profil n'est pas vérifié, il reste invisible du public et vous ne pouvez rien publier." }),
+      kinds,
+      el("label", {}, "Nom du commerce", name), aBox, el("label", {}, "Description (facultatif)", desc),
+      el("label", {}, "Numéro SIRET (facultatif)", siret), sOk,
+      el("label", {}, "Téléphone du commerce", phone),
+      el("label", {}, "Lien vers votre page Instagram, Facebook ou TikTok", social),
+      el("label", {}, "Code de parrainage d'un professionnel vérifié (facultatif)", ref),
+      el("label", { class: "check" }, cons, el("span", {}, "J'autorise Nooxel à examiner ces informations pour vérifier mon commerce, uniquement dans ce but. Le téléphone n'est pas vérifié par SMS ; il est effacé 30 jours après un refus.")),
+      err, btn);
+    f.addEventListener("input", () => { err.textContent = ""; });
+    f.addEventListener("change", (e) => { if (e.target.name === "kind") aBox.classList.toggle("hidden", kind() !== "shop"); });
     return f;
   }
 
