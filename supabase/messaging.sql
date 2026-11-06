@@ -18,8 +18,14 @@ create table if not exists public.conversations (
   last_message_at  timestamptz not null default now(),
   user_read_at     timestamptz not null default now(),
   merchant_read_at timestamptz not null default 'epoch',
+  user_pinned      boolean not null default false,
+  merchant_pinned  boolean not null default false,
+  user_cleared_at  timestamptz not null default 'epoch',       -- « Supprimer » : masque l'historique pour cette personne seulement
+  merchant_cleared_at timestamptz not null default 'epoch',
   unique (user_id, merchant_id)
 );
+alter table public.conversations add column if not exists user_pinned boolean not null default false, add column if not exists merchant_pinned boolean not null default false,
+  add column if not exists user_cleared_at timestamptz not null default 'epoch', add column if not exists merchant_cleared_at timestamptz not null default 'epoch';
 create index if not exists conversations_by_user on public.conversations (user_id, last_message_at desc);
 create index if not exists conversations_by_merchant on public.conversations (merchant_id, last_message_at desc);
 alter table public.conversations enable row level security;
@@ -70,25 +76,25 @@ begin
   if auth.uid() is null then raise exception 'not_authenticated' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object('id', x.id, 'role', x.role, 'name', x.name, 'avatar_path', x.avatar_path, 'merchant_id', x.merchant_id,
-             'last_body', x.last_body, 'last_at', x.last_at, 'last_from_me', x.last_from_me, 'unread', x.unread, 'can_send', x.can_send) order by x.last_at desc, x.id)
+             'last_body', x.last_body, 'last_at', x.last_at, 'last_from_me', x.last_from_me, 'unread', x.unread, 'can_send', x.can_send, 'pinned', x.pinned) order by x.pinned desc, x.last_at desc, x.id)
     from (
       select c.id, 'user'::text as role, m.business_name as name, m.logo_path as avatar_path, m.id as merchant_id,
              lm.body as last_body, c.last_message_at as last_at, lm.sender_kind = 'user' as last_from_me,
              (select count(*) from public.messages ms where ms.conversation_id = c.id and ms.sender_kind = 'merchant' and ms.created_at > c.user_read_at) as unread,
-             (m.messages_enabled and m.verification = 'verified') as can_send
+             (m.messages_enabled and m.verification = 'verified') as can_send, c.user_pinned as pinned
         from public.conversations c join public.merchant_profiles m on m.id = c.merchant_id
         left join lateral (select body, sender_kind from public.messages where conversation_id = c.id order by created_at desc limit 1) lm on true
-       where c.user_id = auth.uid() and (p_before is null or c.last_message_at < p_before)
+       where c.user_id = auth.uid() and c.last_message_at > c.user_cleared_at and (p_before is null or c.last_message_at < p_before)
       union all
       select c.id, 'merchant', up.pseudo, up.avatar_path, m.id,
              lm.body, c.last_message_at, lm.sender_kind = 'merchant',
              (select count(*) from public.messages ms where ms.conversation_id = c.id and ms.sender_kind = 'user' and ms.created_at > c.merchant_read_at),
-             (m.messages_enabled and m.verification = 'verified')
+             (m.messages_enabled and m.verification = 'verified'), c.merchant_pinned
         from public.conversations c join public.merchant_profiles m on m.id = c.merchant_id and m.owner_id = auth.uid()
         left join public.user_profiles up on up.user_id = c.user_id
         left join lateral (select body, sender_kind from public.messages where conversation_id = c.id order by created_at desc limit 1) lm on true
-       where (p_before is null or c.last_message_at < p_before)
-      order by last_at desc limit least(greatest(coalesce(p_limit, 30), 1), 60)) x), '[]'::jsonb);
+       where c.last_message_at > c.merchant_cleared_at and (p_before is null or c.last_message_at < p_before)
+      order by pinned desc, last_at desc limit least(greatest(coalesce(p_limit, 30), 1), 60)) x), '[]'::jsonb);
 end;
 $$;
 
@@ -136,7 +142,7 @@ begin
     'user_pseudo', case when v_role = 'merchant' then v_name end,
     'can_send', m.messages_enabled and m.verification = 'verified',
     'messages', coalesce((select jsonb_agg(jsonb_build_object('id', x.id, 'body', x.body, 'created_at', x.created_at, 'mine', x.sender_kind = v_role) order by x.created_at, x.id)
-        from (select * from public.messages where conversation_id = c.id order by created_at desc, id desc limit least(greatest(coalesce(p_limit, 100), 1), 200)) x), '[]'::jsonb));
+        from (select * from public.messages where conversation_id = c.id and created_at > case when v_role = 'user' then c.user_cleared_at else c.merchant_cleared_at end order by created_at desc, id desc limit least(greatest(coalesce(p_limit, 100), 1), 200)) x), '[]'::jsonb));
 end;
 $$;
 
@@ -194,6 +200,43 @@ begin
   if v_role = 'user' then update public.conversations set last_message_at = msg.created_at, user_read_at = msg.created_at where id = c.id;
   else update public.conversations set last_message_at = msg.created_at, merchant_read_at = msg.created_at where id = c.id; end if;
   return jsonb_build_object('id', msg.id, 'body', msg.body, 'created_at', msg.created_at, 'mine', true);
+end;
+$$;
+
+-- Épingler / désépingler une conversation (pour soi seulement) : les épinglées restent en haut de la liste
+create or replace function public.pin_conversation(p_conversation uuid, p_pinned boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare c public.conversations; m public.merchant_profiles;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated' using errcode = '28000'; end if;
+  select * into c from public.conversations where id = p_conversation;
+  if not found then raise exception 'not_found'; end if;
+  select * into m from public.merchant_profiles where id = c.merchant_id;
+  if c.user_id = auth.uid() then update public.conversations set user_pinned = coalesce(p_pinned, false) where id = c.id;
+  elsif m.owner_id = auth.uid() then update public.conversations set merchant_pinned = coalesce(p_pinned, false) where id = c.id;
+  else raise exception 'not_found'; end if;
+end;
+$$;
+
+-- Supprimer une conversation : elle disparaît de MA liste (l'autre personne la garde). Si un nouveau message arrive, elle réapparaît
+-- avec seulement les nouveaux messages. Quand les deux côtés l'ont supprimée, elle est effacée pour de bon.
+create or replace function public.delete_conversation(p_conversation uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare c public.conversations; m public.merchant_profiles; v_now timestamptz := clock_timestamp();
+begin
+  if auth.uid() is null then raise exception 'not_authenticated' using errcode = '28000'; end if;
+  select * into c from public.conversations where id = p_conversation;
+  if not found then raise exception 'not_found'; end if;
+  select * into m from public.merchant_profiles where id = c.merchant_id;
+  if c.user_id = auth.uid() then update public.conversations set user_cleared_at = v_now, user_read_at = v_now, user_pinned = false where id = c.id;
+  elsif m.owner_id = auth.uid() then update public.conversations set merchant_cleared_at = v_now, merchant_read_at = v_now, merchant_pinned = false where id = c.id;
+  else raise exception 'not_found'; end if;
+  update public.notifications set read_at = v_now where user_id = auth.uid() and kind = 'message' and ref_id = c.id and read_at is null;
+  delete from public.conversations where id = c.id and user_cleared_at >= last_message_at and merchant_cleared_at >= last_message_at;
 end;
 $$;
 
@@ -283,7 +326,7 @@ $$;
 
 revoke all on function public.set_messages_enabled(boolean), public.message_text_issue(text), public.my_conversations(timestamptz, integer), public.unread_messages_count(),
   public.conversation_for_merchant(uuid), public.open_conversation(uuid, integer), public.start_message(uuid, text), public.send_in_conversation(uuid, text),
-  public.get_merchant_page(uuid) from public, anon, authenticated;
+  public.pin_conversation(uuid, boolean), public.delete_conversation(uuid), public.get_merchant_page(uuid) from public, anon, authenticated;
 grant execute on function public.set_messages_enabled(boolean), public.my_conversations(timestamptz, integer), public.unread_messages_count(),
   public.conversation_for_merchant(uuid), public.open_conversation(uuid, integer), public.start_message(uuid, text), public.send_in_conversation(uuid, text),
-  public.get_merchant_page(uuid) to authenticated;
+  public.pin_conversation(uuid, boolean), public.delete_conversation(uuid), public.get_merchant_page(uuid) to authenticated;

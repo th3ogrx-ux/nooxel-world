@@ -12,6 +12,15 @@
   <link rel="stylesheet" href="account.css">
   <link rel="stylesheet" href="tabbar.css">
   <style>
+    .swipe { position: relative; margin: 0 0 .6rem; border-radius: 18px; overflow: hidden; }
+    .swipe .acts { visibility: hidden; position: absolute; inset: 0 0 0 auto; width: 176px; display: flex; }
+    .swipe.open .acts, .swipe.dragging .acts { visibility: visible; }
+    .swipe .act { flex: 1; border: 0; color: #fff; font: inherit; font-size: .78rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; cursor: pointer; }
+    .swipe .act svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .swipe .act.pin { background: #2a6fe8; } .swipe .act.del { background: #e5483d; }
+    .swipe .conv { -webkit-user-drag: none; position: relative; margin: 0; touch-action: pan-y; transition: transform .22s ease; user-select: none; -webkit-user-select: none; }
+    .swipe .conv.drag { transition: none; }
+    .conv .pinned { width: 14px; height: 14px; fill: #7fb4ff; stroke: none; vertical-align: -2px; margin-right: .25rem; }
     .conv { display: flex; align-items: center; gap: .9rem; padding: .85rem .9rem; margin: 0 0 .6rem; border-radius: 18px; border: 1px solid var(--edge); background: var(--row); color: var(--txt); text-decoration: none; }
     .conv:active { background: rgba(120,160,255,.1); }
     .conv .av { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; background: #14285a; display: grid; place-items: center; color: #e8efff; font-weight: 700; font-size: 1.3rem; border: 1.5px solid #2a5fc4; overflow: hidden; }
@@ -49,12 +58,42 @@
     if (c.role === "merchant") { const s = silhouette(56); s.classList.add("av"); s.style.width = s.style.height = ""; return s; }
     return el("span", { class: "av", text: (c.name || "?").trim().charAt(0).toUpperCase() });
   }
+  const PIN = '<path d="M14.5 3.5 20.5 9.5l-2.2.9-3.4 3.4.2 4-1.4 1.4-3.7-3.7-5.3 5.3-1-1 5.3-5.3L5 10.1l1.4-1.4 4 .2 3.4-3.4z"/>';
+  const TRASH = '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>';
+  const svgI = (inner, cls) => { const t = document.createElementNS("http://www.w3.org/2000/svg", "svg"); t.setAttribute("viewBox", "0 0 24 24"); t.setAttribute("aria-hidden", "true"); if (cls) t.setAttribute("class", cls); t.innerHTML = inner; return t; };
+  const W = 176; let openRow = null;
+  const closeRow = (w) => { if (!w) return; w.querySelector(".conv").style.transform = ""; w.classList.remove("open"); w.classList.add("dragging"); setTimeout(() => w.classList.remove("dragging"), 240); if (openRow === w) openRow = null; };
+  async function act(fn, ok) { const { error } = await fn(); if (error) { alert("Action impossible pour le moment. Réessayez."); return; } await load(); }
   function row(c) {
     const prefix = c.last_from_me ? "Vous : " : "";
+    const link = rowLink(c, prefix);
+    const pinBtn = el("button", { class: "act pin", type: "button", "data-pin": c.id, onclick: () => act(() => sb.rpc("pin_conversation", { p_conversation: c.id, p_pinned: !c.pinned })) }, svgI(PIN), c.pinned ? "Désépingler" : "Épingler");
+    const delBtn = el("button", { class: "act del", type: "button", "data-del": c.id, onclick: () => { if (confirm("Supprimer cette conversation ? Elle disparaît de votre liste ; l'autre personne la garde.")) act(() => sb.rpc("delete_conversation", { p_conversation: c.id })); } }, svgI(TRASH), "Supprimer");
+    link.draggable = false; link.addEventListener("dragstart", (e) => e.preventDefault());
+    const wrap = el("div", { class: "swipe", "data-swipe": c.id }, el("div", { class: "acts" }, pinBtn, delBtn), link);
+    // Glisser vers la gauche : les deux actions apparaissent sur le côté
+    let x0 = null, y0 = null, base = 0, dragging = false, moved = false;
+    link.addEventListener("pointerdown", (e) => { if (e.button) return; x0 = e.clientX; y0 = e.clientY; base = wrap.classList.contains("open") ? -W : 0; dragging = false; moved = false; if (openRow && openRow !== wrap) closeRow(openRow); });
+    link.addEventListener("pointermove", (e) => {
+      if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (!dragging) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { dragging = true; moved = true; link.classList.add("drag"); wrap.classList.add("dragging"); try { link.setPointerCapture(e.pointerId); } catch (x) {} } else return; }
+      link.style.transform = `translateX(${Math.max(-W, Math.min(0, base + dx))}px)`;
+    });
+    const end = () => {
+      if (x0 == null) return; x0 = null; link.classList.remove("drag"); wrap.classList.remove("dragging");
+      if (!dragging) return; const cur = parseFloat((link.style.transform.match(/-?[\d.]+/) || [0])[0]) || 0;
+      if (cur < -W / 2) { link.style.transform = `translateX(${-W}px)`; wrap.classList.add("open"); openRow = wrap; } else closeRow(wrap);
+    };
+    link.addEventListener("pointerup", end); link.addEventListener("pointercancel", end);
+    link.addEventListener("click", (e) => { if (moved) { e.preventDefault(); moved = false; return; } if (wrap.classList.contains("open")) { e.preventDefault(); closeRow(wrap); } });
+    return wrap;
+  }
+  function rowLink(c, prefix) {
     return el("a", { class: "conv" + (c.unread ? " unread" : ""), href: "conversation.html?c=" + encodeURIComponent(c.id), "data-conv": c.id }, avatarOf(c),
       el("div", { class: "mid" }, el("b", {}, c.name || "Utilisateur", c.can_send ? null : el("span", { class: "ro", text: "lecture seule" })), el("p", { text: prefix + (c.last_body || "") })),
-      el("div", { class: "end" }, el("time", { datetime: c.last_at, text: when(c.last_at) }), c.unread ? el("span", { class: "dot", "data-unread": String(c.unread), text: c.unread > 99 ? "99+" : String(c.unread) }) : null));
+      el("div", { class: "end" }, el("time", { datetime: c.last_at }, c.pinned ? svgI(PIN, "pinned") : null, when(c.last_at)), c.unread ? el("span", { class: "dot", "data-unread": String(c.unread), text: c.unread > 99 ? "99+" : String(c.unread) }) : null));
   }
+  document.addEventListener("pointerdown", (e) => { if (openRow && !openRow.contains(e.target)) closeRow(openRow); });
   let first = true, before = null;
   async function load() {
     const { data, error } = await sb.rpc("my_conversations", { p_limit: 60 });
@@ -71,7 +110,7 @@
   (async function boot() {
     if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir vos messages. ", el("a", { href: "/", text: "Se connecter" }))); return; }
     if (await gateProfile()) return;
-    await load(); setInterval(() => { if (!document.hidden) load(); }, 20000);
+    await load(); setInterval(() => { if (!document.hidden && !openRow) load(); }, 20000);
   })();
 </script>
 <script src="back.js"></script>
