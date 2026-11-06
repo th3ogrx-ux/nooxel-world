@@ -89,10 +89,11 @@
   }
   async function boot() {
     $("back").append(icon("back", 26));
-    let privRow = null;
+    let privRow = null, statsRow = null;
     try {
       if (sb) { const [st, sm] = await Promise.all([sb.rpc("my_verification_status"), sb.rpc("my_profile_summary")]);
-        if (st.data && !st.data.has_profile && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private); }
+        if (st.data && !st.data.has_profile && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private);
+        if (st.data && st.data.has_profile && st.data.verification === "verified") statsRow = row(["chart", "Mes statistiques", soon("Mes statistiques"), "Abonnés et performances de ma page"]); }
     } catch (e) {}
     const app = $("app");
     const c = chev(); c.classList.add("chev");
@@ -100,7 +101,7 @@
       el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
     const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;      // déjà installée : la ligne disparaît
     if (installed) for (const s of SECTIONS) s.rows = s.rows.filter(r => r[1] !== "Installer l'application");
-    for (const s of SECTIONS) { const kids = s.rows.map(row); if (privRow && s.title === "Paramètres du compte") kids.push(privRow); app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...kids)); }
+    for (const s of SECTIONS) { const kids = s.rows.map(row); if (privRow && s.title === "Paramètres du compte") kids.push(privRow); if (statsRow && s.title === "Professionnel") kids.push(statsRow); app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...kids)); }
     const out = el("button", { class: "row", type: "button", id: "logout", "data-row": "Se déconnecter" }, icon("logout"), el("span", { class: "t", text: "Se déconnecter" })); const c2 = chev(); c2.classList.add("chev"); out.append(c2);
     const del = el("button", { class: "row", type: "button", id: "delete-account", "data-row": "Supprimer mon compte" }, icon("trash"), el("span", { class: "t", text: "Supprimer mon compte" }));
     app.append(el("h2", { text: "Zone de danger" }), el("div", { class: "danger" }, out, del));
