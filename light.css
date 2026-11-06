@@ -155,3 +155,6 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 .add-tile { display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; background: rgba(47,123,255,.08) !important; border: 2px dashed rgba(111,168,255,.55) !important; color: #9db4e8 !important; cursor: pointer; font: inherit; }
 .add-tile svg.i { width: 34px; height: 34px; color: #6fa8ff; stroke-width: 2; } .add-tile b { font-size: .82rem; font-weight: 600; }
 .add-tile:active { background: rgba(47,123,255,.18) !important; }
+/* Onglet Vidéos : la tuile « + » est un grand rectangle horizontal sur toute la largeur */
+.vgrid .add-tile { grid-column: 1 / -1; aspect-ratio: 16 / 6 !important; flex-direction: row !important; gap: .8rem !important; }
+.vgrid .add-tile svg.i { width: 38px; height: 38px; } .vgrid .add-tile b { font-size: .95rem; }
