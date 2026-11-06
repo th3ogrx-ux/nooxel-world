@@ -369,7 +369,7 @@
   // Tuile « + » (propriétaire, onglets Photos et Vidéos) : lance l'ajout d'une photo / d'une vidéo
   function addTile(kind) {
     return el("button", { class: kind === "video" ? "vtile add-tile" : "tile add-tile", id: "add-" + kind + "-tile", type: "button", "aria-label": kind === "video" ? "Ajouter une vidéo" : "Ajouter une photo", onclick: () => window.nxGoAdd(kind) },
-      icon("plus"), el("b", { text: kind === "video" ? "Ajouter une vidéo" : "Ajouter une photo" }));
+      icon("plus"));
   }
   function tile(p) {
     return el("button", { class: "tile", type: "button", "data-post": p.id, "aria-label": "Ouvrir la publication", onclick: () => {
