@@ -190,6 +190,7 @@
     if (req && req.status === "rejected_final") app.append(el("div", { class: "banner b-bad" }, el("b", { text: "Refus définitif" }), "Après réexamen, votre demande n'a pas été acceptée. Motif : ", req.decision_reason || "—", ". Vous pouvez déposer une nouvelle demande avec de nouveaux éléments."));
 
     app.append(profileCard());
+    if (v !== "verified") app.append(typeCard());
     if (v === "pending" && req && ["pending", "contested"].includes(req.status)) app.append(pendingCard(req));
     if (v === "verified") app.append(pageCard(), closureCard(), scheduleCard(), postsCard(), videosCard(), referralCard());
     else app.append(el("div", { class: "card", id: "page-soon" }, el("h2", { text: "Votre page publique" }), el("p", { text: "Une fois votre commerce vérifié, vous aurez une page visible par tous : vos publications, vos abonnés, votre adresse sur la carte." })));
@@ -281,6 +282,40 @@
     sb.from("merchant_profiles").select("description").eq("id", state.merchant_id).single().then(({ data }) => { if (data) desc.value = data.description || ""; });
     return el("div", { class: "card" }, el("div", { class: "row" }, title, el("span", { class: "badge " + badge[0], text: badge[1] })),
       el("button", { class: "btn ghost small", type: "button", text: "Modifier", onclick: () => form.classList.toggle("hidden") }), form);
+  }
+
+  // ---- type de profil (Commerce / Indépendant) + adresse : pour un profil déjà créé et pas encore vérifié
+  function typeCard() {
+    const body = el("div", { id: "type-body" }), card = el("div", { class: "card", id: "type-card" }, el("h2", { text: "Type de profil" }),
+      el("p", { text: "Indiquez comment vous apparaissez dans l'application : commerce avec une adresse, ou indépendant sans boutique." }), body);
+    const paint = (d) => {
+      const err = el("p", { class: "err", id: "t-err" });
+      const radio = (id, value, title, sub) => el("label", { class: "kindcard" }, el("input", { type: "radio", name: "kind2", id, value, checked: d.profile_kind === value }), el("span", {}, el("b", { text: title }), el("small", { text: sub })));
+      const kinds = el("div", { class: "kindrow", id: "t-kinds" }, radio("t-shop", "shop", "Commerce", "Boutique, restaurant, atelier… avec une adresse"), radio("t-mobile", "mobile", "Indépendant", "Sans boutique : zone d'intervention, jamais d'adresse personnelle"));
+      kinds.addEventListener("change", async (e) => {
+        if (e.target.name !== "kind2") return; err.textContent = "";
+        const to = e.target.value, upd = to === "mobile" ? { profile_kind: "mobile", address: null, lat: null, lng: null } : { profile_kind: "shop", zone_label: null, zone_lat: null, zone_lng: null, zone_radius_km: null };
+        const { error } = await sb.from("merchant_profiles").update(upd).eq("id", state.merchant_id);
+        if (error) { err.textContent = "Changement impossible pour le moment."; paint(d); return; }
+        const { data } = await sb.from("merchant_profiles").select("profile_kind,address").eq("id", state.merchant_id).single(); paint(data || { profile_kind: to });
+      });
+      const parts = [kinds];
+      if (d.profile_kind === "shop") {
+        const cur = el("p", { class: "hint", id: "t-current", text: d.address ? "📍 " + d.address : "Aucune adresse : votre commerce n'apparaîtra pas sur la carte." });
+        const input = el("input", { type: "text", id: "t-address", placeholder: "Rechercher l'adresse du commerce", autocomplete: "off", maxlength: 200 }), list = el("ul", { class: "sugg", id: "t-list" });
+        photonPick(input, list, err, (pp, c) => {
+          const label = [[pp.housenumber, pp.street || pp.name].filter(Boolean).join(" "), [pp.postcode, pp.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || pp.name || "Lieu";
+          return el("li", { role: "button", tabindex: "0", text: label, onclick: async () => {
+            const { error } = await sb.from("merchant_profiles").update({ address: label.slice(0, 200), lat: c[1], lng: c[0] }).eq("id", state.merchant_id);
+            if (error) { err.textContent = "Enregistrement impossible."; return; } d.address = label.slice(0, 200); cur.textContent = "📍 " + d.address; list.replaceChildren(); input.value = ""; err.textContent = "";
+          } });
+        });
+        parts.push(cur, el("label", {}, "Adresse du commerce", input), list, el("p", { class: "hint", text: "Elle place votre commerce sur la carte une fois vérifié." }));
+      } else parts.push(el("p", { class: "hint", text: "Vous indiquerez votre zone d'intervention dès que votre profil sera vérifié." }));
+      parts.push(err); body.replaceChildren(...parts);
+    };
+    sb.from("merchant_profiles").select("profile_kind,address").eq("id", state.merchant_id).single().then(({ data }) => paint(data || { profile_kind: "shop" }));
+    return card;
   }
 
   // ---- demande en cours
