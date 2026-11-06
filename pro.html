@@ -105,6 +105,7 @@
 </main>
 
 <script src="assets/vendor/supabase.js"></script>
+<script src="confirm.js"></script>
 <script src="categories.js"></script>
 <script>
   // Clé publique (anon) : conçue pour être exposée côté navigateur.
@@ -356,7 +357,7 @@
     const box = el("div", { class: "waiting", id: "status" }, el("span", { class: "wico" }, icon), el("h2", { text: "En attente de validation" }),
       el("p", { text: req && req.status === "contested" ? "Votre contestation est en cours d'examen." : `Demande envoyée le ${fmtDate(req && req.created_at)}. Nous examinons votre dossier à la main : réponse sous quelques jours.` }));
     if (req && req.status === "pending") box.append(el("button", { class: "linkbtn2", id: "cancel-btn", type: "button", text: "Annuler ma demande", onclick: async () => {
-      if (!confirm("Annuler la demande ? Le téléphone et le lien envoyés seront effacés.")) return;
+      if (!(await nxConfirm({ title: "Annuler votre demande ?", text: "Le téléphone et le lien que vous avez envoyés seront effacés. Vous pourrez refaire une demande quand vous voulez.", ok: "Oui, annuler la demande", cancel: "Non, la garder", danger: true }))) return;
       const { error } = await sb.rpc("cancel_verification", { p_request_id: req.id });
       if (error) { err.textContent = fr(error); return; } await load();
     } }));
@@ -373,7 +374,7 @@
         req.phone_end ? el("li", {}, el("span", { text: "Téléphone" }), el("span", { text: "se termine par " + req.phone_end })) : null,
         req.has_siret ? el("li", {}, el("span", { text: "SIRET" }), el("span", { text: req.company_name ? "contrôlé : " + req.company_name : "contrôlé" })) : null),
       req.status === "pending" ? el("button", { class: "btn danger small", id: "cancel-btn", type: "button", text: "Annuler la demande", onclick: async () => {
-        if (!confirm("Annuler la demande ? Le téléphone et le lien envoyés seront effacés.")) return;
+        if (!(await nxConfirm({ title: "Annuler votre demande ?", text: "Le téléphone et le lien que vous avez envoyés seront effacés. Vous pourrez refaire une demande quand vous voulez.", ok: "Oui, annuler la demande", cancel: "Non, la garder", danger: true }))) return;
         const { error } = await sb.rpc("cancel_verification", { p_request_id: req.id });
         if (error) { err.textContent = fr(error); return; } await load();
       } }) : null, err);
