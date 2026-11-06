@@ -156,3 +156,4 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 /* Compte : bandeau de vérification remonté et décollé de la photo ; carte de progression plus petite et décollée du bouton « Modifier mon profil » */
 #pro-banner { margin: .9rem 1.1rem 1.6rem; }
 #badge-progress-card { margin: 1.4rem 1.1rem .9rem; }
+.shell main { padding-bottom: 9rem; }

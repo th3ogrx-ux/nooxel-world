@@ -121,7 +121,7 @@
     });
     paint();
     const mobile = s.kind === "mobile";
-    const menu = moreMenu(s);
+    const menu = s.is_owner ? el("div", { id: "more-menu", class: "hidden" }) : moreMenu(s);      // propriétaire : pas de menu « ⋯ » (roue crantée à la place)
     const moreBtn = el("button", { class: "round", id: "more-btn", type: "button", "aria-label": "Plus d'options", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); } }, icon("more"));
     // Propriétaire d'un commerce vérifié : bouton « + » (Publier) à côté de « ⋯ »
     const canPublish = s.is_owner && s.verified;
@@ -130,10 +130,12 @@
       el("button", { type: "button", id: "add-photo", role: "menuitem", onclick: () => goAdd("photo") }, icon("photo"), "Ajouter une photo"), el("button", { type: "button", id: "add-video", role: "menuitem", onclick: () => goAdd("video") }, icon("video"), "Ajouter une vidéo"));
     const addBtn = !canPublish ? null : el("button", { class: "round", id: "add-btn", type: "button", "aria-label": "Publier", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.add("hidden"); addMenu.classList.toggle("hidden"); } }, icon("plus"));
     moreBtn.addEventListener("click", () => { if (addMenu) addMenu.classList.add("hidden"); });
+    // Propriétaire : la roue crantée « Paramètres » à la place des trois points (les autres options sont dans Paramètres et le « + »)
+    const gearBtn = el("a", { class: "round", id: "gear", href: "parametres.html", "aria-label": "Paramètres" }, icon("gear"));
     window.nxGoAdd = goAdd;
     document.addEventListener("click", () => { menu.classList.add("hidden"); if (addMenu) addMenu.classList.add("hidden"); });
     const hero = el("div", { class: "hero", id: "shop-cover" }, s.cover_path ? el("img", { src: imgUrl(s.cover_path), alt: "" }) : null,
-      el("div", { class: "bar" }, el("a", { class: "round", id: "back", href: "/", "data-back": "", "aria-label": "Retour" }, icon("back")), el("span", { class: "rgrp" }, addBtn, moreBtn)), menu, addMenu);
+      el("div", { class: "bar" }, el("a", { class: "round", id: "back", href: "/", "data-back": "", "aria-label": "Retour" }, icon("back")), el("span", { class: "rgrp" }, addBtn, s.is_owner ? gearBtn : moreBtn)), menu, addMenu);
     const idrow = el("div", { class: "idrow" }, el("span", { id: "shop-logo" }, logoBadge(s.logo_path, s.business_name, 112)),
       el("div", { class: "idinfo" }, el("h2", {}, el("span", { id: "shop-name", text: s.business_name }), s.has_badge ? el("span", { id: "shop-badge", title: "Compte certifié (" + nfmt(s.badge_threshold) + " abonnés et plus)" }, verifiedMark()) : null),
         s.category ? el("p", { class: "cat", id: "shop-cat", text: catLabel(s.category) }) : null, el("p", { class: "rate", id: "shop-rating" }, ...rateNode())));
@@ -155,6 +157,15 @@
     const reviewsSec = el("div", { id: "section-reviews", class: "section hidden" });
     app.replaceChildren(...[hero, idrow, actions, el("p", { class: "okmsg2", id: "share-ok", role: "status" }), err, owner, closureBanner(s), strip(s), secs, postsSec, videosSec, reviewsSec, infosSec(s)].filter(Boolean));
     before = null; loadPosts(true); if (mobile) loadSchedule();
+    if (s.is_owner) mountTabbar();
+  }
+
+  // Le propriétaire garde la barre du bas (Fil, Vidéos, carte, Notifications, Compte) sur sa page, comme un compte normal
+  function mountTabbar() {
+    if ($("tabbar")) return;
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "tabbar.css"; document.head.append(l);
+    const main = document.querySelector("main"), shell = document.createElement("div"); shell.className = "shell"; main.replaceWith(shell); shell.append(main);
+    const sc = document.createElement("script"); sc.src = "tabbar.js"; sc.dataset.active = "account"; document.body.append(sc);
   }
 
   // ================= Avis =================
