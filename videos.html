@@ -49,6 +49,7 @@
 <button id="mute" class="hidden" type="button" aria-label="Son"></button>
 <script src="assets/vendor/supabase.js"></script>
 <script src="shop.js"></script>
+<script src="track.js"></script>
 <script src="tabbar.js" data-active="videos"></script>
 <script>
   const vids = []; let kind = null, gen = 0, before = null, loading = false, done = false, muted = true, io = null, here = null;
@@ -124,6 +125,7 @@
     io = new IntersectionObserver((entries) => entries.forEach((e) => {
       const video = e.target.querySelector("video"), btn = e.target.querySelector(".v-play");
       if (e.isIntersecting && e.intersectionRatio >= 0.7) {
+        { const sv = vids.find((x) => x.id === video.dataset.vid); if (sv && !sv.is_owner) nxTrack("video_view", sv.merchant_id, sv.id); }
         if (!video.getAttribute("src")) video.src = videoUrl(vids.find((x) => x.id === video.dataset.vid).video_path);      // une seule vidéo chargée à la fois
         if (lowData()) btn.classList.remove("hidden"); else { btn.classList.add("hidden"); video.play().catch(() => btn.classList.remove("hidden")); }
         const i = vids.findIndex((x) => x.id === video.dataset.vid); if (i >= vids.length - 2) load();

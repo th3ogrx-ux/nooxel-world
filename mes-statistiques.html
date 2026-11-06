@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mes statistiques — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="tabbar.css">
+  <style>
+    .intro { margin: .2rem .2rem 1rem; color: var(--dim); font-size: .95rem; }
+    .seg { display: flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid var(--edge); margin: 0 0 1rem; }
+    .seg button { flex: 1; border: 0; background: none; color: #b6c6ea; padding: .5rem .4rem; border-radius: 999px; font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
+    .seg button.on { background: #2f7bff; color: #fff; box-shadow: 0 2px 10px rgba(47,123,255,.4); }
+    .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; margin-bottom: 1.2rem; }
+    .kpi { position: relative; overflow: hidden; border-radius: 18px; padding: .9rem .95rem; border: 1px solid var(--edge); background: linear-gradient(160deg, rgba(30,60,140,.45), rgba(10,20,48,.9)); }
+    .kpi small { display: block; color: var(--dim); font-size: .8rem; line-height: 1.25; min-height: 2em; }
+    .kpi b { display: block; font-size: 1.9rem; line-height: 1.15; margin-top: .15rem; letter-spacing: -.02em; }
+    .kpi span { display: block; color: #8ea3d0; font-size: .76rem; line-height: 1.3; margin-top: .15rem; }
+    .kpi.wide { grid-column: 1 / -1; }
+    h2.sec2 { margin: 1.4rem .2rem .6rem; font-size: 1.05rem; }
+    .card2 { background: var(--row); border: 1px solid var(--edge); border-radius: 18px; padding: .9rem .9rem .7rem; margin: 0 0 .9rem; }
+    .card2 h3 { margin: 0; font-size: 1rem; } .card2 p.sub { margin: .1rem 0 .4rem; color: var(--dim); font-size: .82rem; }
+    .chart { position: relative; height: 230px; } .chart svg { display: block; overflow: visible; max-width: 100%; }
+    .chart .tip { position: absolute; pointer-events: none; min-width: 120px; padding: .45rem .65rem; border-radius: 10px; background: #0d2150; border: 1px solid rgba(120,160,255,.35); font-size: .8rem; box-shadow: 0 8px 20px rgba(0,0,0,.4); transform: translate(-50%, -110%); z-index: 3; color: #e8efff; }
+    .chart .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: .35rem; } .chart .tip b { display: block; }
+    .legend { display: flex; gap: 1rem; color: var(--dim); font-size: .8rem; margin-top: .3rem; } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .35rem; }
+    .items { list-style: none; margin: 0; padding: 0; }
+    .items li { display: flex; align-items: center; gap: .8rem; padding: .6rem 0; border-top: 1px solid var(--edge); } .items li:first-child { border-top: 0; }
+    .items img, .items .ph { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; background: #14285a; flex: none; display: grid; place-items: center; color: #cfe0ff; font-size: 1.1rem; }
+    .items .txt { flex: 1; min-width: 0; } .items .txt b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; } .items .txt small { color: var(--dim); }
+    .items .val { text-align: right; white-space: nowrap; font-weight: 700; color: #5a9bff; } .items .val small { display: block; color: var(--dim); font-weight: 400; }
+    .note { color: var(--dim); font-size: .8rem; margin: .4rem .2rem 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="shell"><main class="acc">
+  <header class="hd"><a data-back href="parametres.html" id="back" aria-label="Retour"></a><h1>Mes statistiques</h1><span></span></header>
+  <div id="app"><p class="msg" style="color:#8ea3d0">Chargement…</p></div>
+</main></div>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script src="charts.js"></script>
+<script src="tabbar.js" data-active="account"></script>
+<script>
+  $("back").append(icon("back", 26));
+  let D = null, gran = "day";
+  const WINDOW = { day: "30 derniers jours", week: "12 dernières semaines", month: "12 derniers mois" };
+  const sum = (b, key) => { let s = 0; for (let i = b[0].from; i <= b[b.length - 1].to; i++) s += Number(D.series[i][key] || 0); return s; };
+  const per = (bs, key) => bs.map((x) => { let s = 0; for (let i = x.from; i <= x.to; i++) s += Number(D.series[i][key] || 0); return s; });
+  const fmtPct = (n) => (Math.round(n * 10) / 10).toLocaleString("fr-FR") + " %";
+
+  function kpi(id, label, value, hint, wide) {
+    return el("div", { class: "kpi" + (wide ? " wide" : ""), id: "kpi-" + id }, el("small", { text: label }), el("b", { text: value }), el("span", { text: hint || "" }));
+  }
+  function chartCard(id, title, sub, legend) {
+    return el("div", { class: "card2" }, el("h3", { text: title }), el("p", { class: "sub", text: sub }), el("div", { class: "chart", id }),
+      legend ? el("div", { class: "legend" }, ...legend.map(([c, l]) => el("span", {}, el("i", { style: "background:" + c }), l))) : null);
+  }
+  function thumb(path, fallback) { return path ? el("img", { src: imgUrl(path), alt: "", loading: "lazy" }) : el("span", { class: "ph", text: fallback }); }
+
+  function paint() {
+    const bs = nxBuckets(D.series, gran);
+    const v = sum(bs, "video_view"), ph = sum(bs, "photo_view"), views = v + ph, likes = sum(bs, "likes"), shares = sum(bs, "share_click");
+    const rev = sum(bs, "reviews"), rsum = sum(bs, "rating_sum");
+    const eng = views > 0 ? Math.min(100, (likes + shares) / views * 100) : null;
+    $("intro").textContent = "Chiffres des " + WINDOW[gran] + ".";
+    const set = (id, val, hint) => { const k = $("kpi-" + id); k.querySelector("b").textContent = val; if (hint != null) { const s = k.querySelector("span"); if (s) s.textContent = hint; } };
+    set("profile", nxNum(sum(bs, "profile_view"))); set("videos", nxNum(v)); set("photos", nxNum(ph));
+    set("search", nxNum(sum(bs, "search_impression"))); set("map", nxNum(sum(bs, "map_impression")));
+    set("followers", nxNum(sum(bs, "new_followers")), `${nxNum(D.merchant.follower_count)} abonné(s) au total`);
+    set("message", nxNum(sum(bs, "message_click"))); set("route", nxNum(sum(bs, "route_click")));
+    set("reviews", nxNum(rev), rev ? `Note moyenne sur la période : ${(Math.round(rsum / rev * 10) / 10).toLocaleString("fr-FR")} ★` : "Aucun avis sur la période");
+    set("engagement", eng == null ? "—" : fmtPct(eng), eng == null ? "Pas encore de vues sur la période" : `${nxNum(likes)} ♥ et ${nxNum(shares)} partage(s) pour ${nxNum(views)} vue(s)`);
+    const labels = bs.map((x) => x.label);
+    nxLine($("ch-views"), labels, [{ name: "Vidéos", color: "#4f9bff", values: per(bs, "video_view") }, { name: "Photos", color: "#34d399", values: per(bs, "photo_view") }], { label: "Vues" });
+    nxLine($("ch-profile"), labels, [{ name: "Visites de la page", color: "#a78bfa", values: per(bs, "profile_view") }], { label: "Visites de la page" });
+    nxLine($("ch-followers"), labels, [{ name: "Nouveaux abonnés", color: "#fbbf24", values: per(bs, "new_followers") }], { label: "Nouveaux abonnés" });
+  }
+
+  function render() {
+    const app = $("app"), m = D.merchant;
+    const seg = el("div", { class: "seg", role: "group", "aria-label": "Période" }, ...[["day", "Jours"], ["week", "Semaines"], ["month", "Mois"]].map(([k, l]) =>
+      el("button", { type: "button", "data-gran": k, class: k === gran ? "on" : "", text: l, onclick: () => { gran = k; seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.gran === k)); paint(); } })));
+    const kp = el("div", { class: "kpis" },
+      kpi("profile", "Visites de votre page", "0", "Personnes qui ont ouvert votre page"),
+      kpi("followers", "Nouveaux abonnés", "0", ""),
+      kpi("videos", "Vues de vos vidéos", "0", ""), kpi("photos", "Vues de vos photos", "0", ""),
+      kpi("search", "Apparitions dans la recherche", "0", "Fois où vous êtes sorti dans une recherche"), kpi("map", "Apparitions sur la carte", "0", "Fois où votre pin s'est affiché"),
+      kpi("message", "Clics sur « Message »", "0", ""), kpi("route", "Clics sur « Itinéraire »", "0", "Personnes qui veulent venir chez vous"),
+      kpi("reviews", "Avis reçus", "0", ""), kpi("engagement", "Taux d'engagement", "—", ""));
+    const items = (list, empty, row) => el("ul", { class: "items" }, ...(list.length ? list.slice(0, 10).map(row) : [el("li", {}, el("span", { class: "note", text: empty }))]));
+    const since = D.tracking_since ? `Les mesures ont démarré le ${new Date(D.tracking_since + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : avant, rien n'était compté.` : "Les mesures viennent de démarrer : les premiers chiffres apparaîtront dès les prochaines visites.";
+    app.replaceChildren(el("p", { class: "intro", id: "intro" }), seg, kp,
+      el("h2", { class: "sec2", text: "Évolution" }),
+      chartCard("ch-views", "Vues", "Vidéos et photos regardées", [["#4f9bff", "Vidéos"], ["#34d399", "Photos"]]),
+      chartCard("ch-profile", "Visites de votre page", "Combien de personnes ouvrent votre page"),
+      chartCard("ch-followers", "Nouveaux abonnés", "Personnes qui ont appuyé sur « Suivre »"),
+      el("h2", { class: "sec2", text: "Détail par contenu" }),
+      el("div", { class: "card2", id: "video-detail" }, el("h3", { text: "Vos vidéos" }), el("p", { class: "sub", text: "Vues depuis le début des mesures" }),
+        items(D.videos, "Vous n'avez pas encore publié de vidéo.", (x) => el("li", { "data-video": x.id }, thumb(x.poster_path, "▶"), el("div", { class: "txt" }, el("b", { text: x.caption || "Vidéo sans légende" }), el("small", { text: new Date(x.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) })), el("div", { class: "val" }, nxNum(x.views) + " vue(s)", el("small", { text: "♥ " + nxNum(x.like_count) }))))),
+      el("div", { class: "card2", id: "photo-detail" }, el("h3", { text: "Vos photos" }), el("p", { class: "sub", text: "Vues depuis le début des mesures" }),
+        items(D.photos, "Vous n'avez pas encore publié de photo.", (x) => el("li", { "data-photo": x.id }, thumb(x.image_path, "📷"), el("div", { class: "txt" }, el("b", { text: x.body || "Photo sans texte" }), el("small", { text: new Date(x.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) })), el("div", { class: "val" }, nxNum(x.views) + " vue(s)", el("small", { text: "♥ " + nxNum(x.like_count) }))))),
+      el("p", { class: "note", text: since }),
+      el("p", { class: "note", text: "Une même personne est comptée une seule fois par jour. Taux d'engagement = (♥ + partages) ÷ vues des vidéos et photos ; les commentaires ne sont pas encore disponibles." }));
+    paint();
+  }
+
+  (async function boot() {
+    if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir vos statistiques. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return;
+    const { data, error } = await sb.rpc("my_stats");
+    if (error) { $("app").replaceChildren(el("p", { class: "msg", text: /not_verified|not_found/.test(error.message || "") ? "Les statistiques sont disponibles dès que votre commerce est vérifié." : "Statistiques indisponibles pour le moment. Réessayez dans un instant." })); return; }
+    D = data; render();
+  })();
+  addEventListener("resize", () => { if (D && $("ch-views")) paint(); });
+</script>
+<script src="back.js"></script>
+</body>
+</html>

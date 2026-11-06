@@ -469,6 +469,7 @@
   </main>
 
   <script src="categories.js"></script>
+  <script src="track.js"></script>
 <script>
     // Déjà connecté sur cet appareil ? On va directement à la carte, sans passer par l'écran d'entrée.
     const AUTH_KEY = "sb-smjbgjolteovcwkoxcar-auth-token";
@@ -776,6 +777,7 @@
         const [shops, feats] = await Promise.all([shopsReq, fetch(url, { signal: sig }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(j => j.features || [], e => { if (e.name === "AbortError") throw e; return null; })]);
         if (sig.aborted) return;
         results = shops.map(m => ({ shop: m })).concat(feats || []);
+        shops.forEach(m => nxTrack("search_impression", m.id));
         if (!results.length && feats === null) return showNote("Recherche indisponible pour le moment.");
         renderResults();
       } catch (e) { if (e.name !== "AbortError") showNote("Recherche indisponible pour le moment."); }
@@ -828,6 +830,7 @@
       const keep = new Set(data.map(m => m.id));
       for (const [id, mk] of shopMarkers) if (!keep.has(id)) { mk.remove(); shopMarkers.delete(id); }
       for (const m of data) {
+        nxTrack("map_impression", m.id);
         if (shopMarkers.has(m.id)) continue;
         const el = document.createElement("button"); el.type = "button"; el.className = "shop-marker"; el.setAttribute("aria-label", m.business_name);
         el.innerHTML = catPin(m.category, m.kind === "mobile");
@@ -980,7 +983,7 @@
         sp.textContent = e.message === "none" ? "Aucun itinéraire trouvé pour ce mode." : "Le calcul d'itinéraire est indisponible pour le moment."; $("rc-sum").append(sp);
       }
     }
-    $("pc-go").onclick = computeRoute;
+    $("pc-go").onclick = () => { if (dest && dest.shop) nxTrack("route_click", dest.shop); computeRoute(); };
     // ----- Barre du bas
     $("tab-locate").onclick = () => { clearSearch(); $("menu").classList.add("hidden"); if (geo) geo.trigger(); else startMap(); return false; };      // le bouton rond = retour à la carte, centrée sur ma position
     const tabState = () => { const menuOn = !$("menu").classList.contains("hidden"), searching = document.activeElement === $("q"); $("tab-account").classList.toggle("on", menuOn); };

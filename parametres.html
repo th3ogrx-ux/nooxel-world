@@ -93,7 +93,7 @@
     try {
       if (sb) { const [st, sm] = await Promise.all([sb.rpc("my_verification_status"), sb.rpc("my_profile_summary")]);
         if (st.data && !st.data.has_profile && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private);
-        if (st.data && st.data.has_profile && st.data.verification === "verified") statsRow = row(["chart", "Mes statistiques", soon("Mes statistiques"), "Abonnés et performances de ma page"]); }
+        if (st.data && st.data.has_profile && st.data.verification === "verified") statsRow = row(["chart", "Mes statistiques", "mes-statistiques.html", "Abonnés et performances de ma page"]); }
     } catch (e) {}
     const app = $("app");
     const c = chev(); c.classList.add("chev");
