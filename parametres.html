@@ -109,8 +109,8 @@
     let privRow = null, statsRow = null, msgToggle = null, unread = 0;
     try {
       if (sb) { const [st, sm] = await Promise.all([sb.rpc("my_verification_status"), sb.rpc("my_profile_summary")]);
-        if (st.data && !st.data.has_profile && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private);
-        if (st.data && st.data.has_profile && st.data.merchant_id) { const mp = await sb.from("merchant_profiles").select("messages_enabled").eq("id", st.data.merchant_id).single(); if (mp.data) msgToggle = messagesToggleRow(mp.data.messages_enabled !== false); }
+        if (st.data && st.data.verification !== "verified" && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private);
+        if (st.data && st.data.has_profile && st.data.verification === "verified" && st.data.merchant_id) { const mp = await sb.from("merchant_profiles").select("messages_enabled").eq("id", st.data.merchant_id).single(); if (mp.data) msgToggle = messagesToggleRow(mp.data.messages_enabled !== false); }
         if (st.data && st.data.has_profile && st.data.verification === "verified") statsRow = row(["chart", "Mes statistiques", "mes-statistiques.html", "Abonnés et performances de ma page"]); }
       unread = await unreadMessages();
     } catch (e) {}
