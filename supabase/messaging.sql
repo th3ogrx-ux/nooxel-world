@@ -203,7 +203,7 @@ begin
 end;
 $$;
 
--- Épingler / désépingler une conversation (pour soi seulement) : les épinglées restent en haut de la liste
+-- Épingler / désépingler une conversation (pour soi seulement, 5 au maximum) : les épinglées restent en haut de la liste
 create or replace function public.pin_conversation(p_conversation uuid, p_pinned boolean)
 returns void
 language plpgsql security definer set search_path = public
@@ -214,8 +214,12 @@ begin
   select * into c from public.conversations where id = p_conversation;
   if not found then raise exception 'not_found'; end if;
   select * into m from public.merchant_profiles where id = c.merchant_id;
-  if c.user_id = auth.uid() then update public.conversations set user_pinned = coalesce(p_pinned, false) where id = c.id;
-  elsif m.owner_id = auth.uid() then update public.conversations set merchant_pinned = coalesce(p_pinned, false) where id = c.id;
+  if c.user_id = auth.uid() then
+    if coalesce(p_pinned, false) and not c.user_pinned and (select count(*) from public.conversations where user_id = auth.uid() and user_pinned) >= 5 then raise exception 'too_many_pins'; end if;
+    update public.conversations set user_pinned = coalesce(p_pinned, false) where id = c.id;
+  elsif m.owner_id = auth.uid() then
+    if coalesce(p_pinned, false) and not c.merchant_pinned and (select count(*) from public.conversations cc where cc.merchant_id = m.id and cc.merchant_pinned) >= 5 then raise exception 'too_many_pins'; end if;
+    update public.conversations set merchant_pinned = coalesce(p_pinned, false) where id = c.id;
   else raise exception 'not_found'; end if;
 end;
 $$;
