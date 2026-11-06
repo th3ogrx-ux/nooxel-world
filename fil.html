@@ -21,6 +21,7 @@
     .fp-head .logo { width: 58px; height: 58px; border: 2px solid #2a5fc4; background: #0d2150; color: #e8efff; font-size: 1.4rem; }
     .fp-who { flex: 1; min-width: 0; } .fp-who a { color: #fff; font-weight: 700; font-size: 1.08rem; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
     .fp-who .vcheck { width: 18px; height: 18px; }
+    .fp-tag { margin-left: .3rem; padding: .05rem .55rem; border-radius: 999px; background: rgba(75,149,255,.18); color: #7fb4ff; font-size: .72rem; font-weight: 700; }
     .fp-sub { margin: .1rem 0 0; color: #8ea3d0; font-size: .92rem; display: flex; align-items: center; gap: .3rem; } .fp-sub svg.i { width: 14px; height: 14px; }
     .fp-more { border: 0; background: none; color: #e8efff; width: 40px; height: 40px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .fp-img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 14px; background: #14285a; }
@@ -53,7 +54,7 @@
 <script src="tabbar.js" data-active="feed"></script>
 <script>
   $("ic-search").append(icon("search")); $("ic-filter").append(icon("sliders"));
-  let before = null, count = 0, openMenu = null;
+  const seen = []; let count = 0, openMenu = null;
   const toast = (m) => { let t = $("toast2"); if (!t) { t = el("p", { id: "toast2", role: "status" }); document.body.append(t); } t.textContent = m; clearTimeout(toast.t); toast.t = setTimeout(() => t.remove(), 2400); };
   document.addEventListener("click", () => { if (openMenu) { openMenu.remove(); openMenu = null; } });
 
@@ -79,7 +80,7 @@
     });
     const card_ = el("article", { class: "fp", "data-post": p.id },
       el("div", { class: "fp-head" }, logoBadge(p.logo_path, p.business_name, 58),
-        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"))), more),
+        el("div", { class: "fp-who" }, el("a", { href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, p.business_name, p.has_badge ? verifiedMark() : null), el("p", { class: "fp-sub" }, ago(p.created_at), " · ", icon("globe"), p.discover ? el("span", { class: "fp-tag", "data-discover": "1", text: "Suggestion" }) : null)), more),
       p.image_path ? el("img", { class: "fp-img", "data-track-post": p.id, "data-track-merchant": p.merchant_id, src: imgUrl(p.image_path), alt: "Photo publiée par " + p.business_name, loading: "lazy", decoding: "async" }) : null,
       p.body ? el("p", { class: "fp-cap" + (p.image_path ? "" : " only"), text: p.body }) : null,
       el("div", { class: "fp-actions" }, heart, share, el("a", { class: "fp-page", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id) }, "Voir la page", icon("chev"))));
@@ -94,14 +95,14 @@
 
   async function load(first) {
     const more = $("more-btn"); more.disabled = true;
-    const { data, error } = await sb.rpc("my_feed", { p_before: before, p_limit: 12 });
+    const { data, error } = await sb.rpc("feed_mix", { p_seen: seen, p_followed: 5, p_discover: 3 });
     more.disabled = false; const app = $("app");
     if (first) app.replaceChildren();
     if (error) { app.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
-    for (const p of data) { app.append(card(p)); count++; }
-    if (data.length) before = data[data.length - 1].created_at;
-    more.classList.toggle("hidden", data.length < 12);
-    if (!count) app.replaceChildren(el("p", { class: "empty", id: "feed-empty" }, "Votre fil est vide. Suivez des commerces pour voir leurs publications ici. ", el("a", { href: "/", text: "Chercher sur la carte" })));
+    for (const p of data) { app.append(card(p)); seen.push(p.id); count++; }
+    more.classList.toggle("hidden", data.length < 3);            // un paquet plus court = il n'y a plus rien de nouveau à montrer
+    if (!count) app.replaceChildren(el("p", { class: "empty", id: "feed-empty" }, "Aucune publication pour le moment. Suivez des commerces pour voir leurs nouveautés ici. ", el("a", { href: "/", text: "Chercher sur la carte" })));
+    else if (data.length < 3) app.append(el("p", { class: "empty", id: "feed-end", text: "Vous avez tout vu pour le moment." }));
   }
   $("more-btn").addEventListener("click", () => load());
   (async function boot() {
