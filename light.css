@@ -152,3 +152,7 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 #add-menu { position: absolute; right: .6rem; top: calc(env(safe-area-inset-top, 0px) + 3.4rem); z-index: 5; min-width: 220px; background: #0d2150; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.5); padding: .3rem; }
 #add-menu button { display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left; padding: .75rem .8rem; border: 0; background: none; border-radius: 10px; color: #e8efff; font: inherit; font-size: .95rem; cursor: pointer; }
 #add-menu button:hover { background: rgba(120,160,255,.14); } #add-menu svg.i { width: 22px; height: 22px; color: #6fa8ff; }
+
+/* Compte : bandeau de vérification remonté et décollé de la photo ; carte de progression plus petite et décollée du bouton « Modifier mon profil » */
+#pro-banner { margin: .9rem 1.1rem 1.6rem; }
+#badge-progress-card { margin: 1.4rem 1.1rem .9rem; }
