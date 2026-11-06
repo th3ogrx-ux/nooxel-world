@@ -53,7 +53,7 @@
     const items = s.is_owner ? [
       el("a", { id: "manage-edit", href: "pro.html#page-card", text: "Modifier la page" }), el("a", { id: "manage-post", href: "pro.html#posts-card", text: "Publier" }),
       s.kind === "mobile" ? el("a", { id: "manage-plan", href: "pro.html#schedule-card", text: "Planning de passage" }) : null,
-      el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "parametres.html", text: "Paramètres" })]
+      el("a", { id: "manage-messages", href: "messages.html", text: "Messages" }), el("a", { id: "manage-pro", href: "pro.html", text: "Espace professionnel" }), el("a", { id: "gear", href: "parametres.html", text: "Paramètres" })]
       : [el("button", { type: "button", id: "report-btn", text: "⚑ Signaler ce profil", onclick: () => { menu.classList.add("hidden"); openReportDialog({ kind: "merchant", merchant: s.id, title: "Signaler ce profil" }); } })];
     const menu = el("div", { id: "more-menu", class: "hidden", role: "menu" }, ...items.filter(Boolean));
     return menu;
@@ -131,7 +131,8 @@
         s.category ? el("p", { class: "cat", id: "shop-cat", text: catLabel(s.category) }) : null, el("p", { class: "rate", id: "shop-rating" }, ...rateNode())));
     const shareBtn = el("button", { class: "sq", id: "share-btn", type: "button", "aria-label": "Partager", onclick: async () => { if (!s.is_owner) nxTrack("share_click", s.id); const url = new URL("commerce.html?id=" + encodeURIComponent(s.id), location.href).href; try { if (navigator.share) await navigator.share({ title: s.business_name, url }); else { await navigator.clipboard.writeText(url); err.textContent = ""; $("share-ok").textContent = "Lien copié"; setTimeout(() => { $("share-ok").textContent = ""; }, 2000); } } catch (e) {} } }, icon("share"));
     // « Message » et le cœur sont affichés comme sur la maquette, sans action pour l'instant.
-    const msgBtn = s.is_owner ? null : el("button", { class: "btn-ghost", id: "msg-btn", type: "button", "aria-disabled": "true", text: "Message", onclick: () => nxTrack("message_click", s.id) });
+    // « Message » : seulement pour une personne (compte personnel) et si le commerce accepte les messages
+    const msgBtn = !s.can_message ? null : el("button", { class: "btn-ghost", id: "msg-btn", type: "button", text: "Message", onclick: () => { nxTrack("message_click", s.id); location.href = "conversation.html?merchant=" + encodeURIComponent(s.id); } });
     const heartBtn = s.is_owner ? null : el("button", { class: "sq", id: "heart-btn", type: "button", "aria-disabled": "true", "aria-label": "Aimer" }, icon("heart"));
     const actions = el("div", { class: "actions", id: "actions" }, s.is_owner ? null : fbtn, msgBtn, el("i", { class: "sep" }), shareBtn, heartBtn ? el("i", { class: "sep" }) : null, heartBtn);
     const owner = s.is_owner && !s.verified ? el("div", { class: "banner", id: "owner-banner" }, "Votre page n'est pas encore visible du public : elle le sera une fois votre commerce vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;

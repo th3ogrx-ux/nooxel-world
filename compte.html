@@ -11,10 +11,11 @@
   <link rel="stylesheet" href="blue.css">
   <link rel="stylesheet" href="light.css">
   <link rel="stylesheet" href="tabbar.css">
+  <style>.plainbar .grp { display: flex; } #msg-link { position: relative; } #msg-dot { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .68rem; font-weight: 700; line-height: 18px; text-align: center; box-shadow: 0 0 0 2px #061330; }</style>
 </head>
 <body>
 <div class="shell"><main>
-  <div class="plainbar"><a data-back id="back" href="/" aria-label="Retour à la carte"></a><a id="gear" href="parametres.html" aria-label="Paramètres"></a></div>
+  <div class="plainbar"><a data-back id="back" href="/" aria-label="Retour à la carte"></a><span class="grp"><a id="msg-link" href="messages.html" aria-label="Messages"></a><a id="gear" href="parametres.html" aria-label="Paramètres"></a></span></div>
   <div id="app"><p class="empty">Chargement…</p></div>
   <footer><a href="confidentialite.html">Confidentialité</a> · <a href="cgu.html">Conditions</a></footer>
 </main></div>
@@ -57,7 +58,8 @@
 
   function render(pro) {
     const app = $("app");
-    $("back").append(icon("back", 26)); $("gear").append(icon("gear", 24));
+    $("back").append(icon("back", 26)); $("gear").append(icon("gear", 24)); $("msg-link").append(icon("comment", 24));
+    unreadMessages().then((n) => { if (n) { const d = el("b", { id: "msg-dot", text: n > 9 ? "9+" : String(n) }); $("msg-link").append(d); } });
     const banner = pro.has_profile ? el("div", { class: "banner", id: "pro-banner" },
       pro.verification === "pending" ? "Votre demande de vérification est en cours. " : "Votre commerce n'est pas encore vérifié. ", el("a", { href: "pro.html", text: "Espace professionnel" })) : null;
     const nameEl = el("h2", { id: "pf-name", text: sum.pseudo || "Choisissez un pseudo" });

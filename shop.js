@@ -171,6 +171,8 @@ function badgeProgress(b) {
   } else box.append(el("div", { class: "bprog-top" }, el("b", { text: "Votre niveau" }), cur), el("p", { id: "badge-progress-text", text: "Bravo, vous avez atteint le niveau le plus élevé !" }));
   return box;
 }
+// Nombre de messages non lus (pastille sur les accès « Messages »)
+async function unreadMessages() { try { const { data } = await sb.rpc("unread_messages_count"); return Number(data) || 0; } catch (e) { return 0; } }
 const ERR = { not_found: "Cette page n'existe pas ou n'est plus disponible.", not_authenticated: "Connectez-vous pour continuer.", cannot_follow_self: "Vous ne pouvez pas suivre votre propre page.", too_many_likes: "Vous avez atteint la limite de ♥ pour aujourd'hui." };
 const fr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(ERR).find((c) => m.includes(c)); return k ? ERR[k] : "Une erreur est survenue. Réessayez dans un instant."; };
 

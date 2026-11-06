@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Messages — Nooxel World</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030816">
+  <link rel="icon" href="assets/favicon.png?v=2">
+  <link rel="stylesheet" href="shop.css">
+  <link rel="stylesheet" href="blue.css">
+  <link rel="stylesheet" href="account.css">
+  <link rel="stylesheet" href="tabbar.css">
+  <style>
+    .conv { display: flex; align-items: center; gap: .9rem; padding: .85rem .9rem; margin: 0 0 .6rem; border-radius: 18px; border: 1px solid var(--edge); background: var(--row); color: var(--txt); text-decoration: none; }
+    .conv:active { background: rgba(120,160,255,.1); }
+    .conv .av { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; background: #14285a; display: grid; place-items: center; color: #e8efff; font-weight: 700; font-size: 1.3rem; border: 1.5px solid #2a5fc4; overflow: hidden; }
+    .conv .av.silhouette { display: inline-flex; }
+    .conv .mid { flex: 1; min-width: 0; }
+    .conv .mid b { display: block; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .conv .mid p { margin: .1rem 0 0; color: #8ea3d0; font-size: .93rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv.unread .mid b { font-weight: 800; } .conv.unread .mid p { color: #dbe6ff; font-weight: 600; }
+    .conv .end { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; flex: none; min-width: 48px; }
+    .conv .end time { color: #8ea3d0; font-size: .8rem; } .conv.unread .end time { color: #7fb4ff; }
+    .conv .dot { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .75rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 3px rgba(47,123,255,.2); }
+    .none { text-align: center; color: #cfd9f2; padding: 3.5rem 1.2rem; font-size: 1.05rem; line-height: 1.5; } .none svg { width: 84px; height: 84px; color: #5b6b94; margin-bottom: 1rem; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; } .none small { display: block; color: #8ea3d0; margin-top: .5rem; font-size: .9rem; }
+    .ro { margin-left: .4rem; font-size: .72rem; color: #ffb4a6; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="shell"><main class="acc">
+  <header class="hd"><a data-back href="notifications.html" id="back" aria-label="Retour"></a><h1>Messages</h1><span></span></header>
+  <div id="app"><p class="msg" style="color:#8ea3d0">Chargement…</p></div>
+</main></div>
+<script src="assets/vendor/supabase.js"></script>
+<script src="shop.js"></script>
+<script src="mfa.js"></script>
+<script src="tabbar.js" data-active="notifications"></script>
+<script>
+  $("back").append(icon("back", 26));
+  const hhmm2 = (d) => new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  function when(d) {
+    const t = new Date(d), n = new Date(), day0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), diff = Math.round((day0(n) - day0(t)) / 864e5);
+    if (diff <= 0) return hhmm2(d); if (diff === 1) return "Hier"; if (diff < 7) return t.toLocaleDateString("fr-FR", { weekday: "short" });
+    return t.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  }
+  function avatarOf(c) {
+    if (c.avatar_path) return el("img", { class: "av", src: c.role === "user" ? imgUrl(c.avatar_path) : avatarUrl(c.avatar_path), alt: "", loading: "lazy" });
+    if (c.role === "merchant") { const s = silhouette(56); s.classList.add("av"); s.style.width = s.style.height = ""; return s; }
+    return el("span", { class: "av", text: (c.name || "?").trim().charAt(0).toUpperCase() });
+  }
+  function row(c) {
+    const prefix = c.last_from_me ? "Vous : " : "";
+    return el("a", { class: "conv" + (c.unread ? " unread" : ""), href: "conversation.html?c=" + encodeURIComponent(c.id), "data-conv": c.id }, avatarOf(c),
+      el("div", { class: "mid" }, el("b", {}, c.name || "Utilisateur", c.can_send ? null : el("span", { class: "ro", text: "lecture seule" })), el("p", { text: prefix + (c.last_body || "") })),
+      el("div", { class: "end" }, el("time", { datetime: c.last_at, text: when(c.last_at) }), c.unread ? el("span", { class: "dot", "data-unread": String(c.unread), text: c.unread > 99 ? "99+" : String(c.unread) }) : null));
+  }
+  let first = true, before = null;
+  async function load() {
+    const { data, error } = await sb.rpc("my_conversations", { p_limit: 60 });
+    const app = $("app");
+    if (error) { if (first) app.replaceChildren(el("p", { class: "msg", text: fr(error) })); return; }
+    first = false;
+    if (!data.length) {
+      const ic = document.createElementNS("http://www.w3.org/2000/svg", "svg"); ic.setAttribute("viewBox", "0 0 24 24"); ic.innerHTML = '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/>';
+      app.replaceChildren(el("div", { class: "none", id: "no-conv" }, ic, el("div", { text: "Aucune conversation pour le moment." }), el("small", { text: "Pour écrire à un commerce, touchez « Message » sur sa page." })));
+      return;
+    }
+    app.replaceChildren(...data.map(row));
+  }
+  (async function boot() {
+    if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "msg" }, "Connectez-vous pour voir vos messages. ", el("a", { href: "/", text: "Se connecter" }))); return; }
+    if (await gateProfile()) return;
+    await load(); setInterval(() => { if (!document.hidden) load(); }, 20000);
+  })();
+</script>
+<script src="back.js"></script>
+</body>
+</html>

@@ -28,6 +28,7 @@
     .account { padding: 1rem; margin-top: .3rem; } .account .av { width: 54px; height: 54px; border-radius: 50%; background: #2a5fc4; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
     .account .av svg.i { color: #fff; width: 28px; height: 28px; } .account .t { font-size: 1.1rem; } .account .t small { font-size: .85rem; }
     .switch { width: 50px; height: 30px; border-radius: 999px; background: var(--blue); position: relative; flex: none; }
+    .dotn { min-width: 22px; height: 22px; padding: 0 6px; margin-right: .3rem; border-radius: 999px; background: #2f7bff; color: #fff; font-size: .75rem; font-weight: 700; display: grid; place-items: center; }
     .switch.off { background: #34456f; } .switch.off::after { right: auto; left: 3px; }
     .switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; }
     .danger { margin-top: .2rem; } .danger .row { color: var(--red); background: none; padding: .7rem .3rem; border-top: 0; } .danger .row svg.i, .danger .row .chev { color: var(--red); }
@@ -75,10 +76,11 @@
 
   // Profil privé / public (utilisateurs sans commerce)
   function privacyRow(priv) {
+    const phint = el("small", { id: "privacy-hint" });
     const b = el("button", { class: "row", type: "button", role: "switch", id: "privacy-toggle", "aria-checked": String(priv), "data-row": "Profil privé" },
-      icon("lock"), el("span", { class: "t" }, "Profil privé", el("small", { id: "privacy-hint" })), el("span", { class: "switch" }));
+      icon("lock"), el("span", { class: "t" }, "Profil privé", phint), el("span", { class: "switch" }));
     const paint = () => { b.querySelector(".switch").classList.toggle("off", b.getAttribute("aria-checked") !== "true");
-      $("privacy-hint").textContent = b.getAttribute("aria-checked") === "true" ? "Privé : les autres ne voient ni vos avis, ni votre activité, ni vos favoris." : "Public : vos avis et vos favoris sont visibles sur votre profil."; };
+      phint.textContent = b.getAttribute("aria-checked") === "true" ? "Privé : les autres ne voient ni vos avis, ni votre activité, ni vos favoris." : "Public : vos avis et vos favoris sont visibles sur votre profil."; };
     b.addEventListener("click", async () => {
       const next = b.getAttribute("aria-checked") !== "true"; b.disabled = true;
       const { error } = await sb.rpc("set_profile_privacy", { p_private: next }); b.disabled = false;
@@ -87,13 +89,30 @@
     });
     queueMicrotask(paint); return b;
   }
+  // Interrupteur « Autoriser les messages » (commerce / indépendant)
+  function messagesToggleRow(on) {
+    const hint = el("small", { id: "messages-hint" });
+    const b = el("button", { class: "row", type: "button", role: "switch", id: "messages-toggle", "aria-checked": String(on), "data-row": "Autoriser les messages" },
+      icon("comment"), el("span", { class: "t" }, "Autoriser les messages", hint), el("span", { class: "switch" }));
+    const paint = () => { const v = b.getAttribute("aria-checked") === "true"; b.querySelector(".switch").classList.toggle("off", !v);
+      hint.textContent = v ? "Les clients peuvent vous écrire depuis votre page." : "Désactivé : le bouton « Message » est masqué et les conversations passent en lecture seule."; };
+    b.addEventListener("click", async () => {
+      const next = b.getAttribute("aria-checked") !== "true"; b.disabled = true;
+      const { error } = await sb.rpc("set_messages_enabled", { p_enabled: next }); b.disabled = false;
+      if (error) { toast("Le changement n'a pas pu être enregistré. Réessayez."); return; }
+      b.setAttribute("aria-checked", String(next)); paint(); toast(next ? "Les messages sont autorisés." : "Les messages sont désactivés.");
+    });
+    queueMicrotask(paint); return b;
+  }
   async function boot() {
     $("back").append(icon("back", 26));
-    let privRow = null, statsRow = null;
+    let privRow = null, statsRow = null, msgToggle = null, unread = 0;
     try {
       if (sb) { const [st, sm] = await Promise.all([sb.rpc("my_verification_status"), sb.rpc("my_profile_summary")]);
         if (st.data && !st.data.has_profile && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private);
+        if (st.data && st.data.has_profile && st.data.merchant_id) { const mp = await sb.from("merchant_profiles").select("messages_enabled").eq("id", st.data.merchant_id).single(); if (mp.data) msgToggle = messagesToggleRow(mp.data.messages_enabled !== false); }
         if (st.data && st.data.has_profile && st.data.verification === "verified") statsRow = row(["chart", "Mes statistiques", "mes-statistiques.html", "Abonnés et performances de ma page"]); }
+      unread = await unreadMessages();
     } catch (e) {}
     const app = $("app");
     const c = chev(); c.classList.add("chev");
@@ -101,7 +120,8 @@
       el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
     const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;      // déjà installée : la ligne disparaît
     if (installed) for (const s of SECTIONS) s.rows = s.rows.filter(r => r[1] !== "Installer l'application");
-    for (const s of SECTIONS) { const kids = s.rows.map(row); if (privRow && s.title === "Paramètres du compte") kids.push(privRow); if (statsRow && s.title === "Professionnel") kids.push(statsRow); app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...kids)); }
+    for (const s of SECTIONS) { const kids = s.rows.map(row); if (privRow && s.title === "Paramètres du compte") kids.push(privRow); if (statsRow && s.title === "Professionnel") kids.push(statsRow); if (msgToggle && s.title === "Professionnel") kids.push(msgToggle);
+      if (s.title === "Mon activité") { const r = row(["comment", "Messages", "messages.html", "Conversations avec les commerces"]); if (unread) r.insertBefore(el("span", { class: "dotn", id: "msg-unread", text: unread > 99 ? "99+" : String(unread) }), r.lastChild); kids.push(r); } app.append(el("h2", { text: s.title }), el("div", { class: "group" }, ...kids)); }
     const out = el("button", { class: "row", type: "button", id: "logout", "data-row": "Se déconnecter" }, icon("logout"), el("span", { class: "t", text: "Se déconnecter" })); const c2 = chev(); c2.classList.add("chev"); out.append(c2);
     const del = el("button", { class: "row", type: "button", id: "delete-account", "data-row": "Supprimer mon compte" }, icon("trash"), el("span", { class: "t", text: "Supprimer mon compte" }));
     app.append(el("h2", { text: "Zone de danger" }), el("div", { class: "danger" }, out, del));
