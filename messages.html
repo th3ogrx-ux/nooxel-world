@@ -13,9 +13,9 @@
   <link rel="stylesheet" href="tabbar.css">
   <style>
     .swipe { position: relative; margin: 0 0 .6rem; border-radius: 18px; overflow: hidden; }
-    .swipe .acts { visibility: hidden; position: absolute; inset: 0 0 0 auto; width: 176px; display: flex; }
+    .swipe .acts { visibility: hidden; position: absolute; inset: 0 0 0 auto; width: 192px; display: flex; gap: .45rem; padding-left: .55rem; }
     .swipe.open .acts, .swipe.dragging .acts { visibility: visible; }
-    .swipe .act { flex: 1; border: 0; color: #fff; font: inherit; font-size: .78rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; cursor: pointer; }
+    .swipe .act { flex: 1; border: 0; border-radius: 18px; color: #fff; font: inherit; font-size: .78rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; cursor: pointer; }
     .swipe .act svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
     .swipe .act.pin { background: #2a6fe8; } .swipe .act.del { background: #e5483d; }
     .swipe .conv { -webkit-user-drag: none; position: relative; margin: 0; touch-action: pan-y; transition: transform .22s ease; user-select: none; -webkit-user-select: none; }
@@ -61,7 +61,7 @@
   const PIN = '<path d="M14.5 3.5 20.5 9.5l-2.2.9-3.4 3.4.2 4-1.4 1.4-3.7-3.7-5.3 5.3-1-1 5.3-5.3L5 10.1l1.4-1.4 4 .2 3.4-3.4z"/>';
   const TRASH = '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>';
   const svgI = (inner, cls) => { const t = document.createElementNS("http://www.w3.org/2000/svg", "svg"); t.setAttribute("viewBox", "0 0 24 24"); t.setAttribute("aria-hidden", "true"); if (cls) t.setAttribute("class", cls); t.innerHTML = inner; return t; };
-  const W = 176; let openRow = null;
+  const W = 192; let openRow = null;
   const closeRow = (w) => { if (!w) return; w.querySelector(".conv").style.transform = ""; w.classList.remove("open"); w.classList.add("dragging"); setTimeout(() => w.classList.remove("dragging"), 240); if (openRow === w) openRow = null; };
   async function act(fn, ok) { const { error } = await fn(); if (error) { alert("Action impossible pour le moment. Réessayez."); return; } await load(); }
   function row(c) {
