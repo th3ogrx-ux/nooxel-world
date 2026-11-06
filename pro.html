@@ -196,23 +196,36 @@
     const err = el("p", { class: "err", id: "c-err" }); const name = el("input", { type: "text", id: "c-name", maxlength: 120, autocomplete: "organization", required: true });
     const desc = el("textarea", { id: "c-desc", maxlength: 1000, placeholder: "Ce que vous proposez, vos horaires…" });
     const btn = el("button", { class: "btn", type: "submit", text: "Créer mon profil" });
+    // Adresse (commerce avec boutique) : sert à placer le commerce sur la carte
+    const addr = { label: null, lat: null, lng: null };
+    const aInput = el("input", { type: "text", id: "c-address", placeholder: "Rechercher l'adresse du commerce", autocomplete: "off", maxlength: 200 });
+    const aList = el("ul", { class: "sugg", id: "c-address-list" }), aChosen = el("p", { class: "hint", id: "c-address-chosen" });
+    photonPick(aInput, aList, err, (p, c) => {
+      const label = [[p.housenumber, p.street || p.name].filter(Boolean).join(" "), [p.postcode, p.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") || p.name || "Lieu";
+      return el("li", { role: "button", tabindex: "0", text: label, onclick: () => { addr.label = label.slice(0, 200); addr.lat = c[1]; addr.lng = c[0]; aChosen.textContent = "📍 " + addr.label; err.textContent = ""; aList.replaceChildren(); aInput.value = ""; } });
+    });
+    const aBox = el("div", { id: "c-address-box" }, el("label", {}, "Adresse du commerce", aInput), aList, aChosen, el("p", { class: "hint", text: "Elle place votre commerce sur la carte une fois vérifié. Vous pourrez la modifier ensuite." }));
     const f = el("form", { class: "card", id: "create-form", onsubmit: async (e) => {
       e.preventDefault(); err.textContent = ""; btn.disabled = true;
       const n = name.value.trim();
       if (n.length < 2) { err.textContent = "Indiquez le nom de votre commerce (2 caractères minimum)."; btn.disabled = false; return; }
       const kind = document.querySelector("input[name=kind]:checked").value;
-      const { error } = await sb.from("merchant_profiles").insert({ owner_id: me.id, business_name: n, description: desc.value.trim() || null, profile_kind: kind }).select().single();
+      if (kind === "shop" && addr.lat == null) { err.textContent = "Choisissez l'adresse de votre commerce dans la liste de suggestions : elle sert à le placer sur la carte."; btn.disabled = false; return; }
+      const { data: created, error } = await sb.from("merchant_profiles").insert({ owner_id: me.id, business_name: n, description: desc.value.trim() || null, profile_kind: kind }).select().single();
+      if (error) { btn.disabled = false; err.textContent = /duplicate|unique/i.test(error.message) ? "Vous avez déjà un profil professionnel." : "Impossible de créer le profil."; return; }
+      if (kind === "shop" && created) await sb.from("merchant_profiles").update({ address: addr.label, lat: addr.lat, lng: addr.lng }).eq("id", created.id);   // si cela échoue, l'adresse se saisit dans « Ma page publique »
       btn.disabled = false;
-      if (error) { err.textContent = /duplicate|unique/i.test(error.message) ? "Vous avez déjà un profil professionnel." : "Impossible de créer le profil."; return; }
       await load();
     } },
       el("h2", { text: "Créer mon profil professionnel" }),
-      el("p", { text: "Aucun justificatif n'est demandé pour créer le profil. Sans vérification, la visibilité est réduite et les avis sont désactivés." }),
+      el("p", { text: "Aucun justificatif n'est demandé pour créer le profil. Tant que votre commerce n'est pas vérifié, il reste invisible du public et vous ne pouvez rien publier." }),
       el("label", {}, "Nom du commerce", name), el("label", {}, "Description (facultatif)", desc),
       el("fieldset", { class: "kinds" }, el("legend", { text: "Type de profil" }),
         el("label", { class: "check" }, el("input", { type: "radio", name: "kind", id: "k-shop", value: "shop", checked: true }), el("span", { text: "Commerce avec une adresse (boutique, restaurant, atelier…)" })),
         el("label", { class: "check" }, el("input", { type: "radio", name: "kind", id: "k-mobile", value: "mobile" }), el("span", { text: "Indépendant ou itinérant, sans boutique (coiffeur à domicile, food truck, artisan, freelance…) : vous indiquez une zone d'intervention, jamais une adresse personnelle." }))),
-      err, btn);
+      aBox, err, btn);
+    const syncKind = () => aBox.classList.toggle("hidden", document.querySelector("input[name=kind]:checked").value !== "shop");
+    f.addEventListener("change", (e) => { if (e.target.name === "kind") syncKind(); });
     return f;
   }
 
