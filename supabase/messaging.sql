@@ -131,6 +131,7 @@ begin
   elsif m.owner_id = auth.uid() then v_role := 'merchant'; select pseudo, avatar_path into v_name, v_avatar from public.user_profiles where user_id = c.user_id;
   else raise exception 'not_found'; end if;
   if v_role = 'user' then update public.conversations set user_read_at = now() where id = c.id; else update public.conversations set merchant_read_at = now() where id = c.id; end if;
+  update public.notifications set read_at = now() where user_id = auth.uid() and kind = 'message' and ref_id = c.id and read_at is null;
   return jsonb_build_object('id', c.id, 'role', v_role, 'name', coalesce(v_name, 'Utilisateur'), 'avatar_path', v_avatar, 'merchant_id', m.id,
     'user_pseudo', case when v_role = 'merchant' then v_name end,
     'can_send', m.messages_enabled and m.verification = 'verified',
@@ -195,6 +196,53 @@ begin
   return jsonb_build_object('id', msg.id, 'body', msg.body, 'created_at', msg.created_at, 'mine', true);
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Notification « Nouveau message » (une seule par conversation tant qu'elle n'est pas lue)
+-- ---------------------------------------------------------------------------
+alter table public.notifications drop constraint if exists notifications_kind_check;
+alter table public.notifications add constraint notifications_kind_check check (kind in ('follow', 'review', 'reply', 'post', 'report_done', 'verified', 'message'));
+
+create or replace function public.notify_on_message() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare c public.conversations; m public.merchant_profiles; v_to uuid; v_from uuid;
+begin
+  select * into c from public.conversations where id = new.conversation_id;
+  select * into m from public.merchant_profiles where id = c.merchant_id;
+  if new.sender_kind = 'user' then v_to := m.owner_id; v_from := c.user_id; else v_to := c.user_id; v_from := m.owner_id; end if;
+  update public.notifications set snippet = left(btrim(new.body), 80), created_at = new.created_at
+   where user_id = v_to and kind = 'message' and ref_id = c.id and read_at is null;
+  if not found then
+    insert into public.notifications (user_id, kind, actor_id, merchant_id, ref_id, snippet) values (v_to, 'message', v_from, m.id, c.id, left(btrim(new.body), 80));
+  end if;
+  return new;
+end $$;
+drop trigger if exists notify_message on public.messages;
+create trigger notify_message after insert on public.messages for each row execute function public.notify_on_message();
+
+-- Liste des notifications : ajoute les messages
+create or replace function public.my_notifications(p_before timestamptz default null, p_limit integer default 30)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated' using errcode = '28000'; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('id', x.id, 'kind', x.kind, 'created_at', x.created_at, 'read', x.read_at is not null,
+             'name', x.name, 'merchant_id', x.merchant_id, 'snippet', x.snippet, 'rating', x.rating, 'ref_id', case when x.kind = 'message' then x.ref_id end, 'from_merchant', x.from_merchant) order by x.created_at desc, x.id desc)
+    from (select n.id, n.kind, n.created_at, n.read_at, n.merchant_id, n.snippet, n.rating, n.ref_id,
+                 (n.kind = 'message' and not exists (select 1 from public.conversations cv where cv.id = n.ref_id and cv.user_id = n.actor_id)) as from_merchant,
+                 case when n.kind in ('follow', 'review') then coalesce((select pseudo from public.user_profiles where user_id = n.actor_id), 'Un utilisateur')
+                      when n.kind in ('reply', 'post') then (select business_name from public.merchant_profiles where id = n.merchant_id)
+                      when n.kind = 'message' then case when exists (select 1 from public.conversations cv where cv.id = n.ref_id and cv.user_id = n.actor_id)
+                           then coalesce((select pseudo from public.user_profiles where user_id = n.actor_id), 'Un utilisateur') else (select business_name from public.merchant_profiles where id = n.merchant_id) end end as name
+            from public.notifications n
+           where n.user_id = auth.uid() and (p_before is null or n.created_at < p_before)
+           order by n.created_at desc, n.id desc limit least(greatest(coalesce(p_limit, 30), 1), 50)) x), '[]'::jsonb);
+end;
+$$;
+revoke all on function public.my_notifications(timestamptz, integer) from public, anon, authenticated;
+grant execute on function public.my_notifications(timestamptz, integer) to authenticated;
 
 -- Page publique d'un commerce : ajoute messages_enabled et can_message
 create or replace function public.get_merchant_page(p_id uuid)

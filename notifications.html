@@ -62,12 +62,12 @@
   const C = (cls, ...kids) => el("span", { class: cls }, ...kids);
   const svgEl = (inner) => { const t = document.createElement("template"); t.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`; return t.content.firstChild; };
   const PERSON = '<circle cx="12" cy="9.2" r="3.9"/><path d="M5.2 21c.5-4.6 3.4-7 6.8-7s6.3 2.4 6.8 7z"/>', SHIELD = '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L16 9.5"/>';
-  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'], reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
+  const BADGES = { follow: ["plus", '<path d="M12 5v14M5 12h14"/>'], review: ["star", '<path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.3L12 17l-5.6 3.2 1.3-6.3L3 9.6l6.3-.7z"/>'], reply: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'], message: ["reply", '<path d="M5 6h14v9H10l-4 3v-3H5z"/>'] };
   function avatar(n) {
     const box = C("av");
     if (n.kind === "report_done") box.append(C("face app green", svgEl(SHIELD)));
     else if (n.kind === "verified") box.append(C("face app blue", svgEl(SHIELD)));
-    else if (n.kind === "post" || n.kind === "reply") box.append(C("face shop", (n.name || "?").charAt(0).toUpperCase()));
+    else if (n.kind === "post" || n.kind === "reply" || (n.kind === "message" && n.from_merchant)) box.append(C("face shop", (n.name || "?").charAt(0).toUpperCase()));
     else box.append(C("face", svgEl(PERSON)));
     const b = BADGES[n.kind]; if (b) box.append(C("badge " + b[0], svgEl(b[1])));
     return box;
@@ -79,6 +79,7 @@
       case "review": return [name, ` a laissé un avis ${n.rating} étoile${n.rating > 1 ? "s" : ""} sur votre page : “${n.snippet || ""}”`];
       case "reply": return [name, " a répondu à votre avis"];
       case "post": return [name, " a fait une nouvelle publication"];
+      case "message": return [name, " vous a envoyé un message", n.snippet ? ` : “${n.snippet}”` : ""];
       case "report_done": return [el("b", { text: "Votre signalement a été traité" })];
       case "verified": return [el("b", { text: "Votre profil professionnel" }), el("br"), "a été vérifié"];
     }
@@ -89,7 +90,7 @@
   const groupOf = (d) => { const days = (Date.now() - d.getTime()) / 864e5; return sameDay(d, new Date()) ? 0 : days < 7 ? 1 : 2; };
   const TITLES = ["Aujourd'hui", "Cette semaine", "Plus ancien"];
   let items = [], before = null;
-  const dest = (n) => ({ post: "commerce.html?id=" + n.merchant_id, reply: "commerce.html?id=" + n.merchant_id, review: "compte.html", follow: "compte.html", verified: "compte.html" })[n.kind] || null;
+  const dest = (n) => ({ post: "commerce.html?id=" + n.merchant_id, reply: "commerce.html?id=" + n.merchant_id, message: "conversation.html?c=" + n.ref_id, review: "compte.html", follow: "compte.html", verified: "compte.html" })[n.kind] || null;
 
   function render() {
     const app = $("app"); app.replaceChildren();
