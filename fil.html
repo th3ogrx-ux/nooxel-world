@@ -32,7 +32,7 @@
     .fp-act.liked svg { fill: #ff5a7a; stroke: #ff5a7a; }
     .fp-page { margin-left: auto; display: inline-flex; align-items: center; gap: .3rem; border: 1px solid rgba(160,190,255,.4); border-radius: 999px; padding: .5rem 1rem; color: #e8efff; text-decoration: none; font-size: .98rem; }
     .fp-page svg.i { width: 16px; height: 16px; }
-    #more-btn { display: block; margin: 0 auto 1rem; }
+    #ptr { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #8ea3d0; font-size: .85rem; transition: height .2s; } #ptr .r, #ptr .s { display: none; } #ptr.on .r { display: inline; } #ptr.on span:first-child, #ptr.spin span:first-child, #ptr.on .s { display: none; } #ptr.spin { height: 40px !important; } #ptr.spin .s { display: inline; } #ptr.spin .r { display: none; }
     .menu { position: absolute; right: .6rem; top: 3.3rem; z-index: 5; background: #0d2150; border: 1px solid rgba(120,160,255,.25); border-radius: 14px; padding: .3rem; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
     .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; color: #e8efff; font: inherit; padding: .7rem .9rem; border-radius: 10px; cursor: pointer; white-space: nowrap; }
     .empty { text-align: center; color: #8ea3d0; padding: 3rem 1rem; }
@@ -45,8 +45,9 @@
     <h1>Fil</h1>
     <div><button class="ic" id="ic-search" type="button" aria-label="Rechercher" tabindex="-1"></button><button class="ic" id="ic-filter" type="button" aria-label="Filtrer" tabindex="-1"></button></div>
   </header>
+  <div id="ptr" aria-hidden="true"><span>↓ Tirez pour rafraîchir</span><span class="r">Relâchez pour rafraîchir</span><span class="s">Nouveau fil…</span></div>
   <div id="app"><p class="empty">Chargement…</p></div>
-  <button class="btn ghost hidden" id="more-btn" type="button">Voir plus</button>
+  <div id="sentinel" style="height:1px"></div>
 </main></div>
 <script src="assets/vendor/supabase.js"></script>
 <script src="shop.js"></script>
@@ -93,18 +94,40 @@
   }), { threshold: [0.6] }) : null;
   new MutationObserver(() => { if (photoIO) document.querySelectorAll("img[data-track-post]:not([data-seen])").forEach((im) => { im.dataset.seen = "1"; photoIO.observe(im); }); }).observe(document.body, { childList: true, subtree: true });
 
+  // Fil « façon Instagram » : à l'ouverture, 5 publications des commerces suivis puis des suggestions ; en descendant, uniquement des suggestions.
+  // Un nouveau fil est refait à chaque ouverture, quand on tire l'écran vers le bas, ou après un long moment en arrière-plan.
+  const PRIOR_KEY = "nooxel_feed_seen";
+  const prior = () => { try { return JSON.parse(localStorage.getItem(PRIOR_KEY) || "[]").slice(-200); } catch (e) { return []; } };
+  const remember = () => { try { localStorage.setItem(PRIOR_KEY, JSON.stringify(prior().concat(seen).slice(-200))); } catch (e) {} };
+  let loading = false, finished = false, gen = 0;
   async function load(first) {
-    const more = $("more-btn"); more.disabled = true;
-    const { data, error } = await sb.rpc("feed_mix", { p_seen: seen, p_followed: 5, p_discover: 3 });
-    more.disabled = false; const app = $("app");
-    if (first) app.replaceChildren();
+    if (loading || (finished && !first)) return; loading = true; const my = gen;
+    const { data, error } = await sb.rpc("feed_mix", first ? { p_seen: [], p_followed: 5, p_discover: 4, p_prior: prior() } : { p_seen: seen.slice(-400), p_followed: 0, p_discover: 8, p_prior: [] });
+    loading = false; if (my !== gen) return;
+    const app = $("app");
+    if (first) { app.replaceChildren(); count = 0; }
     if (error) { app.replaceChildren(el("p", { class: "empty", text: fr(error) })); return; }
     for (const p of data) { app.append(card(p)); seen.push(p.id); count++; }
-    more.classList.toggle("hidden", data.length < 3);            // un paquet plus court = il n'y a plus rien de nouveau à montrer
+    if (first) remember();
+    if (!data.length || (!first && data.length < 3)) { finished = true; $("sentinel").classList.add("hidden"); }
     if (!count) app.replaceChildren(el("p", { class: "empty", id: "feed-empty" }, "Aucune publication pour le moment. Suivez des commerces pour voir leurs nouveautés ici. ", el("a", { href: "/", text: "Chercher sur la carte" })));
-    else if (data.length < 3) app.append(el("p", { class: "empty", id: "feed-end", text: "Vous avez tout vu pour le moment." }));
+    else if (finished) app.append(el("p", { class: "empty", id: "feed-end", text: "Vous avez tout vu pour le moment." }));
+    $("ptr").classList.remove("on", "spin"); $("ptr").style.height = "0";
+    setTimeout(() => { if (!finished && count && $("sentinel").getBoundingClientRect().top < innerHeight + 700) load(false); }, 60);      // écran pas encore rempli : on ajoute des suggestions
   }
-  $("more-btn").addEventListener("click", () => load());
+  // Nouveau fil (tirer pour rafraîchir, retour après une longue absence)
+  async function refresh() { gen++; loading = false; finished = false; seen.length = 0; $("sentinel").classList.remove("hidden"); $("ptr").classList.add("spin"); await load(true); const sh = document.querySelector(".shell"); if (sh) sh.scrollTop = 0; }
+  // Défilement infini : quand le bas du fil approche, on ajoute des suggestions
+  new IntersectionObserver((en) => { if (en[0].isIntersecting && count) load(false); }, { rootMargin: "700px" }).observe($("sentinel"));
+  // Tirer vers le bas quand on est tout en haut
+  (() => {
+    const sh = document.querySelector(".shell"), ptr = $("ptr"); let y0 = null, dy = 0;
+    sh.addEventListener("touchstart", (e) => { y0 = sh.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+    sh.addEventListener("touchmove", (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (sh.scrollTop > 0) { y0 = null; return; } ptr.style.height = Math.min(70, dy * .5) + "px"; ptr.classList.toggle("on", dy > 110); }, { passive: true });
+    sh.addEventListener("touchend", () => { if (y0 == null) return; const go = dy > 110; y0 = null; if (go) refresh(); else { ptr.style.height = "0"; ptr.classList.remove("on"); } }, { passive: true });
+  })();
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000 && count) { hiddenAt = 0; refresh(); } });
   (async function boot() {
     if (!sb || !(await currentSession())) { $("app").replaceChildren(el("p", { class: "empty" }, "Connectez-vous pour voir votre fil. ", el("a", { href: "/", text: "Se connecter" }))); return; }
     if (await gateProfile()) return;
