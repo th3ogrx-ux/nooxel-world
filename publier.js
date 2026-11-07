@@ -9,7 +9,7 @@
     return ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t)) || null;
   }
   // Renvoie { blob, ext, duration, poster }. force = true : réencode même un petit fichier.
-  async function optimizeVideo(file, onProgress, force = false) {
+  async function optimizeVideo(file, onProgress, force = false, audioCtx = null) {
     const url = URL.createObjectURL(file), v = document.createElement("video");
     v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
     try {
@@ -33,7 +33,7 @@
       const w = Math.max(2, Math.round(v.videoWidth * k / 2) * 2), h = Math.max(2, Math.round(v.videoHeight * k / 2) * 2);
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const ctx = cv.getContext("2d");
       const stream = cv.captureStream(24); let ac = null;
-      try { ac = new (window.AudioContext || window.webkitAudioContext)(); const src = ac.createMediaElementSource(v), dest = ac.createMediaStreamDestination(); src.connect(dest); dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t)); v.muted = false; } catch (e) { ac = null; }
+      try { ac = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); await ac.resume(); const src = ac.createMediaElementSource(v), dest = ac.createMediaStreamDestination(); src.connect(dest); dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t)); v.muted = false; } catch (e) { ac = null; }
       const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 900000, audioBitsPerSecond: 64000 }), chunks = [];
       rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       const stopped = new Promise((r) => { rec.onstop = r; });
@@ -248,14 +248,15 @@
 
     // ---- écran 2 (vidéo)
     function showVideo() {
-      const vid = el("video", { id: "pub-video", playsinline: "", "webkit-playsinline": "", loop: "", muted: "", preload: "auto", disablepictureinpicture: "" }); vid.muted = true; vid.playsInline = true; vid.src = mk(st.file);
+      const vid = el("video", { id: "pub-video", playsinline: "", "webkit-playsinline": "", loop: "", preload: "auto", disablepictureinpicture: "" }); vid.playsInline = true; vid.src = mk(st.file);
       vid.addEventListener("loadeddata", () => { if (vid.paused && vid.currentTime === 0) { try { vid.currentTime = 0.1; } catch (e) {} } }, { once: true });
       const play = el("button", { class: "pplay", id: "pub-play", type: "button", "aria-label": "Lire la vidéo" }), dur = el("span", { class: "pdur", id: "pub-dur" });
       const tog = async () => {
         if (!vid.paused) { vid.pause(); play.classList.remove("off"); return; }
         err.textContent = "";
+        vid.muted = false; vid.volume = 1;      // aperçu avec le son : l'appui sur lecture est un geste de l'utilisateur, le téléphone l'autorise
         try { await vid.play(); } catch (e1) {
-          try { vid.muted = true; vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }
+          try { vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }
         }
         play.classList.add("off");
       };
@@ -275,6 +276,8 @@
     // ---- publier
     go.addEventListener("click", async () => {
       err.textContent = ""; go.disabled = true; go.textContent = "Envoi…"; const made = [];
+      // Le contexte audio doit être créé et activé tout de suite, pendant le geste de l'utilisateur : sinon iPhone enregistre une vidéo sans son.
+      let actx = null; if (isVideo) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) { actx = null; } }
       try {
         const opts = { p_hide_likes: st.hide, p_comments_disabled: st.off, p_category: st.cat };
         if (!isVideo) {
@@ -287,7 +290,7 @@
           const r = await sb.rpc("create_post", { p_body: desc.value, p_image_path: paths[0], p_extra_paths: paths.slice(1), ...opts }); if (r.error) throw r.error;
         } else {
           go.textContent = "Préparation…";
-          const out = await optimizeVideo(st.file, (p) => { go.textContent = `${Math.round(p * 100)} %`; });
+          const out = await optimizeVideo(st.file, (p) => { go.textContent = `${Math.round(p * 100)} %`; }, false, actx);
           if (out.blob.size > MAX_VIDEO_BYTES) throw new Error("too_big");
           go.textContent = "Envoi…";
           const poster = st.thumb ? await thumbJpeg(st.thumb) : out.poster;
