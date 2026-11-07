@@ -248,14 +248,15 @@
 
     // ---- écran 2 (vidéo)
     function showVideo() {
-      const vid = el("video", { id: "pub-video", playsinline: "", "webkit-playsinline": "", loop: "", muted: "", preload: "auto", disablepictureinpicture: "" }); vid.muted = true; vid.playsInline = true; vid.src = mk(st.file);
+      const vid = el("video", { id: "pub-video", playsinline: "", "webkit-playsinline": "", loop: "", preload: "auto", disablepictureinpicture: "" }); vid.playsInline = true; vid.src = mk(st.file);
       vid.addEventListener("loadeddata", () => { if (vid.paused && vid.currentTime === 0) { try { vid.currentTime = 0.1; } catch (e) {} } }, { once: true });
       const play = el("button", { class: "pplay", id: "pub-play", type: "button", "aria-label": "Lire la vidéo" }), dur = el("span", { class: "pdur", id: "pub-dur" });
       const tog = async () => {
         if (!vid.paused) { vid.pause(); play.classList.remove("off"); return; }
         err.textContent = "";
+        vid.muted = false; vid.volume = 1;      // aperçu avec le son : l'appui sur lecture est un geste de l'utilisateur, le téléphone l'autorise
         try { await vid.play(); } catch (e1) {
-          try { vid.muted = true; vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }
+          try { vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }
         }
         play.classList.add("off");
       };
