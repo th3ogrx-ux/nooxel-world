@@ -143,10 +143,31 @@ const REVIEW_ERR = {
 };
 const reviewErr = (e) => { const m = String(e && e.message || e || ""); const k = Object.keys(REVIEW_ERR).find((c) => m.includes(c)); return k ? REVIEW_ERR[k] : fr(e); };
 // Une publication : photo (chargée à la demande, dimensions réservées) + texte + date.
+// Carrousel de photos d'une publication : défilement horizontal au doigt, points en bas. Une seule photo : image simple.
+function postImages(p) { return Array.isArray(p.images) && p.images.length ? p.images : (p.image_path ? [p.image_path] : []); }
+function nxCarousel(paths, opt) {
+  opt = opt || {};
+  if (!document.getElementById("nx-car-css")) {
+    const st = document.createElement("style"); st.id = "nx-car-css";
+    st.textContent = ".car{position:relative;border-radius:14px;overflow:hidden;background:#14285a}.car-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:flex-start}.car-track::-webkit-scrollbar{display:none}"
+      + ".car-track img{flex:0 0 100%;width:100%;height:auto;min-height:180px;max-height:78vh;object-fit:cover;scroll-snap-align:center;display:block;border-radius:0}.car-dots{position:absolute;left:0;right:0;bottom:9px;display:flex;justify-content:center;gap:5px;pointer-events:none}"
+      + ".car-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5)}.car-dots i.on{background:#fff}.car-n{position:absolute;top:9px;right:9px;padding:.12rem .55rem;border-radius:999px;background:rgba(5,9,22,.62);color:#fff;font:600 .8rem/1.5 system-ui,sans-serif;font-variant-numeric:tabular-nums}";
+    document.head.append(st);
+  }
+  const box = el("div", { class: "car", "data-car": String(paths.length) }), track = el("div", { class: "car-track" });
+  paths.forEach((pth, i) => { const im = el("img", Object.assign({ src: imgUrl(pth), alt: (opt.alt || "Photo publiée") + (paths.length > 1 ? ` (${i + 1}/${paths.length})` : ""), loading: "lazy", decoding: "async" }, i === 0 ? (opt.first || {}) : {})); if (opt.imgClass) im.className = opt.imgClass; track.append(im); });
+  box.append(track);
+  if (paths.length > 1) {
+    const dots = el("div", { class: "car-dots", "aria-hidden": "true" }, ...paths.map((_, i) => el("i", { class: i === 0 ? "on" : "" }))), n = el("span", { class: "car-n", text: `1/${paths.length}` });
+    track.addEventListener("scroll", () => { const i = Math.max(0, Math.min(paths.length - 1, Math.round(track.scrollLeft / Math.max(1, track.clientWidth)))); [...dots.children].forEach((d, k) => d.classList.toggle("on", k === i)); n.textContent = `${i + 1}/${paths.length}`; }, { passive: true });
+    box.append(dots, n);
+  }
+  return box;
+}
 function postCard(p, withShop) {
   return el("article", { class: "post", "data-post": p.id },
     withShop ? el("a", { class: "post-shop", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id), text: p.business_name }) : null,
-    p.image_path ? el("img", { src: imgUrl(p.image_path), alt: "Photo publiée" + (p.business_name ? " par " + p.business_name : ""), loading: "lazy", decoding: "async", width: 1080, height: 810 }) : null,
+    postImages(p).length ? nxCarousel(postImages(p), { alt: "Photo publiée" + (p.business_name ? " par " + p.business_name : "") }) : null,
     p.body ? el("p", { class: "post-body", text: p.body }) : null,
     el("p", { class: "post-date", text: ago(p.created_at) }));
 }
