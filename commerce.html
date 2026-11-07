@@ -298,6 +298,9 @@
 
   // ================= Vidéos (format vertical, une seule vidéo chargée à la fois) =================
   let vBefore = null; const vids = [];
+  // 223 · 1K · 1,2K · 10K · 1M
+  const kfmt = (n) => { n = Math.max(0, Math.floor(Number(n) || 0)); const f = (x, u) => (x >= 10 ? String(Math.floor(x)) : String(Math.floor(x * 10) / 10).replace(".", ",")) + u; return n < 1000 ? String(n) : n < 1e6 ? f(n / 1000, "K") : f(n / 1e6, "M"); };
+  const eye = () => { const t = document.createElement("template"); t.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'; return t.content.firstChild; };
   const dur = (n) => `0:${String(n).padStart(2, "0")}`;
   async function initVideos() {
     $("section-videos").replaceChildren(el("div", { class: "vgrid", id: "vgrid" }), el("p", { class: "empty hidden", id: "no-videos", text: "Aucune vidéo pour le moment." }),
@@ -310,7 +313,7 @@
     more.disabled = false;
     if (error) { $("no-videos").textContent = fr(error); $("no-videos").classList.remove("hidden"); return []; }
     for (const v of data) { vids.push(v); $("vgrid").append(el("button", { class: "vtile", type: "button", "data-video": v.id, "aria-label": "Lire la vidéo" + (v.caption ? " : " + v.caption : ""), onclick: () => openReel(vids.indexOf(v)) },
-      el("img", { src: imgUrl(v.poster_path), alt: "", loading: "lazy", decoding: "async" }), el("span", { class: "vdur", text: dur(v.duration_s) }))); }
+      el("img", { src: imgUrl(v.poster_path), alt: "", loading: "lazy", decoding: "async" }), v.view_count != null ? el("span", { class: "vviews", title: "Vues" }, eye(), kfmt(v.view_count)) : null, el("span", { class: "vdur", text: dur(v.duration_s) }))); }
     if (data.length) vBefore = data[data.length - 1].created_at;
     more.classList.toggle("hidden", data.length < 12);
     if (first) $("no-videos").classList.toggle("hidden", data.length > 0);
@@ -319,21 +322,22 @@
 
   // Lecteur plein écran : défilement vertical (un « swipe » = la vidéo suivante). Seule la vidéo à l'écran est téléchargée.
   const lowData = () => { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); };
-  let reelMuted = true, reelIO = null;
+  let reelIO = null, reelNeedUnlock = false, reelSuppress = false;
   function openReel(start) {
     closeReel();
     const box = el("div", { id: "reel", role: "dialog", "aria-modal": "true", "aria-label": "Vidéos" });
     const scroller = el("div", { class: "reel-scroll", id: "reel-scroll" });
     const close = el("button", { class: "reel-btn", id: "reel-close", type: "button", "aria-label": "Fermer", text: "✕", onclick: closeReel });
-    const mute = el("button", { class: "reel-btn", id: "reel-mute", type: "button", "aria-label": "Son", text: reelMuted ? "🔇" : "🔊", onclick: () => { reelMuted = !reelMuted; mute.textContent = reelMuted ? "🔇" : "🔊"; box.querySelectorAll("video").forEach((v) => { v.muted = reelMuted; }); } });
     const rep = el("button", { class: "reel-btn", id: "reel-report", type: "button", "aria-label": "Signaler", text: "⚑", onclick: () => { closeReel(); openReportDialog({ kind: "merchant", merchant: shop.id, title: "Signaler ce profil" }); } });
-    box.append(scroller, el("div", { class: "reel-top" }, close, el("span", { class: "reel-name", text: shop.business_name }), mute, shop.is_owner ? null : rep));
+    box.append(scroller, el("div", { class: "reel-top" }, close, el("span", { class: "reel-name", text: shop.business_name }), shop.is_owner ? null : rep));
     document.body.append(box); document.body.classList.add("noscroll");
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    box.addEventListener("pointerdown", () => { if (!reelNeedUnlock) return; reelNeedUnlock = false; reelSuppress = true; setTimeout(() => { reelSuppress = false; }, 450); box.querySelectorAll("video").forEach((v) => { v.muted = false; }); }, true);
     const addSlides = (list) => list.forEach((v) => {
-      const video = el("video", { playsinline: true, loop: true, preload: "none", poster: imgUrl(v.poster_path), "data-vid": v.id }); video.muted = reelMuted;
+      const video = el("video", { playsinline: true, loop: true, preload: "none", poster: imgUrl(v.poster_path), "data-vid": v.id }); video.muted = false;
       const playBtn = el("button", { class: "reel-play hidden", type: "button", "aria-label": "Lire", text: "▶" });
       const slide = el("section", { class: "reel-slide", "data-slide": v.id }, video, playBtn, v.caption ? el("p", { class: "reel-cap", text: v.caption }) : null);
-      const toggle = () => { if (video.paused) { video.play().catch(() => {}); playBtn.classList.add("hidden"); } else { video.pause(); playBtn.classList.remove("hidden"); } };
+      const toggle = () => { if (reelSuppress) return; if (video.paused) { video.play().catch(() => {}); playBtn.classList.add("hidden"); } else { video.pause(); playBtn.classList.remove("hidden"); } };
       video.addEventListener("click", toggle); playBtn.addEventListener("click", toggle);
       video.addEventListener("ended", () => { if (!video.loop) return; video.currentTime = 0; video.play().catch(() => {}); });   // filet de sécurité si la boucle automatique échoue
       scroller.append(slide); reelIO && reelIO.observe(slide);
@@ -343,7 +347,7 @@
       if (e.isIntersecting && e.intersectionRatio >= 0.7) {
         if (!shop.is_owner) nxTrack("video_view", shop.id, video.dataset.vid);
         if (!video.getAttribute("src")) { video.src = videoUrl(vids.find((x) => x.id === video.dataset.vid).video_path); }   // chargement à la demande
-        if (lowData()) { btn.classList.remove("hidden"); } else { btn.classList.add("hidden"); video.play().catch(() => btn.classList.remove("hidden")); }
+        if (lowData()) { btn.classList.remove("hidden"); } else { btn.classList.add("hidden"); video.muted = false; video.play().catch(() => { video.muted = true; video.play().then(() => { reelNeedUnlock = true; }).catch(() => btn.classList.remove("hidden")); }); }
         const i = vids.findIndex((x) => x.id === video.dataset.vid);
         if (i >= vids.length - 2 && !$("more-videos").classList.contains("hidden")) loadVideos().then((n) => n && n.length && addSlides(n));
       } else { video.pause(); }

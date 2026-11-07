@@ -130,7 +130,7 @@ footer { padding: 0 1.1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--
 .strip b.open { color: #4fd58a; font-size: 1.05rem; } .strip b.closed { color: #ff8a72; font-size: 1.05rem; }
 .utabs button { font-size: 1rem; }
 #posts.grid { grid-template-columns: repeat(2, 1fr); gap: .6rem; } #posts .tile { aspect-ratio: 4 / 3; border-radius: 14px; }
-.vgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; margin: 0 0 1rem; } .vgrid .vtile { aspect-ratio: 4 / 5; border-radius: 14px; }
+.vgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 0 0 1rem; } .vgrid .vtile { aspect-ratio: 9 / 16; border-radius: 8px; }
 .ir { display: flex; align-items: center; gap: .7rem; margin: .8rem 0; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; } .ir svg.i { color: #e8efff; }
 .minimap { display: block; height: 150px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #0a1733; position: relative; margin: .4rem 0 .9rem; } #minimap-canvas { position: absolute; inset: 0; pointer-events: none; } .minipin { display: block; }
 .hrs { border: 1px solid var(--line); background: var(--tint); border-radius: 16px; padding: .8rem 1rem; margin: .4rem 0 .9rem; } .hrs-top { display: flex; align-items: center; gap: .6rem; } .hrs-top b { flex: 1; }
