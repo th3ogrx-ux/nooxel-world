@@ -68,16 +68,16 @@
     const toggle = () => { if (video.paused) { video.play().catch(() => {}); playBtn.classList.add("hidden"); } else { video.pause(); playBtn.classList.remove("hidden"); } };
     video.addEventListener("click", toggle); playBtn.addEventListener("click", toggle);
     const st = { liked: !!v.liked, n: v.like_count || 0 };
-    const heart = el("button", { class: "v-btn" + (st.liked ? " liked" : ""), type: "button", "data-like": v.id, "aria-pressed": String(st.liked), "aria-label": "J'aime" }, icon("heart"), el("span", { class: "n", text: String(st.n) }));
-    const paint = () => { heart.classList.toggle("liked", st.liked); heart.setAttribute("aria-pressed", String(st.liked)); heart.querySelector(".n").textContent = String(st.n); };
+    const heart = el("button", { class: "v-btn" + (st.liked ? " liked" : ""), type: "button", "data-like": v.id, "aria-pressed": String(st.liked), "aria-label": "J'aime" }, icon("heart"), v.hide_likes ? null : el("span", { class: "n", text: String(st.n) }));
+    const paint = () => { heart.classList.toggle("liked", st.liked); heart.setAttribute("aria-pressed", String(st.liked)); const hn = heart.querySelector(".n"); if (hn) hn.textContent = String(st.n); };
     heart.addEventListener("click", async () => {
       const was = st.liked; st.liked = !was; st.n += was ? -1 : 1; paint();
       const { data, error } = await sb.rpc(was ? "unlike_video" : "like_video", { p_video: v.id });
       if (error) { st.liked = was; st.n += was ? 1 : -1; paint(); toast(fr(error)); return; }
       st.n = data; paint();
     });
-    const cbtn = el("button", { class: "v-btn", type: "button", "data-comment-btn": v.id, "aria-label": "Commentaires" }, icon("comment"), el("span", { class: "n", text: String(v.comment_count || 0) }));
-    cbtn.addEventListener("click", () => openComments({ kind: "video", id: v.id, count: v.comment_count || 0, onCount: (n) => { v.comment_count = n; cbtn.querySelector(".n").textContent = String(n); } }));
+    const cbtn = v.comments_disabled ? null : el("button", { class: "v-btn", type: "button", "data-comment-btn": v.id, "aria-label": "Commentaires" }, icon("comment"), el("span", { class: "n", text: String(v.comment_count || 0) }));
+    if (cbtn) cbtn.addEventListener("click", () => openComments({ kind: "video", id: v.id, count: v.comment_count || 0, onCount: (n) => { v.comment_count = n; cbtn.querySelector(".n").textContent = String(n); } }));
     const side = el("div", { class: "v-side" }, heart, cbtn, el("a", { class: "v-btn", href: "commerce.html?id=" + encodeURIComponent(v.merchant_id), "data-page": v.merchant_id }, icon("shop"), el("span", { text: "Voir la page" })));
     const fol = v.is_owner ? null : el("button", { class: "v-follow", type: "button", "data-follow": v.merchant_id });
     if (fol) {

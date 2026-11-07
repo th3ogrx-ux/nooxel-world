@@ -20,6 +20,7 @@
 <script src="categories.js"></script>
 <script src="shop.js"></script>
 <script src="track.js"></script>
+<script src="publier.js"></script>
 <script>
   const id = new URLSearchParams(location.search).get("id") || "";
   let shop = null, before = null; const mode = "grid";
@@ -132,7 +133,7 @@
     const moreBtn = el("button", { class: "round", id: "more-btn", type: "button", "aria-label": "Plus d'options", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); } }, icon("more"));
     // Propriétaire d'un commerce vérifié : bouton « + » (Publier) à côté de « ⋯ »
     const canPublish = s.is_owner && s.verified;
-    const goAdd = (kind) => { location.href = kind === "video" ? "pro.html?add=video#videos-card" : "pro.html?add=photo#posts-card"; };
+    const goAdd = (kind) => { if (addMenu) addMenu.classList.add("hidden"); nxPublish(kind === "video" ? "video" : "photo", s.id); };
     const addMenu = !canPublish ? null : el("div", { id: "add-menu", class: "hidden", role: "menu" },
       el("button", { type: "button", id: "add-photo", role: "menuitem", onclick: () => goAdd("photo") }, icon("photo"), "Ajouter une photo"), el("button", { type: "button", id: "add-video", role: "menuitem", onclick: () => goAdd("video") }, icon("video"), "Ajouter une vidéo"));
     const addBtn = !canPublish ? null : el("button", { class: "round", id: "add-btn", type: "button", "aria-label": "Publier", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); menu.classList.add("hidden"); addMenu.classList.toggle("hidden"); } }, icon("plus"));

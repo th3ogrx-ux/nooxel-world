@@ -147,7 +147,7 @@ function postCard(p, withShop) {
   return el("article", { class: "post", "data-post": p.id },
     withShop ? el("a", { class: "post-shop", href: "commerce.html?id=" + encodeURIComponent(p.merchant_id), text: p.business_name }) : null,
     p.image_path ? el("img", { src: imgUrl(p.image_path), alt: "Photo publiée" + (p.business_name ? " par " + p.business_name : ""), loading: "lazy", decoding: "async", width: 1080, height: 810 }) : null,
-    el("p", { class: "post-body", text: p.body }),
+    p.body ? el("p", { class: "post-body", text: p.body }) : null,
     el("p", { class: "post-date", text: ago(p.created_at) }));
 }
 // ---------- Badges de progression des utilisateurs (selon le nombre d'avis laissés)
