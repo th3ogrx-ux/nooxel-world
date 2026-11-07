@@ -254,6 +254,7 @@
       const tog = async () => {
         if (!vid.paused) { vid.pause(); play.classList.remove("off"); return; }
         err.textContent = "";
+        try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}      // iPhone : le son d'une vidéo ne doit pas dépendre de l'interrupteur « silencieux »
         vid.muted = false; vid.volume = 1;      // aperçu avec le son : l'appui sur lecture est un geste de l'utilisateur, le téléphone l'autorise
         try { await vid.play(); } catch (e1) {
           try { vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }

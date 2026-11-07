@@ -57,7 +57,7 @@
   const toast = (m) => { let t = $("toast2"); if (!t) { t = el("p", { id: "toast2", role: "status" }); document.body.append(t); } t.textContent = m; clearTimeout(toast.t); toast.t = setTimeout(() => t.remove(), 2400); };
   const lowData = () => { const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ""))); };
   const paintMute = () => { $("mute").replaceChildren(icon(muted ? "mute" : "volume")); $("mute").setAttribute("aria-pressed", String(!muted)); };
-  $("mute").addEventListener("click", () => { muted = !muted; paintMute(); document.querySelectorAll("#vs video").forEach((v) => { v.muted = muted; }); });
+  $("mute").addEventListener("click", () => { try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {} muted = !muted; paintMute(); document.querySelectorAll("#vs video").forEach((v) => { v.muted = muted; }); });
   let hintSeen = false; try { hintSeen = localStorage.getItem("nooxel_vid_hint") === "1"; } catch (e) {}
   const endHint = () => { if (hintSeen) return; hintSeen = true; try { localStorage.setItem("nooxel_vid_hint", "1"); } catch (e) {} $("hint").style.opacity = "0"; setTimeout(() => $("hint").classList.add("hidden"), 700); };
   $("vs").addEventListener("scroll", () => { if ($("vs").scrollTop > 40) endHint(); }, { passive: true });
