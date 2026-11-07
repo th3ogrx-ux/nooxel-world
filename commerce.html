@@ -313,7 +313,7 @@
     more.disabled = false;
     if (error) { $("no-videos").textContent = fr(error); $("no-videos").classList.remove("hidden"); return []; }
     for (const v of data) { vids.push(v); $("vgrid").append(el("button", { class: "vtile", type: "button", "data-video": v.id, "aria-label": "Lire la vidéo" + (v.caption ? " : " + v.caption : ""), onclick: () => openReel(vids.indexOf(v)) },
-      el("img", { src: imgUrl(v.poster_path), alt: "", loading: "lazy", decoding: "async" }), v.view_count != null ? el("span", { class: "vviews", title: "Vues" }, eye(), kfmt(v.view_count)) : null, el("span", { class: "vdur", text: dur(v.duration_s) }))); }
+      el("img", { src: imgUrl(v.poster_path), alt: "", loading: "lazy", decoding: "async" }), v.view_count != null ? el("span", { class: "vviews", title: "Vues" }, eye(), kfmt(v.view_count)) : null)); }
     if (data.length) vBefore = data[data.length - 1].created_at;
     more.classList.toggle("hidden", data.length < 12);
     if (first) $("no-videos").classList.toggle("hidden", data.length > 0);
