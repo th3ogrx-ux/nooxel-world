@@ -36,7 +36,7 @@
   const MSG = { comment_contains_link: "Les liens et numéros de téléphone ne sont pas autorisés dans un commentaire.", comment_insult: "Ce commentaire contient un mot interdit. Restez respectueux.",
     comment_gibberish: "Ce commentaire n'a pas l'air d'un vrai message.", comment_empty: "Écrivez quelque chose avant d'envoyer.", comment_too_long: "Commentaire trop long (500 caractères maximum).",
     too_many_comments: "Vous commentez trop vite : réessayez dans un moment.", email_not_confirmed: "Confirmez d'abord votre adresse email.", pseudo_required: "Choisissez d'abord un pseudo dans votre profil.",
-    not_found: "Ce contenu n'existe plus.", too_many_likes: "Trop de ♥ pour le moment. Réessayez plus tard." };
+    not_found: "Ce contenu n'existe plus.", comments_disabled: "Les commentaires sont désactivés pour cette publication.", too_many_likes: "Trop de ♥ pour le moment. Réessayez plus tard." };
   const errMsg = (e) => { const m = String(e && e.message || e || ""), k = Object.keys(MSG).find((c) => m.includes(c)); return k ? MSG[k] : "Envoi impossible pour le moment. Réessayez dans un instant."; };
   const short = (d) => { const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000); if (s < 60) return "à l'instant"; if (s < 3600) return Math.floor(s / 60) + " min"; if (s < 86400) return Math.floor(s / 3600) + "h"; if (s < 604800) return Math.floor(s / 86400) + "j"; return Math.floor(s / 604800) + " sem"; };
   const SEND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 11.2 21 3.3c.8-.3 1.5.4 1.2 1.2l-7.9 18.5c-.4.9-1.7.8-2-.1l-2.3-6.6-6.6-2.3c-.9-.3-1-1.6-.1-1.8z"/></svg>';
