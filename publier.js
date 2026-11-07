@@ -91,7 +91,8 @@
   #pub .pcrop:active { cursor: grabbing; }
   #pub .pcrop img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; -webkit-user-drag: none; will-change: transform; }
   #pub .pcount { position: absolute; top: 9px; right: 9px; padding: .12rem .55rem; border-radius: 999px; background: rgba(5,9,22,.62); font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
-  #pub .phint { margin: -.3rem 0 0; text-align: center; color: #7f94c4; font-size: .85rem; }
+  #pub .pbody > * { flex-shrink: 0; }
+  #pub .phint { margin: 0; text-align: center; color: #7f94c4; font-size: .85rem; }
   #pub .pstrip { display: flex; gap: .55rem; overflow-x: auto; padding: .35rem .15rem; align-self: stretch; scrollbar-width: none; }
   #pub .pstrip::-webkit-scrollbar { display: none; }
   #pub .pth { position: relative; flex: none; width: 58px; height: 72px; border-radius: 12px; border: 2px solid transparent; padding: 0; background: #0a1330; cursor: pointer; }
@@ -247,9 +248,17 @@
 
     // ---- écran 2 (vidéo)
     function showVideo() {
-      const vid = el("video", { id: "pub-video", playsinline: "", "webkit-playsinline": "", loop: "", muted: "", preload: "auto", disablepictureinpicture: "" }); vid.muted = true; vid.playsInline = true; vid.src = mk(st.file) + "#t=0.1";
+      const vid = el("video", { id: "pub-video", playsinline: "", "webkit-playsinline": "", loop: "", muted: "", preload: "auto", disablepictureinpicture: "" }); vid.muted = true; vid.playsInline = true; vid.src = mk(st.file);
+      vid.addEventListener("loadeddata", () => { if (vid.paused && vid.currentTime === 0) { try { vid.currentTime = 0.1; } catch (e) {} } }, { once: true });
       const play = el("button", { class: "pplay", id: "pub-play", type: "button", "aria-label": "Lire la vidéo" }), dur = el("span", { class: "pdur", id: "pub-dur" });
-      const tog = () => { if (vid.paused) { vid.play().then(() => play.classList.add("off")).catch(() => { err.textContent = "Cette vidéo ne peut pas être lue dans l'aperçu. Essayez un autre fichier (MP4 de préférence)."; }); } else { vid.pause(); play.classList.remove("off"); } };
+      const tog = async () => {
+        if (!vid.paused) { vid.pause(); play.classList.remove("off"); return; }
+        err.textContent = "";
+        try { await vid.play(); } catch (e1) {
+          try { vid.muted = true; vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }
+        }
+        play.classList.add("off");
+      };
       play.addEventListener("click", tog); vid.addEventListener("click", tog);
       vid.addEventListener("loadedmetadata", () => { if (isFinite(vid.duration)) dur.textContent = mmss(vid.duration); });
       vid.addEventListener("error", () => { err.textContent = "Impossible de lire cette vidéo. Essayez un autre fichier (MP4 de préférence)."; });
