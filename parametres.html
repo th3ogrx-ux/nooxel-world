@@ -106,9 +106,10 @@
   }
   async function boot() {
     $("back").append(icon("back", 26));
-    let privRow = null, statsRow = null, msgToggle = null, unread = 0;
+    let privRow = null, statsRow = null, msgToggle = null, unread = 0, isBiz = false;
     try {
       if (sb) { const [st, sm] = await Promise.all([sb.rpc("my_verification_status"), sb.rpc("my_profile_summary")]);
+        isBiz = !!(st.data && st.data.has_profile && st.data.verification === "verified");
         if (st.data && st.data.verification !== "verified" && sm.data && sm.data.pseudo) privRow = privacyRow(!!sm.data.is_private);
         if (st.data && st.data.has_profile && st.data.verification === "verified" && st.data.merchant_id) { const mp = await sb.from("merchant_profiles").select("messages_enabled").eq("id", st.data.merchant_id).single(); if (mp.data) msgToggle = messagesToggleRow(mp.data.messages_enabled !== false); }
         if (st.data && st.data.has_profile && st.data.verification === "verified") statsRow = row(["chart", "Mes statistiques", "mes-statistiques.html", "Abonnés et performances de ma page"]); }
@@ -116,7 +117,7 @@
     } catch (e) {}
     const app = $("app");
     const c = chev(); c.classList.add("chev");
-    app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "mon-compte.html", "data-row": "Mon compte", style: "padding:0" },
+    if (!isBiz) app.append(el("div", { class: "group account", id: "account-block" }, el("a", { class: "row", href: "mon-compte.html", "data-row": "Mon compte", style: "padding:0" },
       el("span", { class: "av" }, icon("user")), el("span", { class: "t" }, "Mon compte", el("small", { text: "Gérer mon profil et mes préférences" })), c)));
     const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;      // déjà installée : la ligne disparaît
     if (installed) for (const s of SECTIONS) s.rows = s.rows.filter(r => r[1] !== "Installer l'application");
