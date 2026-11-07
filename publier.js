@@ -254,11 +254,14 @@
       const tog = async () => {
         if (!vid.paused) { vid.pause(); play.classList.remove("off"); return; }
         err.textContent = "";
+        try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}      // iPhone : le son d'une vidéo ne doit pas dépendre de l'interrupteur « silencieux »
         vid.muted = false; vid.volume = 1;      // aperçu avec le son : l'appui sur lecture est un geste de l'utilisateur, le téléphone l'autorise
         try { await vid.play(); } catch (e1) {
           try { vid.load(); await vid.play(); } catch (e2) { err.textContent = `L'aperçu ne démarre pas sur cet appareil (${(e2 && e2.name) || "erreur"}${vid.error ? " " + vid.error.code : ""}). Vous pouvez quand même essayer de publier.`; return; }
         }
         play.classList.add("off");
+        // Le fichier a-t-il vraiment un son ? (octets audio décodés après 1,5 s de lecture ; indisponible sur certains navigateurs : on ne dit rien)
+        setTimeout(() => { if (!vid.paused && typeof vid.webkitAudioDecodedByteCount === "number" && vid.webkitAudioDecodedByteCount === 0 && vid.currentTime > 0.8) err.textContent = "Aucun son détecté dans cette vidéo. Si elle devrait en avoir, vérifiez que le téléphone n'est pas en silencieux, ou essayez une autre vidéo."; }, 1500);
       };
       play.addEventListener("click", tog); vid.addEventListener("click", tog);
       vid.addEventListener("loadedmetadata", () => { if (isFinite(vid.duration)) dur.textContent = mmss(vid.duration); });
